@@ -1,6 +1,17 @@
 # dev-web-ide
 
-웹 기반 통합 개발 환경(Web IDE) 플랫폼 프런트엔드입니다.
+웹 기반 통합 개발 환경(Web IDE) 플랫폼 모노레포입니다.
+
+## Workspace
+
+```text
+.
+├── FE/        # React + Vite frontend
+├── LICENSE
+├── README.md
+├── package.json
+└── pnpm-workspace.yaml
+```
 
 ## Stack
 
@@ -21,7 +32,7 @@
 
 ```bash
 pnpm install
-pnpm dev
-pnpm build
-pnpm preview
+pnpm dev:fe
+pnpm build:fe
+pnpm preview:fe
 ```

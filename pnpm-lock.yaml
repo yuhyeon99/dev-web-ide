@@ -6,7 +6,9 @@ settings:
 
 importers:
 
-  .:
+  .: {}
+
+  FE:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.0.0

@@ -30,8 +30,8 @@ function App() {
                   React 19 + Vite 7 기반 Web IDE 프런트엔드 스타터
                 </h1>
                 <p className="mt-3 text-sm leading-6 text-slate-300 md:text-base">
-                  현재 프로젝트 폴더에서 바로 시작할 수 있도록 TypeScript, Tailwind
-                  CSS, TanStack Query, Jotai 기본 구성을 연결해 두었습니다.
+                  FE 패키지에서 바로 시작할 수 있도록 TypeScript, Tailwind CSS,
+                  TanStack Query, Jotai 기본 구성을 연결해 두었습니다.
                 </p>
               </div>
               <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
@@ -69,10 +69,10 @@ function App() {
                     Project
                   </p>
                   <ul className="mt-4 space-y-3 text-sm text-slate-200">
-                    <li className="rounded-xl bg-white/5 px-3 py-2">src/</li>
-                    <li className="rounded-xl bg-white/5 px-3 py-2">components/</li>
-                    <li className="rounded-xl bg-white/5 px-3 py-2">features/</li>
-                    <li className="rounded-xl bg-white/5 px-3 py-2">shared/</li>
+                    <li className="rounded-xl bg-white/5 px-3 py-2">FE/src/</li>
+                    <li className="rounded-xl bg-white/5 px-3 py-2">FE/components/</li>
+                    <li className="rounded-xl bg-white/5 px-3 py-2">FE/features/</li>
+                    <li className="rounded-xl bg-white/5 px-3 py-2">FE/shared/</li>
                   </ul>
                 </div>
 
@@ -81,7 +81,7 @@ function App() {
                     Active Pane
                   </p>
                   <div className="mt-4 rounded-2xl border border-emerald-400/15 bg-slate-950/70 p-4 text-sm leading-7 text-slate-200">
-                    <p className="text-emerald-300">$ pnpm dev</p>
+                    <p className="text-emerald-300">$ pnpm dev:fe</p>
                     <p className="mt-2">현재 선택된 패널: {activePane}</p>
                     <p>TanStack Query Provider: connected</p>
                     <p>Jotai Store: connected</p>

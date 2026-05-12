@@ -1,2 +1,2 @@
 // workspace Page
-// TODO export { workspacePage } from './ui/WorkspacePage';
+export { WorkspacePage } from './ui/WorkspacePage';

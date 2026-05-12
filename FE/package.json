@@ -16,6 +16,7 @@
     "jotai": "^2.0.0",
     "react": "~19.2.0",
     "react-dom": "~19.2.0",
+    "react-router": "^7.15.0",
     "vite-tsconfig-paths": "^6.1.1"
   },
   "devDependencies": {

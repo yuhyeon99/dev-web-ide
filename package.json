@@ -9,5 +9,14 @@
     "dev:fe": "pnpm --filter @dev-web-ide/fe dev",
     "build:fe": "pnpm --filter @dev-web-ide/fe build",
     "preview:fe": "pnpm --filter @dev-web-ide/fe preview"
+  },
+  "lint-staged": {
+    "fe/**/*.{js,jsx,ts,tsx}": [
+      "pnpm --dir fe exec eslint --fix",
+      "pnpm --dir fe exec prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }

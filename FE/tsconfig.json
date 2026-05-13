@@ -10,7 +10,9 @@
   ],
   "compilerOptions": {
     "paths": {
-      "@pages/*": ["./src/pages/*"]
+      "@/*": ["./src/*"],
+      "@pages/*": ["./src/pages/*"],
+      "@widget/*": ["./src/widget/*"]
     }
   }
 }

@@ -9,7 +9,7 @@ export const Header = () => {
             <div className="dropdown-menu flex relative h-full items-center pl-4">
               <ul className="flex h-full">
                 <li className="h-full relative flex items-center group px-2">
-                  <p>Projects</p>
+                  <p>Projects eslint test</p>
                   <ul className="absolute top-full left-0 hidden group-hover:block cursor-pointer bg-[#252525] py-1 z-50 shadow-lg min-w-52">
                     <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">New Projects</li>
                     <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">Open Projects</li>

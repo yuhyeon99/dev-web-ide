@@ -10,17 +10,17 @@ export const Header = () => {
               <ul className="flex h-full">
                 <li className="h-full relative flex items-center group px-2">
                   <p>Projects</p>
-                  <ul className="absolute top-full left-0 w-2xs hidden group-hover:block cursor-pointer">
-                    <li>New Projects</li>
-                    <li>Open Projects</li>
+                  <ul className="absolute top-full left-0 hidden group-hover:block cursor-pointer bg-[#252525] py-1 z-50 shadow-lg min-w-52">
+                    <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">New Projects</li>
+                    <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">Open Projects</li>
                   </ul>
                 </li>
                 <li className="h-full relative flex items-center group px-2">
                   <p>Teams</p>
-                  <ul className="absolute top-full left-0 w-2xs hidden group-hover:block cursor-pointer">
-                    <li>Invite Member</li>
-                    <li>Team Settings</li>
-                    <li>Permissions</li>
+                  <ul className="absolute top-full left-0 hidden group-hover:block cursor-pointer bg-[#252525] py-1 z-50 shadow-lg min-w-52">
+                    <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">Invite Member</li>
+                    <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">Team Settings</li>
+                    <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">Permissions</li>
                   </ul>
                 </li>
               </ul>

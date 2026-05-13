@@ -6,17 +6,19 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "prepare": "husky",
     "dev:fe": "pnpm --filter @dev-web-ide/fe dev",
     "build:fe": "pnpm --filter @dev-web-ide/fe build",
     "preview:fe": "pnpm --filter @dev-web-ide/fe preview"
   },
   "lint-staged": {
-    "fe/**/*.{js,jsx,ts,tsx}": [
-      "pnpm --dir fe exec eslint --fix",
-      "pnpm --dir fe exec prettier --write"
+    "FE/**/*.{js,jsx,ts,tsx}": [
+      "pnpm --dir FE exec eslint --fix",
+      "pnpm --dir FE exec prettier --write"
     ]
   },
   "devDependencies": {
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.4"
   }
 }

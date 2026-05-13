@@ -5,5 +5,7 @@
 # 커밋 전 코드 검사 수행
 # -----------------------------
 
+printf '%s\n' 'pre-commit: running lint-staged'
+
 # 변경된 파일만 eslint/prettier 실행
 pnpm exec lint-staged

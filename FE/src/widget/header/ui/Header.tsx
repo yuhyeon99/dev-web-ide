@@ -1,34 +1,34 @@
-import logo from "@/assets/images/logo.svg";
+import logo from '@/assets/images/logo.svg';
 
 export const Header = () => {
   return (
-    <header className="w-full h-11 flex pl-3 bg-[#333333] text-[#cccccc] text-sm select-none">
+    <header className="flex h-11 w-full bg-[#333333] pl-3 text-sm text-[#cccccc] select-none">
       <div className="logo flex items-center">
         <img className="w-6.5" src={logo} alt="Logo" />
       </div>
-      <div className="dropdown-menu flex relative h-full items-center pl-4">
+      <div className="dropdown-menu relative flex h-full items-center pl-4">
         <ul className="flex h-full">
-          <li className="h-full relative flex items-center group px-2">
+          <li className="group relative flex h-full items-center px-2">
             <p>Projects</p>
-            <ul className="absolute top-full left-0 hidden group-hover:block cursor-pointer bg-[#252525] py-1 z-50 shadow-lg min-w-52">
-              <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">
+            <ul className="absolute top-full left-0 z-50 hidden min-w-52 cursor-pointer bg-[#252525] py-1 shadow-lg group-hover:block">
+              <li className="px-3 py-1.5 text-sm whitespace-nowrap text-[#cccccc] hover:bg-[#04395e] hover:text-white">
                 New Projects
               </li>
-              <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">
-                Open Projects
+              <li className="px-3 py-1.5 text-sm whitespace-nowrap text-[#cccccc] hover:bg-[#04395e] hover:text-white">
+                Open Projects test
               </li>
             </ul>
           </li>
-          <li className="h-full relative flex items-center group px-2">
+          <li className="group relative flex h-full items-center px-2">
             <p>Teams</p>
-            <ul className="absolute top-full left-0 hidden group-hover:block cursor-pointer bg-[#252525] py-1 z-50 shadow-lg min-w-52">
-              <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">
+            <ul className="absolute top-full left-0 z-50 hidden min-w-52 cursor-pointer bg-[#252525] py-1 shadow-lg group-hover:block">
+              <li className="px-3 py-1.5 text-sm whitespace-nowrap text-[#cccccc] hover:bg-[#04395e] hover:text-white">
                 Invite Member
               </li>
-              <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">
+              <li className="px-3 py-1.5 text-sm whitespace-nowrap text-[#cccccc] hover:bg-[#04395e] hover:text-white">
                 Team Settings
               </li>
-              <li className="px-3 py-1.5 text-sm text-[#cccccc] whitespace-nowrap hover:bg-[#04395e] hover:text-white">
+              <li className="px-3 py-1.5 text-sm whitespace-nowrap text-[#cccccc] hover:bg-[#04395e] hover:text-white">
                 Permissions
               </li>
             </ul>

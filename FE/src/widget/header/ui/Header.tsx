@@ -39,8 +39,24 @@ export const Header = () => {
         <p>Project Name</p>
       </div>
       <div className="user-profile absolute right-3 flex h-full cursor-pointer items-center">
-        <div className="h-6.5 w-6.5 rounded-full bg-[#cccccc]">
-          {/* TODO: 사용자 아이콘을 여기에 추가 */}
+        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#555555] text-xs text-white">
+          {/* 로그인 전 */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="h-5 w-5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 7.5a3 3 0 11-6 0 3 3 0 016 0ZM4.5 19.5a7.5 7.5 0 0115 0"
+            />
+            <path strokeLinecap="round" d="M4.3 20.5h15.4" />
+          </svg>
+          {/* TODO: 로그인 후: 회원 이미지 */}
         </div>
       </div>
     </header>

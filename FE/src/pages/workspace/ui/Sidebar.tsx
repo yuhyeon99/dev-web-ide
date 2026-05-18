@@ -4,9 +4,7 @@ import { useState } from 'react';
 import type {
   ActivityId,
   ActivityItem,
-  GitChange,
   PresenceUser,
-  RunProfile,
   SearchResult,
   SettingSection,
   WorkspaceTab,
@@ -18,8 +16,6 @@ import {
   ExplorerIcon,
   FileIcon,
   FolderIcon,
-  GitBranchIcon,
-  PlayIcon,
   SearchIcon,
   SettingsIcon,
   UsersIcon,
@@ -29,13 +25,10 @@ type SidebarProps = {
   activities: ActivityItem[];
   activeActivity: ActivityId;
   activeFilePath: string;
-  branchName: string;
   collaborators: PresenceUser[];
   fileTree: WorkspaceTreeNode[];
-  gitChanges: GitChange[];
   onActivityChange: (activityId: ActivityId) => void;
   onSelectTab: (tabId: string) => void;
-  runProfiles: RunProfile[];
   searchResults: SearchResult[];
   settingsSections: SettingSection[];
   tabs: WorkspaceTab[];
@@ -53,17 +46,9 @@ const activityTitleMap: Record<
     title: 'Search',
     subtitle: '프로젝트 전체에서 키워드 일치 결과를 확인합니다.',
   },
-  git: {
-    title: 'Source Control',
-    subtitle: '브랜치와 변경 파일 상태를 검토합니다.',
-  },
   collaboration: {
     title: 'Collaboration',
     subtitle: '현재 접속자와 편집 위치를 확인합니다.',
-  },
-  run: {
-    title: 'Run & Preview',
-    subtitle: '컨테이너 실행 프로필과 로그 채널을 관리합니다.',
   },
   settings: {
     title: 'Settings',
@@ -77,12 +62,8 @@ const renderActivityIcon = (id: ActivityId, className = 'h-5 w-5') => {
       return <ExplorerIcon className={className} />;
     case 'search':
       return <SearchIcon className={className} />;
-    case 'git':
-      return <GitBranchIcon className={className} />;
     case 'collaboration':
       return <UsersIcon className={className} />;
-    case 'run':
-      return <PlayIcon className={className} />;
     case 'settings':
       return <SettingsIcon className={className} />;
   }
@@ -173,13 +154,10 @@ export const Sidebar = ({
   activities,
   activeActivity,
   activeFilePath,
-  branchName,
   collaborators,
   fileTree,
-  gitChanges,
   onActivityChange,
   onSelectTab,
-  runProfiles,
   searchResults,
   settingsSections,
   tabs,
@@ -379,57 +357,6 @@ export const Sidebar = ({
             </div>
           ) : null}
 
-          {activeActivity === 'git' ? (
-            <div className="space-y-4">
-              <article className="rounded-2xl border border-[var(--ws-border)] bg-[#1f1f1f] p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--ws-text)]">
-                      {branchName}
-                    </p>
-                    <p className="mt-1 text-[11px] text-[var(--ws-muted)]">
-                      3 changed files · 2 staged preview actions
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-[#0e639c]/20 px-2.5 py-1 text-[11px] font-semibold text-[#9cdcfe]">
-                    Clean branch tip
-                  </span>
-                </div>
-              </article>
-
-              <div className="space-y-2">
-                {gitChanges.map((change) => (
-                  <div
-                    key={change.path}
-                    className="rounded-xl border border-[var(--ws-border)] bg-[#1f1f1f] px-3 py-3"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`rounded-md px-2 py-1 text-[11px] font-semibold ${
-                          change.status === 'M'
-                            ? 'bg-[#d7ba7d]/20 text-[#d7ba7d]'
-                            : change.status === 'A'
-                              ? 'bg-[#73c991]/20 text-[#73c991]'
-                              : 'bg-[#f14c4c]/20 text-[#f14c4c]'
-                        }`}
-                      >
-                        {change.status}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-[var(--ws-text)]">
-                          {change.path}
-                        </p>
-                        <p className="mt-1 text-[12px] text-[var(--ws-muted)]">
-                          {change.summary}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
           {activeActivity === 'collaboration' ? (
             <div className="space-y-3">
               {collaborators.map((user) => (
@@ -464,56 +391,6 @@ export const Sidebar = ({
                   </div>
                 </article>
               ))}
-            </div>
-          ) : null}
-
-          {activeActivity === 'run' ? (
-            <div className="space-y-4">
-              <article className="rounded-2xl border border-[var(--ws-border)] bg-[#1f1f1f] p-4">
-                <p className="text-[11px] font-semibold tracking-[0.16em] text-[#73c991] uppercase">
-                  Container Status
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[var(--ws-text)]">
-                  Node 24 runtime healthy
-                </p>
-                <p className="mt-1 text-[12px] leading-5 text-[var(--ws-muted)]">
-                  Preview port 5173 is forwarded and shared with your current
-                  team.
-                </p>
-              </article>
-
-              <div className="space-y-2">
-                {runProfiles.map((profile) => (
-                  <button
-                    key={profile.id}
-                    type="button"
-                    className="w-full rounded-2xl border border-[var(--ws-border)] bg-[#1f1f1f] p-3 text-left transition hover:border-[#3c4858] hover:bg-[#25282a]"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-[var(--ws-text)]">
-                        {profile.label}
-                      </p>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          profile.status === 'Running'
-                            ? 'bg-[#73c991]/20 text-[#73c991]'
-                            : profile.status === 'Ready'
-                              ? 'bg-[#4fc1ff]/20 text-[#4fc1ff]'
-                              : 'bg-[#d7ba7d]/20 text-[#d7ba7d]'
-                        }`}
-                      >
-                        {profile.status}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[12px] text-[var(--ws-muted)]">
-                      {profile.description}
-                    </p>
-                    <p className="mt-3 rounded-lg border border-[#2d2d30] bg-[#181818] px-2.5 py-2 font-mono text-[11px] text-[#c5c5c5]">
-                      {profile.command}
-                    </p>
-                  </button>
-                ))}
-              </div>
             </div>
           ) : null}
 

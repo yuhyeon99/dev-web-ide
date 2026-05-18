@@ -1,18 +1,11 @@
-export type ActivityId =
-  | 'explorer'
-  | 'search'
-  | 'git'
-  | 'collaboration'
-  | 'run'
-  | 'settings';
+export type ActivityId = 'explorer' | 'search' | 'collaboration' | 'settings';
 
-export type BottomPanelId = 'terminal' | 'problems' | 'output' | 'ports';
+export type BottomPanelId = 'terminal' | 'output';
 
 export type WorkspaceProject = {
   id: string;
   label: string;
   subtitle: string;
-  branch: string;
   lastOpened: string;
 };
 
@@ -55,20 +48,6 @@ export type SearchResult = {
     line: number;
     text: string;
   }[];
-};
-
-export type GitChange = {
-  path: string;
-  status: 'M' | 'A' | 'D';
-  summary: string;
-};
-
-export type RunProfile = {
-  id: string;
-  label: string;
-  description: string;
-  command: string;
-  status: 'Running' | 'Ready' | 'Queued';
 };
 
 export type SettingSection = {
@@ -132,21 +111,6 @@ export type TerminalSession = {
   lines: string[];
 };
 
-export type ProblemItem = {
-  id: string;
-  severity: 'warning' | 'info' | 'error';
-  message: string;
-  file: string;
-  line: number;
-};
-
-export type PortItem = {
-  port: number;
-  label: string;
-  status: string;
-  visibility: string;
-};
-
 const token = (text: string, tone: EditorTokenTone = 'text'): EditorToken => ({
   text,
   tone,
@@ -161,21 +125,18 @@ export const workspaceProjects: WorkspaceProject[] = [
     id: 'project-a',
     label: 'Project A',
     subtitle: 'React + Vite collaborative workspace',
-    branch: 'feature/workspace-ui',
     lastOpened: '방금 전',
   },
   {
     id: 'pairing-lab',
     label: 'Pairing Lab',
     subtitle: 'Shared preview for UI pairing sessions',
-    branch: 'main',
     lastOpened: '32분 전',
   },
   {
     id: 'release-room',
     label: 'Release Room',
     subtitle: 'Read-only production validation room',
-    branch: 'release/2026-05',
     lastOpened: '어제',
   },
 ];
@@ -228,19 +189,9 @@ export const activityItems: ActivityItem[] = [
     description: '프로젝트 전체 문자열 검색',
   },
   {
-    id: 'git',
-    label: 'Git',
-    description: '변경 파일과 브랜치 상태',
-  },
-  {
     id: 'collaboration',
     label: 'Collaboration',
     description: '현재 접속 사용자와 위치',
-  },
-  {
-    id: 'run',
-    label: 'Run',
-    description: '실행 프로필과 컨테이너 상태',
   },
   {
     id: 'settings',
@@ -251,9 +202,7 @@ export const activityItems: ActivityItem[] = [
 
 export const bottomPanelItems: BottomPanelItem[] = [
   { id: 'terminal', label: 'Terminal' },
-  { id: 'problems', label: 'Problems' },
   { id: 'output', label: 'Output' },
-  { id: 'ports', label: 'Ports' },
 ];
 
 export const workspaceTree: WorkspaceTreeNode[] = [
@@ -416,48 +365,6 @@ export const searchResults: SearchResult[] = [
         text: 'return response.json() as Promise<RunResponse>',
       },
     ],
-  },
-];
-
-export const gitChanges: GitChange[] = [
-  {
-    path: 'src/pages/workspace/ui/WorkspacePage.tsx',
-    status: 'M',
-    summary: '워크스페이스 레이아웃과 상태 구성 추가',
-  },
-  {
-    path: 'src/pages/workspace/ui/Editor.tsx',
-    status: 'A',
-    summary: 'Monaco 스타일 편집기 퍼블리싱',
-  },
-  {
-    path: 'src/pages/workspace/ui/Terminal.tsx',
-    status: 'A',
-    summary: '하단 실행 패널과 세션 탭 구현',
-  },
-];
-
-export const runProfiles: RunProfile[] = [
-  {
-    id: 'dev',
-    label: 'npm run dev',
-    description: '프론트엔드 개발 서버를 컨테이너에서 기동',
-    command: 'container exec npm run dev',
-    status: 'Running',
-  },
-  {
-    id: 'build',
-    label: 'npm run build',
-    description: '타입 체크와 프로덕션 번들 검증',
-    command: 'container exec npm run build',
-    status: 'Ready',
-  },
-  {
-    id: 'tests',
-    label: 'npm run test',
-    description: '향후 테스트 스위트 연결용 슬롯',
-    command: 'container exec npm run test',
-    status: 'Queued',
   },
 ];
 
@@ -763,13 +670,13 @@ export const terminalSessions: TerminalSession[] = [
     cwd: '~/project-a',
     status: 'running',
     lines: [
-      '$ npm run dev',
+      '$ node scripts/demo.js',
       '',
-      'VITE v7.0 ready in 421ms',
-      '➜ Local:   http://localhost:5173',
-      '➜ Network: use --host to expose',
+      'Program started.',
+      'Input file: samples/demo.json',
+      'Processed 24 records in 118ms.',
       '',
-      '[hmr] connected.',
+      'Result: success',
       '[workspace] collaborative cursors synced',
     ],
   },
@@ -788,54 +695,23 @@ export const terminalSessions: TerminalSession[] = [
     ],
   },
   {
-    id: 'server-logs',
-    label: 'Server Logs',
-    cwd: 'container://runner',
-    status: 'running',
+    id: 'terminal-3',
+    label: 'Terminal 3',
+    cwd: '~/project-a',
+    status: 'idle',
     lines: [
-      '[runner] attached to workspace container',
-      '[runner] port 5173 forwarded to preview gateway',
-      '[runner] sync heartbeat ok',
+      '$ python tools/report.py',
+      '',
+      'Usage: report.py <input-path>',
+      'Tip: pass --format json to capture machine-readable output.',
     ],
-  },
-];
-
-export const problemItems: ProblemItem[] = [
-  {
-    id: 'problem-1',
-    severity: 'warning',
-    message:
-      'Monaco 패키지가 연결되지 않아 현재는 퍼블리싱용 편집 화면을 렌더링합니다.',
-    file: 'src/pages/workspace/ui/Editor.tsx',
-    line: 96,
-  },
-  {
-    id: 'problem-2',
-    severity: 'info',
-    message: '게스트 권한은 현재 편집 가능으로 설정되어 있습니다.',
-    file: 'src/pages/workspace/ui/Sidebar.tsx',
-    line: 210,
   },
 ];
 
 export const outputLines = [
   '[workspace] save requested by 김유현',
-  '[workspace] git status: 3 changed files',
-  '[runner] container status: healthy',
-  '[preview] share link prepared for team members',
-];
-
-export const portItems: PortItem[] = [
-  {
-    port: 5173,
-    label: 'Vite Dev Server',
-    status: 'Live',
-    visibility: 'Team',
-  },
-  {
-    port: 24678,
-    label: 'HMR WebSocket',
-    status: 'Internal',
-    visibility: 'Private',
-  },
+  '[output] node scripts/demo.js',
+  '[warn] Monaco runtime is not connected. Using presentation renderer.',
+  '[error] Command exited with code 1: missing APP_ENV variable.',
+  '[output] Retry with APP_ENV=local to continue.',
 ];

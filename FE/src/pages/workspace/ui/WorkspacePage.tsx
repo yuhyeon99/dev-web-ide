@@ -7,12 +7,8 @@ import {
   activityItems,
   bottomPanelItems,
   editorTabs,
-  gitChanges,
   outputLines,
-  portItems,
   presenceUsers,
-  problemItems,
-  runProfiles,
   searchResults,
   settingSections,
   terminalSessions,
@@ -80,10 +76,8 @@ export const WorkspacePage = () => {
               activities={activityItems}
               activeActivity={activeActivity}
               activeFilePath={activeTab.path}
-              branchName={activeProject.branch}
               collaborators={presenceUsers}
               fileTree={workspaceTree}
-              gitChanges={gitChanges}
               onActivityChange={(activityId) =>
                 startTransition(() => {
                   setActiveActivity(activityId);
@@ -94,7 +88,6 @@ export const WorkspacePage = () => {
                   setActiveTabId(tabId);
                 })
               }
-              runProfiles={runProfiles}
               searchResults={searchResults}
               settingsSections={settingSections}
               tabs={editorTabs}
@@ -121,8 +114,6 @@ export const WorkspacePage = () => {
             }
             outputLines={outputLines}
             panels={bottomPanelItems}
-            ports={portItems}
-            problems={problemItems}
             sessions={terminalSessions}
           />
         </div>

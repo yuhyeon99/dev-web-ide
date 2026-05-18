@@ -2,13 +2,7 @@
 
 import { useState } from 'react';
 import type { PresenceUser, WorkspaceProject } from './workspaceData';
-import {
-  ChevronDownIcon,
-  GitBranchIcon,
-  PlayIcon,
-  SaveIcon,
-  ShareIcon,
-} from './WorkspaceIcons';
+import { ChevronDownIcon, SaveIcon, ShareIcon } from './WorkspaceIcons';
 
 type WorkspaceHeaderProps = {
   projects: WorkspaceProject[];
@@ -101,7 +95,7 @@ export const WorkspaceHeader = ({
                             </p>
                           </div>
                           <div className="text-right text-[11px] text-[var(--ws-muted)]">
-                            <p>{project.branch}</p>
+                            <p>최근 열람</p>
                             <p className="mt-1">{project.lastOpened}</p>
                           </div>
                         </button>
@@ -127,29 +121,10 @@ export const WorkspaceHeader = ({
 
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-[#1c78b6] bg-[linear-gradient(180deg,#0e639c_0%,#094771_100%)] px-3.5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
-            >
-              <PlayIcon className="h-4 w-4" />
-              <span>Run</span>
-            </button>
-
-            <button
-              type="button"
               className="inline-flex items-center gap-2 rounded-xl border border-[var(--ws-border)] bg-[#2a2d2e] px-3.5 py-2.5 text-sm font-medium text-[var(--ws-text)] transition hover:border-[#3c4858] hover:bg-[#303336]"
             >
               <ShareIcon className="h-4 w-4" />
               <span>Share</span>
-            </button>
-
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-[var(--ws-border)] bg-[#2a2d2e] px-3.5 py-2.5 text-sm font-medium text-[var(--ws-text)] transition hover:border-[#3c4858] hover:bg-[#303336]"
-            >
-              <GitBranchIcon className="h-4 w-4" />
-              <span>Git</span>
-              <span className="rounded-full border border-[#3c3c3c] bg-[#1f1f1f] px-2 py-0.5 text-[11px] text-[#9cdcfe]">
-                {activeProject.branch}
-              </span>
             </button>
           </div>
 

@@ -40,27 +40,6 @@ export const SearchIcon = ({ className = baseIconClassName }: IconProps) => {
   );
 };
 
-export const GitBranchIcon = ({ className = baseIconClassName }: IconProps) => {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="7.5" cy="5.5" r="2.25" />
-      <circle cx="7.5" cy="18.5" r="2.25" />
-      <circle cx="16.5" cy="9.5" r="2.25" />
-      <path d="M7.5 7.75v8.5" />
-      <path d="M9.75 6.5h2.5a4.25 4.25 0 0 1 4.25 4.25v.5" />
-    </svg>
-  );
-};
-
 export const UsersIcon = ({ className = baseIconClassName }: IconProps) => {
   return (
     <svg
@@ -77,19 +56,6 @@ export const UsersIcon = ({ className = baseIconClassName }: IconProps) => {
       <circle cx="10" cy="8" r="3" />
       <path d="M18 18.5a4 4 0 0 0-3.5-3.95" />
       <path d="M14.5 5.5a3 3 0 0 1 0 5" />
-    </svg>
-  );
-};
-
-export const PlayIcon = ({ className = baseIconClassName }: IconProps) => {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M8.25 5.75a1 1 0 0 1 1.53-.85l8.5 5.25a1 1 0 0 1 0 1.7l-8.5 5.25a1 1 0 0 1-1.53-.85V5.75Z" />
     </svg>
   );
 };
@@ -261,25 +227,6 @@ export const TerminalIcon = ({ className = baseIconClassName }: IconProps) => {
   );
 };
 
-export const WarningIcon = ({ className = baseIconClassName }: IconProps) => {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 4.5 3.75 18.75h16.5L12 4.5Z" />
-      <path d="M12 9.5v4.5" />
-      <circle cx="12" cy="16.5" r="0.8" fill="currentColor" stroke="none" />
-    </svg>
-  );
-};
-
 export const OutputIcon = ({ className = baseIconClassName }: IconProps) => {
   return (
     <svg
@@ -296,45 +243,6 @@ export const OutputIcon = ({ className = baseIconClassName }: IconProps) => {
       <path d="m8 9 2.5 2.5L8 14" />
       <path d="M13 14h3" />
       <path d="M9 19h6" />
-    </svg>
-  );
-};
-
-export const PortsIcon = ({ className = baseIconClassName }: IconProps) => {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M8 4.75v6.5" />
-      <path d="M16 4.75v6.5" />
-      <path d="M6.25 11.25h11.5v2.25A5.75 5.75 0 0 1 12 19.25 5.75 5.75 0 0 1 6.25 13.5v-2.25Z" />
-      <path d="M12 19.25v2" />
-    </svg>
-  );
-};
-
-export const InfoIcon = ({ className = baseIconClassName }: IconProps) => {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 10.25v5" />
-      <circle cx="12" cy="7.75" r="0.8" fill="currentColor" stroke="none" />
     </svg>
   );
 };

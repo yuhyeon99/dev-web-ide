@@ -4,25 +4,15 @@ import { useState } from 'react';
 import type {
   BottomPanelId,
   BottomPanelItem,
-  PortItem,
-  ProblemItem,
   TerminalSession,
 } from './workspaceData';
-import {
-  InfoIcon,
-  OutputIcon,
-  PortsIcon,
-  TerminalIcon,
-  WarningIcon,
-} from './WorkspaceIcons';
+import { OutputIcon, TerminalIcon } from './WorkspaceIcons';
 
 type TerminalProps = {
   activePanel: BottomPanelId;
   onPanelChange: (panelId: BottomPanelId) => void;
   outputLines: string[];
   panels: BottomPanelItem[];
-  ports: PortItem[];
-  problems: ProblemItem[];
   sessions: TerminalSession[];
 };
 
@@ -30,12 +20,8 @@ const renderPanelIcon = (panelId: BottomPanelId) => {
   switch (panelId) {
     case 'terminal':
       return <TerminalIcon className="h-4 w-4" />;
-    case 'problems':
-      return <WarningIcon className="h-4 w-4" />;
     case 'output':
       return <OutputIcon className="h-4 w-4" />;
-    case 'ports':
-      return <PortsIcon className="h-4 w-4" />;
   }
 };
 
@@ -44,8 +30,6 @@ export const Terminal = ({
   onPanelChange,
   outputLines,
   panels,
-  ports,
-  problems,
   sessions,
 }: TerminalProps) => {
   const [activeSessionId, setActiveSessionId] = useState(sessions[0]?.id ?? '');
@@ -78,7 +62,7 @@ export const Terminal = ({
           })}
         </div>
         <div className="text-[11px] text-[var(--ws-muted)]">
-          preview container healthy · 1 running task
+          shell sessions ready · 1 running task
         </div>
       </div>
 
@@ -139,80 +123,22 @@ export const Terminal = ({
         </>
       ) : null}
 
-      {activePanel === 'problems' ? (
-        <div className="min-h-0 flex-1 overflow-auto px-4 py-4">
-          <div className="space-y-3">
-            {problems.map((problem) => (
-              <article
-                key={problem.id}
-                className="rounded-2xl border border-[var(--ws-border)] bg-[#1f1f1f] p-3"
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className={`mt-0.5 ${
-                      problem.severity === 'warning'
-                        ? 'text-[#d7ba7d]'
-                        : problem.severity === 'error'
-                          ? 'text-[#f14c4c]'
-                          : 'text-[#4fc1ff]'
-                    }`}
-                  >
-                    {problem.severity === 'warning' ? (
-                      <WarningIcon className="h-4 w-4" />
-                    ) : (
-                      <InfoIcon className="h-4 w-4" />
-                    )}
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-[var(--ws-text)]">
-                      {problem.message}
-                    </p>
-                    <p className="mt-1 text-[12px] text-[var(--ws-muted)]">
-                      {problem.file}:{problem.line}
-                    </p>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       {activePanel === 'output' ? (
         <div className="min-h-0 flex-1 overflow-auto px-4 py-4 font-mono text-[13px] leading-7 text-[#d4d4d4]">
           {outputLines.map((line, index) => (
-            <p key={`output-${index + 1}`}>{line}</p>
+            <p
+              key={`output-${index + 1}`}
+              className={
+                line.includes('[error]')
+                  ? 'text-[#f48771]'
+                  : line.includes('[warn]')
+                    ? 'text-[#d7ba7d]'
+                    : 'text-[#d4d4d4]'
+              }
+            >
+              {line}
+            </p>
           ))}
-        </div>
-      ) : null}
-
-      {activePanel === 'ports' ? (
-        <div className="min-h-0 flex-1 overflow-auto px-4 py-4">
-          <div className="grid gap-3 md:grid-cols-2">
-            {ports.map((port) => (
-              <article
-                key={port.port}
-                className="rounded-2xl border border-[var(--ws-border)] bg-[#1f1f1f] p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--ws-text)]">
-                      {port.label}
-                    </p>
-                    <p className="mt-1 text-[12px] text-[var(--ws-muted)]">
-                      {port.visibility}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-[#73c991]/20 px-2 py-0.5 text-[11px] font-semibold text-[#73c991]">
-                    {port.status}
-                  </span>
-                </div>
-                <div className="mt-3 rounded-xl border border-[#2d2d30] bg-[#181818] px-3 py-2 font-mono text-[12px] text-[#9cdcfe]">
-                  localhost:{port.port}
-                </div>
-              </article>
-            ))}
-          </div>
         </div>
       ) : null}
     </section>

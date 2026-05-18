@@ -5,9 +5,7 @@ import { Terminal } from './Terminal';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import {
   activityItems,
-  bottomPanelItems,
   editorTabs,
-  outputLines,
   presenceUsers,
   searchResults,
   settingSections,
@@ -15,7 +13,6 @@ import {
   workspaceProjects,
   workspaceTree,
   type ActivityId,
-  type BottomPanelId,
 } from './workspaceData';
 
 const workspaceTheme = {
@@ -35,8 +32,6 @@ export const WorkspacePage = () => {
   const [activeTabId, setActiveTabId] = useState(
     editorTabs[1]?.id ?? editorTabs[0]?.id ?? '',
   );
-  const [activeBottomPanel, setActiveBottomPanel] =
-    useState<BottomPanelId>('terminal');
 
   const activeProject =
     workspaceProjects.find((project) => project.id === activeProjectId) ??
@@ -105,17 +100,7 @@ export const WorkspacePage = () => {
             />
           </div>
 
-          <Terminal
-            activePanel={activeBottomPanel}
-            onPanelChange={(panelId) =>
-              startTransition(() => {
-                setActiveBottomPanel(panelId);
-              })
-            }
-            outputLines={outputLines}
-            panels={bottomPanelItems}
-            sessions={terminalSessions}
-          />
+          <Terminal sessions={terminalSessions} />
         </div>
       </div>
     </div>

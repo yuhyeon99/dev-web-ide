@@ -226,23 +226,3 @@ export const TerminalIcon = ({ className = baseIconClassName }: IconProps) => {
     </svg>
   );
 };
-
-export const OutputIcon = ({ className = baseIconClassName }: IconProps) => {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="4" y="5" width="16" height="12" rx="2.25" />
-      <path d="m8 9 2.5 2.5L8 14" />
-      <path d="M13 14h3" />
-      <path d="M9 19h6" />
-    </svg>
-  );
-};

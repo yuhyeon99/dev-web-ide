@@ -1,7 +1,5 @@
 export type ActivityId = 'explorer' | 'search' | 'collaboration' | 'settings';
 
-export type BottomPanelId = 'terminal' | 'output';
-
 export type WorkspaceProject = {
   id: string;
   label: string;
@@ -25,11 +23,6 @@ export type ActivityItem = {
   id: ActivityId;
   label: string;
   description: string;
-};
-
-export type BottomPanelItem = {
-  id: BottomPanelId;
-  label: string;
 };
 
 export type WorkspaceTreeNode = {
@@ -198,11 +191,6 @@ export const activityItems: ActivityItem[] = [
     label: 'Settings',
     description: '자동 저장, 포맷, 권한 설정',
   },
-];
-
-export const bottomPanelItems: BottomPanelItem[] = [
-  { id: 'terminal', label: 'Terminal' },
-  { id: 'output', label: 'Output' },
 ];
 
 export const workspaceTree: WorkspaceTreeNode[] = [
@@ -706,12 +694,4 @@ export const terminalSessions: TerminalSession[] = [
       'Tip: pass --format json to capture machine-readable output.',
     ],
   },
-];
-
-export const outputLines = [
-  '[workspace] save requested by 김유현',
-  '[output] node scripts/demo.js',
-  '[warn] Monaco runtime is not connected. Using presentation renderer.',
-  '[error] Command exited with code 1: missing APP_ENV variable.',
-  '[output] Retry with APP_ENV=local to continue.',
 ];

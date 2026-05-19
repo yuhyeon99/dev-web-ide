@@ -7,7 +7,6 @@ import {
   activityItems,
   editorTabs,
   presenceUsers,
-  searchResults,
   settingSections,
   terminalSessions,
   workspaceProjects,
@@ -84,7 +83,6 @@ export const WorkspacePage = () => {
                   setActiveTabId(tabId);
                 })
               }
-              searchResults={searchResults}
               settingsSections={settingSections}
               tabs={editorTabs}
             />

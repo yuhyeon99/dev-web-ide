@@ -5,7 +5,6 @@ import type {
   ActivityId,
   ActivityItem,
   PresenceUser,
-  SearchResult,
   SettingSection,
   WorkspaceTab,
   WorkspaceTreeNode,
@@ -16,7 +15,6 @@ import {
   ExplorerIcon,
   FileIcon,
   FolderIcon,
-  SearchIcon,
   SettingsIcon,
   UsersIcon,
 } from './WorkspaceIcons';
@@ -29,7 +27,6 @@ type SidebarProps = {
   fileTree: WorkspaceTreeNode[];
   onActivityChange: (activityId: ActivityId) => void;
   onSelectTab: (tabId: string) => void;
-  searchResults: SearchResult[];
   settingsSections: SettingSection[];
   tabs: WorkspaceTab[];
 };
@@ -41,10 +38,6 @@ const activityTitleMap: Record<
   explorer: {
     title: 'Explorer',
     subtitle: '열려 있는 파일과 프로젝트 트리를 빠르게 탐색합니다.',
-  },
-  search: {
-    title: 'Search',
-    subtitle: '프로젝트 전체에서 키워드 일치 결과를 확인합니다.',
   },
   collaboration: {
     title: 'Collaboration',
@@ -60,8 +53,6 @@ const renderActivityIcon = (id: ActivityId, className = 'h-5 w-5') => {
   switch (id) {
     case 'explorer':
       return <ExplorerIcon className={className} />;
-    case 'search':
-      return <SearchIcon className={className} />;
     case 'collaboration':
       return <UsersIcon className={className} />;
     case 'settings':
@@ -158,11 +149,9 @@ export const Sidebar = ({
   fileTree,
   onActivityChange,
   onSelectTab,
-  searchResults,
   settingsSections,
   tabs,
 }: SidebarProps) => {
-  const [searchQuery, setSearchQuery] = useState('workspace');
   const [settingState, setSettingState] = useState<Record<string, boolean>>(
     () =>
       Object.fromEntries(
@@ -173,22 +162,6 @@ export const Sidebar = ({
   );
 
   const panelMeta = activityTitleMap[activeActivity];
-
-  const filteredResults = searchResults.filter((result) => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return false;
-    }
-
-    return (
-      result.file.toLowerCase().includes(normalizedQuery) ||
-      result.path.toLowerCase().includes(normalizedQuery) ||
-      result.matches.some((match) =>
-        match.text.toLowerCase().includes(normalizedQuery),
-      )
-    );
-  });
 
   const handleSelectPath = (path: string) => {
     const matchedTab = matchTabByPath(tabs, path);
@@ -294,66 +267,6 @@ export const Sidebar = ({
                   ))}
                 </div>
               </section>
-            </div>
-          ) : null}
-
-          {activeActivity === 'search' ? (
-            <div className="space-y-4">
-              <label className="block">
-                <span className="mb-2 block text-[11px] font-semibold tracking-[0.16em] text-[var(--ws-muted)] uppercase">
-                  Search Workspace
-                </span>
-                <div className="flex items-center gap-2 rounded-xl border border-[var(--ws-border)] bg-[#1f1f1f] px-3">
-                  <SearchIcon className="h-4 w-4 text-[var(--ws-muted)]" />
-                  <input
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search in files"
-                    className="h-10 w-full bg-transparent text-sm text-[var(--ws-text)] outline-none placeholder:text-[#6e7681]"
-                  />
-                </div>
-              </label>
-
-              <div className="space-y-3">
-                {filteredResults.length > 0 ? (
-                  filteredResults.map((result) => (
-                    <article
-                      key={result.id}
-                      className="rounded-2xl border border-[var(--ws-border)] bg-[#1f1f1f] p-3"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleSelectPath(result.path)}
-                        className="w-full text-left"
-                      >
-                        <p className="text-sm font-semibold text-[var(--ws-text)]">
-                          {result.file}
-                        </p>
-                        <p className="mt-1 text-[11px] text-[var(--ws-muted)]">
-                          {result.path}
-                        </p>
-                      </button>
-                      <div className="mt-3 space-y-2">
-                        {result.matches.map((match) => (
-                          <div
-                            key={`${result.id}-${match.line}`}
-                            className="rounded-lg border border-[#2d2d30] bg-[#181818] px-2.5 py-2 text-[12px] text-[#c5c5c5]"
-                          >
-                            <span className="mr-2 font-semibold text-[#4fc1ff]">
-                              {match.line}
-                            </span>
-                            <span>{match.text}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </article>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-[var(--ws-border)] bg-[#1b1b1b] px-4 py-5 text-sm text-[var(--ws-muted)]">
-                    검색 결과가 없습니다.
-                  </div>
-                )}
-              </div>
             </div>
           ) : null}
 

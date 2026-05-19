@@ -22,24 +22,6 @@ export const ExplorerIcon = ({ className = baseIconClassName }: IconProps) => {
   );
 };
 
-export const SearchIcon = ({ className = baseIconClassName }: IconProps) => {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="6.75" />
-      <path d="m16.25 16.25 3.5 3.5" />
-    </svg>
-  );
-};
-
 export const UsersIcon = ({ className = baseIconClassName }: IconProps) => {
   return (
     <svg

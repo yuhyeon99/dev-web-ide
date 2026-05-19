@@ -1,4 +1,4 @@
-export type ActivityId = 'explorer' | 'search' | 'collaboration' | 'settings';
+export type ActivityId = 'explorer' | 'collaboration' | 'settings';
 
 export type WorkspaceProject = {
   id: string;
@@ -31,16 +31,6 @@ export type WorkspaceTreeNode = {
   kind: 'folder' | 'file';
   path: string;
   children?: WorkspaceTreeNode[];
-};
-
-export type SearchResult = {
-  id: string;
-  file: string;
-  path: string;
-  matches: {
-    line: number;
-    text: string;
-  }[];
 };
 
 export type SettingSection = {

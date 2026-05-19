@@ -4,7 +4,6 @@ import type {
   EditorToken,
   EditorTokenTone,
   PresenceUser,
-  SearchResult,
   SettingSection,
   TerminalSession,
   WorkspaceProject,
@@ -83,11 +82,6 @@ export const activityItems: ActivityItem[] = [
     id: 'explorer',
     label: 'Explorer',
     description: '파일 트리와 열려 있는 에디터 목록',
-  },
-  {
-    id: 'search',
-    label: 'Search',
-    description: '프로젝트 전체 문자열 검색',
   },
   {
     id: 'collaboration',
@@ -267,50 +261,6 @@ export const workspaceTree: WorkspaceTreeNode[] = [
     label: 'vite.config.ts',
     kind: 'file',
     path: 'vite.config.ts',
-  },
-];
-
-export const searchResults: SearchResult[] = [
-  {
-    id: 'search-1',
-    file: 'WorkspacePage.tsx',
-    path: 'src/pages/workspace/ui/WorkspacePage.tsx',
-    matches: [
-      {
-        line: 23,
-        text: 'const [activeActivity, setActiveActivity] = useState<ActivityId>(...)',
-      },
-      {
-        line: 46,
-        text: '<WorkspaceHeader users={presenceUsers} />',
-      },
-    ],
-  },
-  {
-    id: 'search-2',
-    file: 'WorkspaceHeader.tsx',
-    path: 'src/pages/workspace/ui/WorkspaceHeader.tsx',
-    matches: [
-      {
-        line: 34,
-        text: '<button type="button">Project A</button>',
-      },
-      {
-        line: 81,
-        text: '<span className="text-[11px] uppercase">Presence</span>',
-      },
-    ],
-  },
-  {
-    id: 'search-3',
-    file: 'terminal.service.ts',
-    path: 'src/shared/terminal.service.ts',
-    matches: [
-      {
-        line: 12,
-        text: 'return response.json() as Promise<RunResponse>',
-      },
-    ],
   },
 ];
 

@@ -80,119 +80,73 @@ export const Editor = ({
           <span className="rounded-full border border-[#3c3c3c] bg-[#181818] px-2 py-1 text-[#73c991]">
             {collaborators.length} live
           </span>
-          <span className="rounded-full border border-[#3c3c3c] bg-[#181818] px-2 py-1 text-[#d7ba7d]">
-            Minimap On
-          </span>
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="min-w-0 flex-1 overflow-auto bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0)_28%)]">
-          <div className="min-w-[720px]">
-            {activeTab.code.map((line, index) => {
-              const lineNumber = index + 1;
-              const lineCursors = activeTab.cursors.filter(
-                (cursor) => cursor.line === lineNumber,
-              );
-              const isFocusedLine = activeTab.focusLine === lineNumber;
+      <div className="min-h-0 flex-1 overflow-auto bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0)_28%)]">
+        <div className="min-w-[720px]">
+          {activeTab.code.map((line, index) => {
+            const lineNumber = index + 1;
+            const lineCursors = activeTab.cursors.filter(
+              (cursor) => cursor.line === lineNumber,
+            );
+            const isFocusedLine = activeTab.focusLine === lineNumber;
 
-              return (
-                <div
-                  key={`${activeTab.id}-${lineNumber}`}
-                  className={`relative flex min-h-7 items-start gap-4 px-4 font-mono text-[13px] leading-7 ${
-                    isFocusedLine || lineCursors.length > 0
-                      ? 'bg-[rgba(255,255,255,0.04)]'
-                      : ''
-                  }`}
-                >
-                  <span className="pt-[1px] text-right text-[12px] text-[#6e7681] select-none">
-                    {String(lineNumber).padStart(2, '0')}
+            return (
+              <div
+                key={`${activeTab.id}-${lineNumber}`}
+                className={`relative flex min-h-7 items-start gap-4 px-4 font-mono text-[13px] leading-7 ${
+                  isFocusedLine || lineCursors.length > 0
+                    ? 'bg-[rgba(255,255,255,0.04)]'
+                    : ''
+                }`}
+              >
+                <span className="pt-[1px] text-right text-[12px] text-[#6e7681] select-none">
+                  {String(lineNumber).padStart(2, '0')}
+                </span>
+                <span className="min-w-0 flex-1 whitespace-pre">
+                  {line.tokens.length > 0 ? (
+                    line.tokens.map((token, tokenIndex) => (
+                      <span
+                        key={`${activeTab.id}-${lineNumber}-${tokenIndex}`}
+                        className={
+                          token.tone
+                            ? tokenToneClassName[token.tone]
+                            : tokenToneClassName.text
+                        }
+                      >
+                        {token.text}
+                      </span>
+                    ))
+                  ) : (
+                    <span>&nbsp;</span>
+                  )}
+                </span>
+
+                {line.marker ? (
+                  <span
+                    className={`mt-1 hidden rounded-full px-2 py-0.5 text-[10px] font-semibold lg:inline-flex ${
+                      line.marker.tone === 'warning'
+                        ? 'bg-[#d7ba7d]/20 text-[#d7ba7d]'
+                        : 'bg-[#4fc1ff]/20 text-[#4fc1ff]'
+                    }`}
+                  >
+                    {line.marker.label}
                   </span>
-                  <span className="min-w-0 flex-1 whitespace-pre">
-                    {line.tokens.length > 0 ? (
-                      line.tokens.map((token, tokenIndex) => (
-                        <span
-                          key={`${activeTab.id}-${lineNumber}-${tokenIndex}`}
-                          className={
-                            token.tone
-                              ? tokenToneClassName[token.tone]
-                              : tokenToneClassName.text
-                          }
-                        >
-                          {token.text}
-                        </span>
-                      ))
-                    ) : (
-                      <span>&nbsp;</span>
-                    )}
+                ) : null}
+
+                {lineCursors.map((cursor) => (
+                  <span
+                    key={`${activeTab.id}-${cursor.id}-${lineNumber}`}
+                    className="absolute top-1/2 right-6 -translate-y-1/2 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg"
+                    style={{ backgroundColor: cursor.accent }}
+                  >
+                    {cursor.label}
                   </span>
-
-                  {line.marker ? (
-                    <span
-                      className={`mt-1 hidden rounded-full px-2 py-0.5 text-[10px] font-semibold lg:inline-flex ${
-                        line.marker.tone === 'warning'
-                          ? 'bg-[#d7ba7d]/20 text-[#d7ba7d]'
-                          : 'bg-[#4fc1ff]/20 text-[#4fc1ff]'
-                      }`}
-                    >
-                      {line.marker.label}
-                    </span>
-                  ) : null}
-
-                  {lineCursors.map((cursor) => (
-                    <span
-                      key={`${activeTab.id}-${cursor.id}-${lineNumber}`}
-                      className="absolute top-1/2 right-6 -translate-y-1/2 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg"
-                      style={{ backgroundColor: cursor.accent }}
-                    >
-                      {cursor.label}
-                    </span>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <aside className="hidden w-24 shrink-0 border-l border-[var(--ws-border)] bg-[rgba(18,18,18,0.82)] px-3 py-4 xl:block">
-          <div className="space-y-1.5">
-            {activeTab.code.map((line, index) => {
-              const width = Math.max(
-                18,
-                Math.min(
-                  100,
-                  line.tokens.reduce(
-                    (total, token) => total + token.text.length,
-                    0,
-                  ) * 4,
-                ),
-              );
-              const isFocusedLine = activeTab.focusLine === index + 1;
-
-              return (
-                <div
-                  key={`${activeTab.id}-minimap-${index + 1}`}
-                  className={`h-1.5 rounded-full ${
-                    isFocusedLine ? 'bg-[#9cdcfe]' : 'bg-[#5c6370]'
-                  }`}
-                  style={{ width: `${width}%` }}
-                />
-              );
-            })}
-          </div>
-        </aside>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#005a9e] bg-[#007acc] px-3 py-1.5 text-[11px] text-white">
-        <div className="flex flex-wrap items-center gap-3">
-          <span>{activeTab.language.toUpperCase()}</span>
-          <span>Spaces: 2</span>
-          <span>UTF-8</span>
-          <span>LF</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span>Ln {activeTab.focusLine}, Col 18</span>
-          <span>Pair Editing On</span>
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

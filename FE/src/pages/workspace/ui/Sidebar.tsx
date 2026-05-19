@@ -9,7 +9,7 @@ import type {
   SettingSection,
   WorkspaceTab,
   WorkspaceTreeNode,
-} from './workspaceData';
+} from '../model';
 import {
   ChevronDownIcon,
   ChevronRightIcon,

@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 
-import type { PresenceUser, WorkspaceTab } from './workspaceData';
+import type { PresenceUser, WorkspaceTab } from '../model';
 import { FileIcon, PinIcon } from './WorkspaceIcons';
 
 type EditorProps = {

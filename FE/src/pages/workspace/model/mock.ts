@@ -1,108 +1,16 @@
-export type ActivityId = 'explorer' | 'search' | 'collaboration' | 'settings';
-
-export type WorkspaceProject = {
-  id: string;
-  label: string;
-  subtitle: string;
-  lastOpened: string;
-};
-
-export type PresenceUser = {
-  id: string;
-  name: string;
-  role: string;
-  file: string;
-  location: string;
-  lastSeen: string;
-  accent: string;
-  accentSoft: string;
-  status: string;
-};
-
-export type ActivityItem = {
-  id: ActivityId;
-  label: string;
-  description: string;
-};
-
-export type WorkspaceTreeNode = {
-  id: string;
-  label: string;
-  kind: 'folder' | 'file';
-  path: string;
-  children?: WorkspaceTreeNode[];
-};
-
-export type SearchResult = {
-  id: string;
-  file: string;
-  path: string;
-  matches: {
-    line: number;
-    text: string;
-  }[];
-};
-
-export type SettingSection = {
-  id: string;
-  title: string;
-  items: {
-    id: string;
-    label: string;
-    description: string;
-    enabled: boolean;
-  }[];
-};
-
-export type EditorTokenTone =
-  | 'text'
-  | 'keyword'
-  | 'string'
-  | 'comment'
-  | 'function'
-  | 'type'
-  | 'property'
-  | 'tag'
-  | 'accent';
-
-export type EditorToken = {
-  text: string;
-  tone?: EditorTokenTone;
-};
-
-export type EditorLine = {
-  tokens: EditorToken[];
-  marker?: {
-    tone: 'warning' | 'info';
-    label: string;
-  };
-};
-
-export type WorkspaceTab = {
-  id: string;
-  label: string;
-  path: string;
-  language: 'tsx' | 'css' | 'ts';
-  pinned: boolean;
-  dirty: boolean;
-  description: string;
-  focusLine: number;
-  code: EditorLine[];
-  cursors: {
-    id: string;
-    label: string;
-    line: number;
-    accent: string;
-  }[];
-};
-
-export type TerminalSession = {
-  id: string;
-  label: string;
-  cwd: string;
-  status: 'running' | 'idle';
-  lines: string[];
-};
+import type {
+  ActivityItem,
+  EditorLine,
+  EditorToken,
+  EditorTokenTone,
+  PresenceUser,
+  SearchResult,
+  SettingSection,
+  TerminalSession,
+  WorkspaceProject,
+  WorkspaceTab,
+  WorkspaceTreeNode,
+} from './types';
 
 const token = (text: string, tone: EditorTokenTone = 'text'): EditorToken => ({
   text,
@@ -235,11 +143,49 @@ export const workspaceTree: WorkspaceTreeNode[] = [
             path: 'src/pages/workspace',
             children: [
               {
+                id: 'src-pages-workspace-index',
+                label: 'index.ts',
+                kind: 'file',
+                path: 'src/pages/workspace/index.ts',
+              },
+              {
+                id: 'src-pages-workspace-model',
+                label: 'model',
+                kind: 'folder',
+                path: 'src/pages/workspace/model',
+                children: [
+                  {
+                    id: 'src-pages-workspace-model-index',
+                    label: 'index.ts',
+                    kind: 'file',
+                    path: 'src/pages/workspace/model/index.ts',
+                  },
+                  {
+                    id: 'src-pages-workspace-model-mock',
+                    label: 'mock.ts',
+                    kind: 'file',
+                    path: 'src/pages/workspace/model/mock.ts',
+                  },
+                  {
+                    id: 'src-pages-workspace-model-types',
+                    label: 'types.ts',
+                    kind: 'file',
+                    path: 'src/pages/workspace/model/types.ts',
+                  },
+                ],
+              },
+              {
                 id: 'src-pages-workspace-ui',
                 label: 'ui',
                 kind: 'folder',
                 path: 'src/pages/workspace/ui',
                 children: [
+                  {
+                    id: 'src-pages-workspace-ui-index',
+                    label: 'index.ts',
+                    kind: 'file',
+                    path: 'src/pages/workspace/ui/index.ts',
+                  },
                   {
                     id: 'src-pages-workspace-ui-page',
                     label: 'WorkspacePage.tsx',
@@ -259,10 +205,22 @@ export const workspaceTree: WorkspaceTreeNode[] = [
                     path: 'src/pages/workspace/ui/Editor.tsx',
                   },
                   {
+                    id: 'src-pages-workspace-ui-sidebar',
+                    label: 'Sidebar.tsx',
+                    kind: 'file',
+                    path: 'src/pages/workspace/ui/Sidebar.tsx',
+                  },
+                  {
                     id: 'src-pages-workspace-ui-terminal',
                     label: 'Terminal.tsx',
                     kind: 'file',
                     path: 'src/pages/workspace/ui/Terminal.tsx',
+                  },
+                  {
+                    id: 'src-pages-workspace-ui-icons',
+                    label: 'WorkspaceIcons.tsx',
+                    kind: 'file',
+                    path: 'src/pages/workspace/ui/WorkspaceIcons.tsx',
                   },
                 ],
               },

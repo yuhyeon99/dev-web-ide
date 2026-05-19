@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 
 import { useState } from 'react';
-import type { PresenceUser, WorkspaceProject } from './workspaceData';
+import type { PresenceUser, WorkspaceProject } from '../model';
 import { ChevronDownIcon, SaveIcon, ShareIcon } from './WorkspaceIcons';
 
 type WorkspaceHeaderProps = {

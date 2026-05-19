@@ -13,8 +13,9 @@ import {
   workspaceProjects,
   workspaceTree,
   type ActivityId,
-} from './workspaceData';
+} from '../model';
 
+// CSS 변수 정의
 const workspaceTheme = {
   '--ws-bg': '#111315',
   '--ws-panel': '#252526',

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { TerminalSession } from './workspaceData';
+import type { TerminalSession } from '../model';
 import { TerminalIcon } from './WorkspaceIcons';
 
 type TerminalProps = {

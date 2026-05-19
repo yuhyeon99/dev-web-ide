@@ -44,30 +44,6 @@ export type SettingSection = {
   }[];
 };
 
-export type EditorTokenTone =
-  | 'text'
-  | 'keyword'
-  | 'string'
-  | 'comment'
-  | 'function'
-  | 'type'
-  | 'property'
-  | 'tag'
-  | 'accent';
-
-export type EditorToken = {
-  text: string;
-  tone?: EditorTokenTone;
-};
-
-export type EditorLine = {
-  tokens: EditorToken[];
-  marker?: {
-    tone: 'warning' | 'info';
-    label: string;
-  };
-};
-
 export type WorkspaceTab = {
   id: string;
   label: string;
@@ -76,14 +52,6 @@ export type WorkspaceTab = {
   pinned: boolean;
   dirty: boolean;
   description: string;
-  focusLine: number;
-  code: EditorLine[];
-  cursors: {
-    id: string;
-    label: string;
-    line: number;
-    accent: string;
-  }[];
 };
 
 export type TerminalSession = {

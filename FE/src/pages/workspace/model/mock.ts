@@ -1,8 +1,5 @@
 import type {
   ActivityItem,
-  EditorLine,
-  EditorToken,
-  EditorTokenTone,
   PresenceUser,
   SettingSection,
   TerminalSession,
@@ -10,15 +7,6 @@ import type {
   WorkspaceTab,
   WorkspaceTreeNode,
 } from './types';
-
-const token = (text: string, tone: EditorTokenTone = 'text'): EditorToken => ({
-  text,
-  tone,
-});
-
-const line = (...tokens: EditorToken[]): EditorLine => ({
-  tokens,
-});
 
 export const workspaceProjects: WorkspaceProject[] = [
   {
@@ -312,61 +300,6 @@ export const editorTabs: WorkspaceTab[] = [
     pinned: true,
     dirty: true,
     description: '워크스페이스 셸을 감싸는 진입점',
-    focusLine: 7,
-    code: [
-      line(
-        token('import ', 'keyword'),
-        token('{ WorkspaceShell }', 'type'),
-        token(' from ', 'keyword'),
-        token("'@/pages/workspace'", 'string'),
-        token(';'),
-      ),
-      line(
-        token('const ', 'keyword'),
-        token('participants', 'property'),
-        token(' = ', 'text'),
-        token("['김유현', 'Guest', 'TeamUser']", 'string'),
-        token(';'),
-      ),
-      line(),
-      line(
-        token('export default function ', 'keyword'),
-        token('App', 'function'),
-        token('() {'),
-      ),
-      line(token('  return ', 'keyword'), token('(')),
-      line(
-        token('    <', 'tag'),
-        token('WorkspaceShell', 'type'),
-        token(' project=', 'property'),
-        token('"Project A"', 'string'),
-      ),
-      line(
-        token('      collaborators=', 'property'),
-        token('{participants}', 'accent'),
-      ),
-      line(
-        token('      defaultCommand=', 'property'),
-        token('"npm run dev"', 'string'),
-      ),
-      line(token('    />', 'tag')),
-      line(token('  );')),
-      line(token('}')),
-    ],
-    cursors: [
-      {
-        id: 'guest',
-        label: 'Guest',
-        line: 7,
-        accent: '#d7ba7d',
-      },
-      {
-        id: 'team-user',
-        label: 'TeamUser',
-        line: 8,
-        accent: '#73c991',
-      },
-    ],
   },
   {
     id: 'tab-header',
@@ -376,67 +309,6 @@ export const editorTabs: WorkspaceTab[] = [
     pinned: false,
     dirty: false,
     description: '프로젝트 전환과 Presence UI를 담당하는 헤더',
-    focusLine: 10,
-    code: [
-      line(
-        token('type ', 'keyword'),
-        token('WorkspaceHeaderProps', 'type'),
-        token(' = {'),
-      ),
-      line(
-        token('  project: ', 'property'),
-        token('string', 'type'),
-        token(';'),
-      ),
-      line(
-        token('  onRun: ', 'property'),
-        token('() => void', 'type'),
-        token(';'),
-      ),
-      line(
-        token('  users: ', 'property'),
-        token('PresenceUser[]', 'type'),
-        token(';'),
-      ),
-      line(token('};')),
-      line(),
-      line(
-        token('export function ', 'keyword'),
-        token('WorkspaceHeader', 'function'),
-        token('({ project, users }: WorkspaceHeaderProps) {'),
-      ),
-      line(token('  return ', 'keyword'), token('(')),
-      line(
-        token('    <', 'tag'),
-        token('header', 'tag'),
-        token(' className=', 'property'),
-        token('"workspace-header"', 'string'),
-        token('>', 'tag'),
-      ),
-      line(
-        token('      <', 'tag'),
-        token('button', 'tag'),
-        token('>{project}</', 'tag'),
-        token('button', 'tag'),
-        token('>', 'tag'),
-      ),
-      line(
-        token('      <', 'tag'),
-        token('PresenceStack', 'type'),
-        token(' users={users} />', 'accent'),
-      ),
-      line(token('    </', 'tag'), token('header', 'tag'), token('>', 'tag')),
-      line(token('  );')),
-      line(token('}')),
-    ],
-    cursors: [
-      {
-        id: 'kim',
-        label: '김유현',
-        line: 10,
-        accent: '#4fc1ff',
-      },
-    ],
   },
   {
     id: 'tab-css',
@@ -446,52 +318,6 @@ export const editorTabs: WorkspaceTab[] = [
     pinned: false,
     dirty: true,
     description: '다크 테마 토큰과 전체 레이아웃 기반 스타일',
-    focusLine: 4,
-    code: [
-      line(token(':root ', 'tag'), token('{')),
-      line(
-        token('  --workspace-accent', 'property'),
-        token(': ', 'text'),
-        token('#0e639c', 'string'),
-        token(';'),
-      ),
-      line(
-        token('  --workspace-surface', 'property'),
-        token(': ', 'text'),
-        token('#252526', 'string'),
-        token(';'),
-      ),
-      line(
-        token('  --workspace-border', 'property'),
-        token(': ', 'text'),
-        token('#313135', 'string'),
-        token(';'),
-      ),
-      line(token('}')),
-      line(),
-      line(token('.workspace-shell ', 'tag'), token('{')),
-      line(
-        token('  display', 'property'),
-        token(': ', 'text'),
-        token('grid', 'string'),
-        token(';'),
-      ),
-      line(
-        token('  grid-template-rows', 'property'),
-        token(': ', 'text'),
-        token('auto 1fr auto', 'string'),
-        token(';'),
-      ),
-      line(token('}')),
-    ],
-    cursors: [
-      {
-        id: 'guest',
-        label: 'Guest',
-        line: 4,
-        accent: '#d7ba7d',
-      },
-    ],
   },
   {
     id: 'tab-terminal-service',
@@ -501,61 +327,6 @@ export const editorTabs: WorkspaceTab[] = [
     pinned: false,
     dirty: false,
     description: '런타임 컨테이너 실행 요청 서비스',
-    focusLine: 9,
-    code: [
-      line(
-        token('export async function ', 'keyword'),
-        token('startDevServer', 'function'),
-        token('(projectId: ', 'text'),
-        token('string', 'type'),
-        token(') {'),
-      ),
-      line(
-        token('  const ', 'keyword'),
-        token('response', 'property'),
-        token(' = await ', 'keyword'),
-        token('fetch', 'function'),
-        token('(`'),
-        token('/api/projects/${projectId}/run', 'string'),
-        token('`, {'),
-      ),
-      line(token("    method: 'POST',", 'string')),
-      line(token('  });')),
-      line(),
-      line(
-        token('  if ', 'keyword'),
-        token('(!response.ok)', 'text'),
-        token(' {'),
-      ),
-      line(
-        token('    throw new ', 'keyword'),
-        token('Error', 'type'),
-        token("('Failed to start container');", 'string'),
-      ),
-      line(token('  }')),
-      {
-        tokens: [
-          token('  return ', 'keyword'),
-          token('response', 'property'),
-          token('.'),
-          token('json', 'function'),
-          token('();'),
-        ],
-        marker: {
-          tone: 'warning',
-          label: 'stdout/stderr 스트리밍 분리 예정',
-        },
-      },
-      line(token('}')),
-    ],
-    cursors: [
-      {
-        id: 'team-user',
-        label: 'TeamUser',
-        line: 9,
-        accent: '#73c991',
-      },
-    ],
   },
 ];
 

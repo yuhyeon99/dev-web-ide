@@ -299,7 +299,6 @@ export const editorTabs: WorkspaceTab[] = [
     language: 'tsx',
     pinned: true,
     dirty: true,
-    description: '워크스페이스 셸을 감싸는 진입점',
   },
   {
     id: 'tab-header',
@@ -308,7 +307,6 @@ export const editorTabs: WorkspaceTab[] = [
     language: 'tsx',
     pinned: false,
     dirty: false,
-    description: '프로젝트 전환과 Presence UI를 담당하는 헤더',
   },
   {
     id: 'tab-css',
@@ -317,7 +315,6 @@ export const editorTabs: WorkspaceTab[] = [
     language: 'css',
     pinned: false,
     dirty: true,
-    description: '다크 테마 토큰과 전체 레이아웃 기반 스타일',
   },
   {
     id: 'tab-terminal-service',
@@ -326,7 +323,6 @@ export const editorTabs: WorkspaceTab[] = [
     language: 'ts',
     pinned: false,
     dirty: false,
-    description: '런타임 컨테이너 실행 요청 서비스',
   },
 ];
 

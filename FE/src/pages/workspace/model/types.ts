@@ -51,7 +51,6 @@ export type WorkspaceTab = {
   language: 'tsx' | 'css' | 'ts';
   pinned: boolean;
   dirty: boolean;
-  description: string;
 };
 
 export type TerminalSession = {

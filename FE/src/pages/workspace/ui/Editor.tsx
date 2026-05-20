@@ -1,18 +1,16 @@
 /* eslint-disable no-unused-vars */
 
-import type { PresenceUser, WorkspaceTab } from '../model';
+import type { WorkspaceTab } from '../model';
 import { FileIcon, PinIcon } from './WorkspaceIcons';
 
 type EditorProps = {
   activeTabId: string;
-  collaborators: PresenceUser[];
   onTabChange: (tabId: string) => void;
   tabs: WorkspaceTab[];
 };
 
 export const Editor = ({
   activeTabId,
-  collaborators,
   onTabChange,
   tabs,
 }: EditorProps) => {
@@ -50,25 +48,6 @@ export const Editor = ({
             </button>
           );
         })}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ws-border)] bg-[#1f1f1f] px-4 py-2 text-[11px] text-[var(--ws-muted)]">
-        <div className="min-w-0">
-          <p className="truncate">
-            src / {activeTab.path.replace(/^src\//, '')}
-          </p>
-          <p className="mt-1 truncate text-[#6e7681]">
-            {activeTab.description}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-[#3c3c3c] bg-[#181818] px-2 py-1 text-[#9cdcfe]">
-            {activeTab.language.toUpperCase()}
-          </span>
-          <span className="rounded-full border border-[#3c3c3c] bg-[#181818] px-2 py-1 text-[#73c991]">
-            {collaborators.length} live
-          </span>
-        </div>
       </div>
 
       <div className="min-h-0 flex-1 bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0)_28%)] p-5">

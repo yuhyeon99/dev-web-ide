@@ -89,7 +89,6 @@ export const WorkspacePage = () => {
 
             <Editor
               activeTabId={activeTabId}
-              collaborators={presenceUsers}
               onTabChange={(tabId) =>
                 startTransition(() => {
                   setActiveTabId(tabId);

@@ -2,6 +2,7 @@
 
 import type { WorkspaceTab } from '../model';
 import { FileIcon, PinIcon } from './WorkspaceIcons';
+import MonacoEditorComponent from './MonacoEditor';
 
 type EditorProps = {
   activeTabId: string;
@@ -9,11 +10,7 @@ type EditorProps = {
   tabs: WorkspaceTab[];
 };
 
-export const Editor = ({
-  activeTabId,
-  onTabChange,
-  tabs,
-}: EditorProps) => {
+export const Editor = ({ activeTabId, onTabChange, tabs }: EditorProps) => {
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
 
   if (!activeTab) {
@@ -52,18 +49,7 @@ export const Editor = ({
 
       <div className="min-h-0 flex-1 bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0)_28%)] p-5">
         <div className="flex h-full min-h-[320px] items-center justify-center rounded-[20px] border border-dashed border-[rgba(255,255,255,0.08)] bg-[rgba(12,12,12,0.34)] px-6 py-10">
-          <div className="max-w-md text-center">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-[var(--ws-muted)] uppercase">
-              Editor Surface
-            </p>
-            <h2 className="mt-3 text-lg font-semibold text-[var(--ws-text)]">
-              {activeTab.label}
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--ws-muted)]">
-              정적 토큰 렌더러를 제거했습니다. 이 영역에 Monaco나 CodeMirror
-              같은 실제 에디터 엔진을 마운트하면 됩니다.
-            </p>
-          </div>
+          <MonacoEditorComponent />
         </div>
       </div>
     </section>

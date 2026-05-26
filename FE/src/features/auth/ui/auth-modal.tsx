@@ -127,7 +127,6 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
               <span className="rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-1 text-[10px] font-semibold tracking-[0.2em] text-[#4fc1ff] uppercase">
                 Login / Signup
               </span>
-              <span className="text-xs text-[#858585]">VSCode Dark Theme</span>
             </div>
             <h2
               id="auth-modal-title"

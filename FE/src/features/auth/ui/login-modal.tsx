@@ -77,12 +77,6 @@ const oauthProviders = [
   },
 ] as const;
 
-const valuePoints = [
-  '프로젝트 저장 및 동기화',
-  '팀 멤버 초대와 실시간 협업',
-  'OAuth 기반 빠른 가입 및 로그인',
-] as const;
-
 const handleDialogClick = (event: MouseEvent<HTMLDivElement>) => {
   event.stopPropagation();
 };
@@ -135,7 +129,7 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="w-full max-w-5xl overflow-hidden rounded-2xl border border-[#313131] bg-[#1e1e1e] shadow-[0_28px_90px_rgba(0,0,0,0.58)]"
+        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[#313131] bg-[#1e1e1e] shadow-[0_28px_90px_rgba(0,0,0,0.58)]"
         onClick={handleDialogClick}
       >
         <div className="flex items-center justify-between border-b border-[#313131] bg-[linear-gradient(180deg,#252526_0%,#1f1f1f_100%)] px-5 py-4">
@@ -182,7 +176,7 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
           </button>
         </div>
 
-        <div className="grid min-h-[680px] lg:grid-cols-[1.1fr_0.9fr]">
+        <div>
           <section className="flex flex-col px-5 py-5 sm:px-6 sm:py-6">
             <div className="rounded-xl border border-[#313131] bg-[#252526] p-1">
               <div className="flex gap-1">
@@ -334,79 +328,6 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
               </p>
             </form>
           </section>
-
-          <aside className="hidden border-t border-[#313131] bg-[linear-gradient(180deg,#181818_0%,#111111_100%)] px-6 py-6 lg:flex lg:flex-col lg:border-t-0 lg:border-l">
-            <div className="rounded-xl border border-[#2d2d30] bg-[#1a1a1a] px-4 py-3">
-              <p className="text-[11px] font-semibold tracking-[0.2em] text-[#ce9178] uppercase">
-                Workspace Access
-              </p>
-              <h3 className="mt-3 text-2xl font-semibold text-[#f3f3f3]">
-                팀과 프로젝트를 VSCode처럼 자연스럽게 이어서 작업하세요.
-              </h3>
-              <p className="mt-3 text-sm leading-6 text-[#9da1a6]">
-                계정 연결 후 저장된 프로젝트, 권한 기반 협업, OAuth 간편
-                로그인을 한 화면에서 제공하는 흐름을 가정한 UI입니다.
-              </p>
-            </div>
-
-            <div className="mt-5 grid gap-3">
-              {valuePoints.map((point, index) => (
-                <div
-                  key={point}
-                  className="rounded-xl border border-[#2d2d30] bg-[#1e1e1e] px-4 py-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[#3c3c3c] bg-[#252526] text-xs font-semibold text-[#4fc1ff]">
-                      0{index + 1}
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-[#d4d4d4]">
-                        {point}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-[#858585]">
-                        {index === 0 &&
-                          '회원 전용 프로젝트와 최근 작업 내역을 저장하는 흐름'}
-                        {index === 1 &&
-                          '초대 링크, 역할 권한, 공동 편집 기능을 위한 진입점'}
-                        {index === 2 &&
-                          'Google, GitHub, Kakao 같은 외부 인증 공급자 확장 가능'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-auto rounded-xl border border-[#313131] bg-[#0f0f0f] p-4">
-              <div className="flex items-center gap-2 text-xs text-[#6b7280]">
-                <span className="h-3 w-3 rounded-full bg-[#f14c4c]" />
-                <span className="h-3 w-3 rounded-full bg-[#cca700]" />
-                <span className="h-3 w-3 rounded-full bg-[#0dbc79]" />
-                <span className="ml-2 tracking-[0.18em] uppercase">
-                  auth-preview.tsx
-                </span>
-              </div>
-
-              <div className="mt-4 rounded-lg border border-[#252526] bg-[#111111] px-4 py-4 font-mono text-xs leading-6 text-[#d4d4d4]">
-                <p>
-                  <span className="text-[#569cd6]">const</span>{' '}
-                  <span className="text-[#9cdcfe]">authProviders</span> = [
-                </p>
-                <p className="pl-4">
-                  <span className="text-[#ce9178]">'github'</span>,{' '}
-                  <span className="text-[#ce9178]">'google'</span>,{' '}
-                  <span className="text-[#ce9178]">'kakao'</span>
-                </p>
-                <p>];</p>
-                <p className="mt-3">
-                  <span className="text-[#569cd6]">export</span>{' '}
-                  <span className="text-[#569cd6]">const</span>{' '}
-                  <span className="text-[#9cdcfe]">authFlow</span> ={' '}
-                  <span className="text-[#ce9178]">'publishing-only'</span>;
-                </p>
-              </div>
-            </div>
-          </aside>
         </div>
       </div>
     </div>

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 
 import logo from '@/assets/images/logo.svg';
-import { LoginModal } from '@/features/auth';
+import { AuthModal } from '@/features/auth';
 
 export const Header = () => {
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   return (
     <header className="relative flex h-11 w-full bg-[#333333] pl-3 text-sm text-[#cccccc] select-none">
@@ -46,13 +46,13 @@ export const Header = () => {
       <div className="user-profile absolute right-3 flex h-full items-center">
         <button
           type="button"
-          onClick={() => setIsLoginModalOpen(true)}
+          onClick={() => setIsAuthModalOpen(true)}
           aria-haspopup="dialog"
-          aria-expanded={isLoginModalOpen}
-          aria-label="로그인 팝업 열기"
+          aria-expanded={isAuthModalOpen}
+          aria-label="인증 팝업 열기"
           className="flex h-8 w-8 items-center justify-center rounded-full bg-[#555555] text-xs text-white transition hover:bg-[#6a6a6a] focus-visible:ring-2 focus-visible:ring-[#007acc]/70 focus-visible:outline-none"
         >
-          {/* 로그인 전 */}
+          {/* 인증 전 */}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -68,12 +68,12 @@ export const Header = () => {
             />
             <path strokeLinecap="round" d="M4.3 20.5h15.4" />
           </svg>
-          {/* TODO: 로그인 후: 회원 이미지 */}
+          {/* TODO: 인증 후: 회원 이미지 */}
         </button>
       </div>
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
     </header>
   );

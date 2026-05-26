@@ -121,7 +121,7 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(0,0,0,0.6)] px-4 py-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(0,0,0,0.6)] px-4 py-4 backdrop-blur-[2px] sm:py-6"
       onClick={onClose}
       role="presentation"
     >
@@ -129,7 +129,7 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[#313131] bg-[#1e1e1e] shadow-[0_28px_90px_rgba(0,0,0,0.58)]"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#313131] bg-[#1e1e1e] shadow-[0_28px_90px_rgba(0,0,0,0.58)] sm:max-h-[calc(100dvh-3rem)]"
         onClick={handleDialogClick}
       >
         <div className="flex items-center justify-between border-b border-[#313131] bg-[linear-gradient(180deg,#252526_0%,#1f1f1f_100%)] px-5 py-4">
@@ -176,7 +176,7 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
           </button>
         </div>
 
-        <div>
+        <div className="min-h-0 overflow-y-auto">
           <section className="flex flex-col px-5 py-5 sm:px-6 sm:py-6">
             <div className="rounded-xl border border-[#313131] bg-[#252526] p-1">
               <div className="flex gap-1">

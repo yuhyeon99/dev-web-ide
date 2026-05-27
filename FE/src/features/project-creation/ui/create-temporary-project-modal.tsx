@@ -90,28 +90,31 @@ export const CreateTemporaryProjectModal = ({
     onClose();
   };
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        resetModalState();
-        onClose();
+  useEffect(
+    function manageCreateTemporaryProjectModalEffect() {
+      if (!isOpen) {
+        return;
       }
-    };
 
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleEscape);
+      const previousOverflow = document.body.style.overflow;
 
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen, onClose]);
+      function handleEscapeKeydown(event: KeyboardEvent) {
+        if (event.key === 'Escape') {
+          resetModalState();
+          onClose();
+        }
+      }
+
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleEscapeKeydown);
+
+      return function cleanupCreateTemporaryProjectModalEffect() {
+        document.body.style.overflow = previousOverflow;
+        window.removeEventListener('keydown', handleEscapeKeydown);
+      };
+    },
+    [isOpen, onClose],
+  );
 
   if (!isOpen) {
     return null;

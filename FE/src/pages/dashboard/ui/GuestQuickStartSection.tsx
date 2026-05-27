@@ -4,7 +4,13 @@ const quickStartItems = [
   '일정 시간 후 자동 삭제 가능',
 ];
 
-export const GuestQuickStartSection = () => {
+type GuestQuickStartSectionProps = {
+  onCreateTemporaryProject: () => void;
+};
+
+export const GuestQuickStartSection = ({
+  onCreateTemporaryProject,
+}: GuestQuickStartSectionProps) => {
   return (
     <section className="rounded-2xl border border-[#313131] bg-[#252526] p-5">
       <div className="max-w-2xl">
@@ -23,6 +29,7 @@ export const GuestQuickStartSection = () => {
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
+          onClick={onCreateTemporaryProject}
           className="inline-flex items-center justify-center rounded-md bg-[#0e639c] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1177bb]"
         >
           새 임시 프로젝트

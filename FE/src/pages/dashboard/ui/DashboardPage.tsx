@@ -1,3 +1,7 @@
+import { useState } from 'react';
+
+import { CreateTemporaryProjectModal } from '@/features/project-creation';
+
 import { DashboardHeader } from './DashboardHeader';
 import { GuestQuickStartSection } from './GuestQuickStartSection';
 import { MyProjectsSection } from './MyProjectsSection';
@@ -111,6 +115,10 @@ const guestTeamProjects = [
 
 export const DashboardPage = () => {
   const isGuest = true;
+  const [
+    isCreateTemporaryProjectModalOpen,
+    setCreateTemporaryProjectModalOpen,
+  ] = useState(false);
 
   return (
     <div className="h-[calc(100vh-2.75rem)] overflow-hidden bg-[#1e1e1e] text-[#d4d4d4]">
@@ -119,7 +127,11 @@ export const DashboardPage = () => {
 
         {isGuest ? (
           <div className="flex min-h-0 flex-1 flex-col gap-4">
-            <GuestQuickStartSection />
+            <GuestQuickStartSection
+              onCreateTemporaryProject={() =>
+                setCreateTemporaryProjectModalOpen(true)
+              }
+            />
             <div className="flex min-h-0 flex-1 flex-col gap-4">
               <RecentProjectsSection
                 title="최근 임시 프로젝트"
@@ -151,6 +163,11 @@ export const DashboardPage = () => {
           </div>
         )}
       </div>
+
+      <CreateTemporaryProjectModal
+        isOpen={isCreateTemporaryProjectModalOpen}
+        onClose={() => setCreateTemporaryProjectModalOpen(false)}
+      />
     </div>
   );
 };

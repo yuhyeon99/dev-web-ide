@@ -2,9 +2,11 @@ import { useState } from 'react';
 
 import logo from '@/assets/images/logo.svg';
 import { AuthModal } from '@/features/auth';
+import { OpenProjectsModal } from '@/features/open-projects';
 
 export const Header = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isOpenProjectsModalOpen, setOpenProjectsModalOpen] = useState(false);
 
   return (
     <header className="relative flex h-11 w-full bg-[#333333] pl-3 text-sm text-[#cccccc] select-none">
@@ -16,11 +18,24 @@ export const Header = () => {
           <li className="group relative flex h-full items-center px-2">
             <p>Projects</p>
             <ul className="absolute top-full left-0 z-50 hidden min-w-52 cursor-pointer bg-[#252525] py-1 shadow-lg group-hover:block">
-              <li className="px-3 py-1.5 text-sm whitespace-nowrap text-[#cccccc] hover:bg-[#04395e] hover:text-white">
-                New Projects
+              <li>
+                <button
+                  type="button"
+                  className="w-full px-3 py-1.5 text-left text-sm whitespace-nowrap text-[#cccccc] hover:bg-[#04395e] hover:text-white"
+                >
+                  New Projects
+                </button>
               </li>
-              <li className="px-3 py-1.5 text-sm whitespace-nowrap text-[#cccccc] hover:bg-[#04395e] hover:text-white">
-                Open Projects test
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setOpenProjectsModalOpen(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={isOpenProjectsModalOpen}
+                  className="w-full px-3 py-1.5 text-left text-sm whitespace-nowrap text-[#cccccc] hover:bg-[#04395e] hover:text-white"
+                >
+                  Open Projects test
+                </button>
               </li>
             </ul>
           </li>
@@ -74,6 +89,10 @@ export const Header = () => {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+      />
+      <OpenProjectsModal
+        isOpen={isOpenProjectsModalOpen}
+        onClose={() => setOpenProjectsModalOpen(false)}
       />
     </header>
   );

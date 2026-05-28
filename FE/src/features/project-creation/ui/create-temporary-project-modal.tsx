@@ -281,10 +281,13 @@ export const CreateTemporaryProjectModal = ({
           <div className="grid gap-5 px-5 py-5 sm:px-6 sm:py-6 xl:h-full xl:grid-cols-[minmax(0,1fr)_280px]">
             <div className="space-y-4 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
               <section className={panelClassName}>
-                <label className="block">
-                  <span className="mb-2 block text-xs font-medium text-[#c8c8c8]">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-[#f3f3f3]">
                     프로젝트 제목
-                  </span>
+                  </h3>
+                </div>
+                <label className="mt-3 block">
+                  <span className="sr-only">프로젝트 제목</span>
                   <input
                     type="text"
                     value={projectTitle}

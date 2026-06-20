@@ -1,6 +1,10 @@
 package com.yuhyeon.devwebide.user.domain;
 
 import jakarta.persistence.*;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -12,6 +16,10 @@ import java.util.Objects;
  * 사용자 정보를 관리하는 엔티티 클래스입니다.
  * 'users' 테이블과 매핑됩니다.
  */
+@ToString
+@EqualsAndHashCode
+@Setter
+@Getter
 @Entity
 @Table(name = "users")
 @EntityListeners(AuditingEntityListener.class) // 생성일, 수정일 자동 관리를 위한 리스너
@@ -70,79 +78,4 @@ public class User {
 
     // --- Getters and Setters ---
 
-    public Long getId() {
-        return id;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getNickname() {
-        return nickname;
-    }
-
-    public void setNickname(String nickname) {
-        this.nickname = nickname;
-    }
-
-    public UserRole getRole() {
-        return role;
-    }
-
-    public void setRole(UserRole role) {
-        this.role = role;
-    }
-
-    public UserStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(UserStatus status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    /**
-     * ID를 기준으로 객체의 동일성을 비교합니다.
-     */
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        User user = (User) o;
-        return Objects.equals(id, user.id);
-    }
-
-    /**
-     * ID를 기준으로 해시코드를 생성합니다.
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(id);
-    }
-
-    @Override
-    public String toString() {
-        return "User{" +
-                "id=" + id +
-                ", email='" + email + '\'' +
-                ", nickname='" + nickname + '\'' +
-                ", role=" + role +
-                ", status=" + status +
-                ", createdAt=" + createdAt +
-                ", updatedAt=" + updatedAt +
-                '}';
-    }
 }

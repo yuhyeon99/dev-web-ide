@@ -7,7 +7,6 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
-import java.util.Objects;
 
 /**
  * 사용자 정보를 관리하는 엔티티 클래스입니다.
@@ -73,7 +72,5 @@ public class User {
         this.role = role;
         this.status = status;
     }
-
-    // --- Getters and Setters ---
 
 }

@@ -1,10 +1,7 @@
 package com.yuhyeon.devwebide.user.domain;
 
 import jakarta.persistence.*;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -69,6 +66,7 @@ public class User {
      * @param role 권한
      * @param status 상태
      */
+    @Builder
     public User(String email, String nickname, UserRole role, UserStatus status) {
         this.email = email;
         this.nickname = nickname;

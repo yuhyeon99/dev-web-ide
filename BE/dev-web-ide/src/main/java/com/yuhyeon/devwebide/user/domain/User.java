@@ -12,9 +12,6 @@ import java.time.LocalDateTime;
  * 사용자 정보를 관리하는 엔티티 클래스입니다.
  * 'users' 테이블과 매핑됩니다.
  */
-@ToString
-@EqualsAndHashCode
-@Setter
 @Getter
 @Entity
 @Table(name = "users")

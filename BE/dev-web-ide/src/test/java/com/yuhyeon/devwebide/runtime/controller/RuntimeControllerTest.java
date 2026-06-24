@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,10 +27,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class RuntimeControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private MockMvc mockMvc; // MockMvc: 실제 서버를 띄우지 않고도 HTTP 요청을 테스트할 수 있게 해준다.
 
     @MockitoBean
     private RuntimeService runtimeService;
+
+    /**
+     * @WebMvcTest는 Controller 계층만 테스트하기 때문에
+     * JPA Entity, Repository, JpaMappingContext 등을 로딩하지 않습니다.
+     *
+     * 하지만 애플리케이션에 @EnableJpaAuditing 설정이 있으면
+     * 테스트 컨텍스트 로딩 과정에서 jpaAuditingHandler가 생성되고,
+     * 이 Bean은 JpaMetamodelMappingContext를 필요로 합니다.
+     *
+     * 따라서 Controller 테스트에서는 실제 JPA 기능을 사용하지 않으므로
+     * JpaMetamodelMappingContext를 Mock Bean으로 등록하여
+     * ApplicationContext 로딩 실패를 방지합니다.
+     */
+    @MockitoBean
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
     @DisplayName("활성 런타임 목록 조회")

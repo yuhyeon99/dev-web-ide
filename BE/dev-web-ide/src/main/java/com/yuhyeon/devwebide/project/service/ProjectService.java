@@ -11,6 +11,7 @@ import com.yuhyeon.devwebide.project.domain.ProjectType;
 import com.yuhyeon.devwebide.project.domain.ProjectVisibility;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectSummaryResponse;
 import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectMemberRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectRepository;
@@ -356,5 +357,39 @@ public class ProjectService {
      */
     private String generateStoragePath() {
         return "/projects/" + UUID.randomUUID();
+    }
+
+    /**
+     * 내 프로젝트 목록 조회
+     *
+     * 로그인한 사용자가 생성한 ACTIVE 상태의 프로젝트 목록을 조회합니다.
+     * 삭제 처리된 프로젝트는 조회하지 않습니다.
+     *
+     * @param ownerUserId 로그인한 사용자 ID
+     * @return 내 프로젝트 목록
+     */
+    public List<ProjectSummaryResponse> getMyProjects(Long ownerUserId) {
+        validateOwnerUserId(ownerUserId);
+
+        List<Project> projects =
+                projectRepository.findByOwnerUserIdAndStatusOrderByUpdatedAtDesc(
+                        ownerUserId,
+                        ProjectStatus.ACTIVE
+                );
+
+        return projects.stream()
+                .map(ProjectSummaryResponse::from)
+                .toList();
+    }
+
+    /**
+     * 사용자 ID 필수 여부 검증
+     *
+     * @param ownerUserId 로그인한 사용자 ID
+     */
+    private void validateOwnerUserId(Long ownerUserId) {
+        if (ownerUserId == null) {
+            throw new IllegalArgumentException("사용자 ID는 필수입니다.");
+        }
     }
 }

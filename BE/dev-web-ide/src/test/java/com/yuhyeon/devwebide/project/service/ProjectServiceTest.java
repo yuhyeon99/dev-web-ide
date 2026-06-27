@@ -1,15 +1,9 @@
 package com.yuhyeon.devwebide.project.service;
 
-import com.yuhyeon.devwebide.project.domain.Project;
-import com.yuhyeon.devwebide.project.domain.ProjectFile;
-import com.yuhyeon.devwebide.project.domain.ProjectFileStatus;
-import com.yuhyeon.devwebide.project.domain.ProjectMember;
-import com.yuhyeon.devwebide.project.domain.ProjectMemberRole;
-import com.yuhyeon.devwebide.project.domain.ProjectMemberStatus;
-import com.yuhyeon.devwebide.project.domain.ProjectType;
-import com.yuhyeon.devwebide.project.domain.ProjectVisibility;
+import com.yuhyeon.devwebide.project.domain.*;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectSummaryResponse;
 import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectMemberRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectRepository;
@@ -311,6 +305,151 @@ class ProjectServiceTest {
                 .hasMessage("팀 프로젝트의 공개 범위는 TEAM이어야 합니다.");
     }
 
+    @Test
+    @DisplayName("내 프로젝트 목록을 조회한다")
+    void getMyProjects() {
+        // given
+        User ownerUser = saveUser(
+                "my-project-owner@example.com",
+                "owner"
+        );
+
+        Runtime runtime = saveRuntime(
+                "node-my-projects",
+                "Node.js My Projects"
+        );
+
+        Project firstProject = savePersonalProject(
+                ownerUser,
+                runtime,
+                "first-project",
+                "첫 번째 프로젝트입니다.",
+                "/projects/my-first"
+        );
+
+        Project secondProject = savePersonalProject(
+                ownerUser,
+                runtime,
+                "second-project",
+                "두 번째 프로젝트입니다.",
+                "/projects/my-second"
+        );
+
+        // when
+        List<ProjectSummaryResponse> result =
+                projectService.getMyProjects(ownerUser.getId());
+
+        // then
+        assertThat(result).hasSize(2);
+
+        assertThat(result)
+                .extracting(ProjectSummaryResponse::id)
+                .containsExactly(
+                        secondProject.getId(),
+                        firstProject.getId()
+                );
+
+        assertThat(result.get(0).name()).isEqualTo("second-project");
+        assertThat(result.get(0).description()).isEqualTo("두 번째 프로젝트입니다.");
+        assertThat(result.get(0).projectType()).isEqualTo(ProjectType.PERSONAL);
+        assertThat(result.get(0).visibility()).isEqualTo(ProjectVisibility.PRIVATE);
+        assertThat(result.get(0).status()).isEqualTo(ProjectStatus.ACTIVE);
+
+        assertThat(result.get(0).runtimeId()).isEqualTo(runtime.getId());
+        assertThat(result.get(0).runtimeName()).isEqualTo(runtime.getName());
+        assertThat(result.get(0).runtimeDisplayName()).isEqualTo(runtime.getDisplayName());
+        assertThat(result.get(0).runtimeLanguage()).isEqualTo(runtime.getLanguage());
+    }
+
+    @Test
+    @DisplayName("내 프로젝트 목록 조회 시 ACTIVE 프로젝트만 조회한다")
+    void getMyProjectsOnlyActiveProjects() {
+        // given
+        User ownerUser = saveUser(
+                "active-owner@example.com",
+                "activeOwner"
+        );
+
+        Runtime runtime = saveRuntime(
+                "python-my-projects",
+                "Python My Projects"
+        );
+
+        Project activeProject = savePersonalProject(
+                ownerUser,
+                runtime,
+                "active-project",
+                "활성 프로젝트입니다.",
+                "/projects/active"
+        );
+
+        Project deletedProject = savePersonalProject(
+                ownerUser,
+                runtime,
+                "deleted-project",
+                "삭제된 프로젝트입니다.",
+                "/projects/deleted"
+        );
+
+        deletedProject.delete();
+        projectRepository.save(deletedProject);
+
+        // when
+        List<ProjectSummaryResponse> result =
+                projectService.getMyProjects(ownerUser.getId());
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(activeProject.getId());
+        assertThat(result.get(0).name()).isEqualTo("active-project");
+        assertThat(result.get(0).status()).isEqualTo(ProjectStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("내 프로젝트 목록 조회 시 다른 사용자의 프로젝트는 조회하지 않는다")
+    void getMyProjectsExcludeOtherUserProjects() {
+        // given
+        User ownerUser = saveUser(
+                "owner-only@example.com",
+                "ownerOnly"
+        );
+
+        User otherUser = saveUser(
+                "other-owner@example.com",
+                "otherOwner"
+        );
+
+        Runtime runtime = saveRuntime(
+                "java-my-projects",
+                "Java My Projects"
+        );
+
+        Project myProject = savePersonalProject(
+                ownerUser,
+                runtime,
+                "my-project",
+                "내 프로젝트입니다.",
+                "/projects/my-project"
+        );
+
+        savePersonalProject(
+                otherUser,
+                runtime,
+                "other-project",
+                "다른 사용자 프로젝트입니다.",
+                "/projects/other-project"
+        );
+
+        // when
+        List<ProjectSummaryResponse> result =
+                projectService.getMyProjects(ownerUser.getId());
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(myProject.getId());
+        assertThat(result.get(0).name()).isEqualTo("my-project");
+    }
+
     /**
      * 테스트용 사용자 저장
      *
@@ -368,5 +507,37 @@ class ProjectServiceTest {
                 .build();
 
         return guestSessionRepository.save(guestSession);
+    }
+
+    /**
+     * 테스트용 개인 프로젝트 저장
+     *
+     * @param ownerUser 프로젝트 소유자
+     * @param runtime 프로젝트 런타임
+     * @param name 프로젝트 이름
+     * @param description 프로젝트 설명
+     * @param storagePath 프로젝트 저장 경로
+     * @return 저장된 프로젝트
+     */
+    private Project savePersonalProject(
+            User ownerUser,
+            Runtime runtime,
+            String name,
+            String description,
+            String storagePath
+    ) {
+        Project project = Project.builder()
+                .ownerUser(ownerUser)
+                .guestSession(null)
+                .runtime(runtime)
+                .name(name)
+                .description(description)
+                .projectType(ProjectType.PERSONAL)
+                .visibility(ProjectVisibility.PRIVATE)
+                .status(ProjectStatus.ACTIVE)
+                .storagePath(storagePath)
+                .build();
+
+        return projectRepository.save(project);
     }
 }

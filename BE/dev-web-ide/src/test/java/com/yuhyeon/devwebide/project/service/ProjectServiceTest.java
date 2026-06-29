@@ -3,6 +3,7 @@ package com.yuhyeon.devwebide.project.service;
 import com.yuhyeon.devwebide.project.domain.*;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectDetailResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectSummaryResponse;
 import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectMemberRepository;
@@ -539,5 +540,157 @@ class ProjectServiceTest {
                 .build();
 
         return projectRepository.save(project);
+    }
+
+    @Test
+    @DisplayName("프로젝트 상세 조회")
+    void getProjectDetail() {
+        // given
+        User owner = userRepository.save(createUser(
+                "owner-detail@test.com",
+                "프로젝트소유자"
+        ));
+
+        User member = userRepository.save(createUser(
+                "member-detail@test.com",
+                "팀멤버"
+        ));
+
+        Runtime runtime = runtimeRepository.save(createRuntime());
+
+        Project project = Project.builder()
+                .ownerUser(owner)
+                .guestSession(null)
+                .runtime(runtime)
+                .name("web-ide-project")
+                .description("웹 IDE 프로젝트")
+                .projectType(ProjectType.TEAM)
+                .visibility(ProjectVisibility.TEAM)
+                .status(ProjectStatus.ACTIVE)
+                .storagePath("/projects/detail")
+                .build();
+
+        Project savedProject = projectRepository.save(project);
+
+        ProjectSettings projectSettings = ProjectSettings.builder()
+                .project(savedProject)
+                .autoSaveEnabled(true)
+                .formatOnSaveEnabled(true)
+                .guestCanEdit(false)
+                .shareCursorPosition(true)
+                .build();
+
+        projectSettingsRepository.save(projectSettings);
+
+        ProjectMember projectMember = ProjectMember.builder()
+                .project(savedProject)
+                .user(member)
+                .role(ProjectMemberRole.EDITOR)
+                .status(ProjectMemberStatus.ACTIVE)
+                .invitedByUser(owner)
+                .invitedAt(LocalDateTime.now().minusDays(1))
+                .joinedAt(LocalDateTime.now())
+                .build();
+
+        projectMemberRepository.save(projectMember);
+
+        // when
+        ProjectDetailResponse response =
+                projectService.getProjectDetail(savedProject.getId());
+
+        // then
+        assertThat(response.id()).isEqualTo(savedProject.getId());
+        assertThat(response.name()).isEqualTo("web-ide-project");
+        assertThat(response.description()).isEqualTo("웹 IDE 프로젝트");
+        assertThat(response.projectType()).isEqualTo(ProjectType.TEAM);
+        assertThat(response.visibility()).isEqualTo(ProjectVisibility.TEAM);
+        assertThat(response.status()).isEqualTo(ProjectStatus.ACTIVE);
+        assertThat(response.storagePath()).isEqualTo("/projects/detail");
+
+        assertThat(response.runtime().id()).isEqualTo(runtime.getId());
+        assertThat(response.runtime().name()).isEqualTo("node-20");
+        assertThat(response.runtime().displayName()).isEqualTo("Node.js 20");
+        assertThat(response.runtime().language()).isEqualTo(RuntimeLanguage.NODE);
+
+        assertThat(response.settings().autoSaveEnabled()).isTrue();
+        assertThat(response.settings().formatOnSaveEnabled()).isTrue();
+        assertThat(response.settings().guestCanEdit()).isFalse();
+        assertThat(response.settings().shareCursorPosition()).isTrue();
+
+        assertThat(response.members()).hasSize(1);
+        assertThat(response.members().get(0).userId()).isEqualTo(member.getId());
+        assertThat(response.members().get(0).nickname()).isEqualTo("팀멤버");
+        assertThat(response.members().get(0).role()).isEqualTo(ProjectMemberRole.EDITOR);
+        assertThat(response.members().get(0).status()).isEqualTo(ProjectMemberStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 프로젝트 상세 조회 시 예외 발생")
+    void getProjectDetailNotFound() {
+        // given
+        Long notExistsProjectId = 999999L;
+
+        // when & then
+        assertThatThrownBy(() -> projectService.getProjectDetail(notExistsProjectId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("존재하지 않거나 삭제된 프로젝트입니다.");
+    }
+
+    @Test
+    @DisplayName("프로젝트 설정이 없으면 상세 조회 시 예외 발생")
+    void getProjectDetailWithoutSettings() {
+        // given
+        User owner = userRepository.save(createUser(
+                "owner-no-settings@test.com",
+                "설정없는소유자"
+        ));
+
+        Runtime runtime = runtimeRepository.save(Runtime.builder()
+                .name("python-3.12")
+                .displayName("Python 3.12")
+                .version("3.12")
+                .dockerImage("python:3.12")
+                .language(RuntimeLanguage.PYTHON)
+                .status(RuntimeStatus.ACTIVE)
+                .build());
+
+        Project project = Project.builder()
+                .ownerUser(owner)
+                .guestSession(null)
+                .runtime(runtime)
+                .name("settings-missing-project")
+                .description("설정 없는 프로젝트")
+                .projectType(ProjectType.PERSONAL)
+                .visibility(ProjectVisibility.PRIVATE)
+                .status(ProjectStatus.ACTIVE)
+                .storagePath("/projects/no-settings")
+                .build();
+
+        Project savedProject = projectRepository.save(project);
+
+        // when & then
+        assertThatThrownBy(() -> projectService.getProjectDetail(savedProject.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("프로젝트 설정이 존재하지 않습니다.");
+    }
+
+    private User createUser(String email, String nickname) {
+        return User.builder()
+                .email(email)
+                .nickname(nickname)
+                .role(UserRole.USER)
+                .status(UserStatus.ACTIVE)
+                .build();
+    }
+
+    private Runtime createRuntime() {
+        return Runtime.builder()
+                .name("node-20")
+                .displayName("Node.js 20")
+                .version("20")
+                .dockerImage("node:20")
+                .language(RuntimeLanguage.NODE)
+                .status(RuntimeStatus.ACTIVE)
+                .build();
     }
 }

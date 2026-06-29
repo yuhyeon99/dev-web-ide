@@ -11,6 +11,7 @@ import com.yuhyeon.devwebide.project.domain.ProjectType;
 import com.yuhyeon.devwebide.project.domain.ProjectVisibility;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectDetailResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectSummaryResponse;
 import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectMemberRepository;
@@ -380,6 +381,44 @@ public class ProjectService {
         return projects.stream()
                 .map(ProjectSummaryResponse::from)
                 .toList();
+    }
+
+    /**
+     * 프로젝트 상세 조회
+     *
+     * ACTIVE 상태의 프로젝트만 조회합니다.
+     * 프로젝트 기본 정보, 런타임, 설정, 활성 멤버 목록을 함께 반환합니다.
+     *
+     * @param projectId 프로젝트 ID
+     * @return 프로젝트 상세 응답
+     */
+    @Transactional(readOnly = true)
+    public ProjectDetailResponse getProjectDetail(Long projectId) {
+        Project project = projectRepository.findByIdAndStatus(
+                        projectId,
+                        ProjectStatus.ACTIVE
+                )
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "존재하지 않거나 삭제된 프로젝트입니다. projectId=" + projectId
+                ));
+
+        ProjectSettings projectSettings =
+                projectSettingsRepository.findByProjectId(projectId)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "프로젝트 설정이 존재하지 않습니다. projectId=" + projectId
+                        ));
+
+        List<ProjectMember> projectMembers =
+                projectMemberRepository.findByProjectIdAndStatusOrderByJoinedAtDesc(
+                        projectId,
+                        ProjectMemberStatus.ACTIVE
+                );
+
+        return ProjectDetailResponse.from(
+                project,
+                projectSettings,
+                projectMembers
+        );
     }
 
     /**

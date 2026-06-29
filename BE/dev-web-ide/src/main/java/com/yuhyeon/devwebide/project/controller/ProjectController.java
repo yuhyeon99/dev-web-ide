@@ -2,12 +2,16 @@ package com.yuhyeon.devwebide.project.controller;
 
 import com.yuhyeon.devwebide.project.dto.ProjectCreateRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectDetailResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectSummaryResponse;
 import com.yuhyeon.devwebide.project.service.ProjectService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 프로젝트 API 컨트롤러
@@ -52,5 +56,43 @@ public class ProjectController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    /**
+     * 내 프로젝트 목록 조회
+     *
+     * 로그인한 사용자가 생성한 프로젝트 목록을 조회합니다.
+     * 인증 연동 전까지는 ownerUserId를 RequestParam으로 받습니다.
+     *
+     * @param ownerUserId 프로젝트 소유자 ID
+     * @return 내 프로젝트 목록
+     */
+    @GetMapping("/my")
+    public ResponseEntity<List<ProjectSummaryResponse>> getMyProjects(
+            @RequestParam Long ownerUserId
+    ) {
+        List<ProjectSummaryResponse> response =
+                projectService.getMyProjects(ownerUserId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 프로젝트 상세 조회
+     *
+     * 프로젝트 목록에서 선택한 프로젝트의 상세 정보를 조회합니다.
+     * 프로젝트 기본 정보, 런타임 정보, 설정 정보, 멤버 목록을 함께 반환합니다.
+     *
+     * @param projectId 조회할 프로젝트 ID
+     * @return 프로젝트 상세 정보
+     */
+    @GetMapping("/{projectId}")
+    public ResponseEntity<ProjectDetailResponse> getProjectDetail(
+            @PathVariable Long projectId
+    ) {
+        ProjectDetailResponse response =
+                projectService.getProjectDetail(projectId);
+
+        return ResponseEntity.ok(response);
     }
 }

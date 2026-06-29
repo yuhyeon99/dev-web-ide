@@ -1,13 +1,11 @@
 package com.yuhyeon.devwebide.project.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.yuhyeon.devwebide.project.domain.ProjectStatus;
-import com.yuhyeon.devwebide.project.domain.ProjectType;
-import com.yuhyeon.devwebide.project.domain.ProjectVisibility;
-import com.yuhyeon.devwebide.project.dto.ProjectCreateRequest;
-import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
+import com.yuhyeon.devwebide.project.domain.*;
+import com.yuhyeon.devwebide.project.dto.*;
 import com.yuhyeon.devwebide.project.service.ProjectService;
 import com.yuhyeon.devwebide.runtime.domain.RuntimeLanguage;
+import com.yuhyeon.devwebide.runtime.dto.RuntimeResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,12 +21,14 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * ProjectController 테스트
@@ -303,5 +303,81 @@ class ProjectControllerTest {
         verifyNoInteractions(projectService);
     }
 
+    @Test
+    @DisplayName("프로젝트 상세 조회")
+    void getProjectDetail() throws Exception {
+        Long projectId = 1L;
+
+        RuntimeResponse runtime = new RuntimeResponse(
+                1L,
+                "node-20",
+                "Node.js 20",
+                "20",
+                "node:20",
+                RuntimeLanguage.NODE
+        );
+
+        ProjectSettingsResponse settings = new ProjectSettingsResponse(
+                false,
+                false,
+                false,
+                true
+        );
+
+        ProjectMemberResponse member = new ProjectMemberResponse(
+                1L,
+                "테스터",
+                ProjectMemberRole.OWNER,
+                ProjectMemberStatus.ACTIVE,
+                LocalDateTime.of(2026, 6, 29, 10, 10)
+        );
+
+        ProjectDetailResponse response = new ProjectDetailResponse(
+                projectId,
+                "my-project",
+                "테스트 프로젝트",
+                ProjectType.PERSONAL,
+                ProjectVisibility.PRIVATE,
+                ProjectStatus.ACTIVE,
+                "/projects/1",
+                runtime,
+                settings,
+                List.of(member),
+                LocalDateTime.of(2026, 6, 29, 10, 0),
+                LocalDateTime.of(2026, 6, 29, 10, 30)
+        );
+
+        given(projectService.getProjectDetail(projectId))
+                .willReturn(response);
+
+        mockMvc.perform(get("/api/projects/{projectId}", projectId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(projectId))
+                .andExpect(jsonPath("$.name").value("my-project"))
+                .andExpect(jsonPath("$.description").value("테스트 프로젝트"))
+                .andExpect(jsonPath("$.projectType").value("PERSONAL"))
+                .andExpect(jsonPath("$.visibility").value("PRIVATE"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.storagePath").value("/projects/1"))
+                .andExpect(jsonPath("$.runtime.id").value(1L))
+                .andExpect(jsonPath("$.runtime.name").value("node-20"))
+                .andExpect(jsonPath("$.runtime.displayName").value("Node.js 20"))
+                .andExpect(jsonPath("$.runtime.version").value("20"))
+                .andExpect(jsonPath("$.runtime.dockerImage").value("node:20"))
+                .andExpect(jsonPath("$.runtime.language").value("NODE"))
+                .andExpect(jsonPath("$.settings.autoSaveEnabled").value(false))
+                .andExpect(jsonPath("$.settings.formatOnSaveEnabled").value(false))
+                .andExpect(jsonPath("$.settings.guestCanEdit").value(false))
+                .andExpect(jsonPath("$.settings.shareCursorPosition").value(true))
+                .andExpect(jsonPath("$.members[0].userId").value(1L))
+                .andExpect(jsonPath("$.members[0].nickname").value("테스터"))
+                .andExpect(jsonPath("$.members[0].role").value("OWNER"))
+                .andExpect(jsonPath("$.members[0].status").value("ACTIVE"));
+
+        then(projectService)
+                .should()
+                .getProjectDetail(projectId);
+    }
 
 }

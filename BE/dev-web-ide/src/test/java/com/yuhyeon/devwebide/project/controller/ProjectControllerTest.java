@@ -304,6 +304,86 @@ class ProjectControllerTest {
     }
 
     @Test
+    @DisplayName("내 프로젝트 목록 조회 API 요청에 성공한다")
+    void getMyProjects() throws Exception {
+        // given
+        Long ownerUserId = 1L;
+
+        LocalDateTime now = LocalDateTime.of(2026, 1, 1, 10, 0);
+
+        ProjectSummaryResponse firstProject = new ProjectSummaryResponse(
+                1L,
+                "personal-project",
+                "개인 프로젝트입니다.",
+                ProjectType.PERSONAL,
+                ProjectVisibility.PRIVATE,
+                ProjectStatus.ACTIVE,
+                1L,
+                "node-20",
+                "Node.js 20",
+                RuntimeLanguage.values()[0],
+                now,
+                now
+        );
+
+        ProjectSummaryResponse secondProject = new ProjectSummaryResponse(
+                2L,
+                "team-project",
+                "팀 프로젝트입니다.",
+                ProjectType.TEAM,
+                ProjectVisibility.TEAM,
+                ProjectStatus.ACTIVE,
+                2L,
+                "java-21",
+                "Java 21",
+                RuntimeLanguage.values()[0],
+                now.minusDays(1),
+                now.minusDays(1)
+        );
+
+        when(projectService.getMyProjects(ownerUserId))
+                .thenReturn(List.of(firstProject, secondProject));
+
+        // when & then
+        mockMvc.perform(get("/api/projects/my")
+                        .param("ownerUserId", ownerUserId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+
+                .andExpect(jsonPath("$[0].id").value(1L))
+                .andExpect(jsonPath("$[0].name").value("personal-project"))
+                .andExpect(jsonPath("$[0].description").value("개인 프로젝트입니다."))
+                .andExpect(jsonPath("$[0].projectType").value("PERSONAL"))
+                .andExpect(jsonPath("$[0].visibility").value("PRIVATE"))
+                .andExpect(jsonPath("$[0].status").value("ACTIVE"))
+                .andExpect(jsonPath("$[0].runtimeId").value(1L))
+                .andExpect(jsonPath("$[0].runtimeName").value("node-20"))
+                .andExpect(jsonPath("$[0].runtimeDisplayName").value("Node.js 20"))
+
+                .andExpect(jsonPath("$[1].id").value(2L))
+                .andExpect(jsonPath("$[1].name").value("team-project"))
+                .andExpect(jsonPath("$[1].description").value("팀 프로젝트입니다."))
+                .andExpect(jsonPath("$[1].projectType").value("TEAM"))
+                .andExpect(jsonPath("$[1].visibility").value("TEAM"))
+                .andExpect(jsonPath("$[1].status").value("ACTIVE"))
+                .andExpect(jsonPath("$[1].runtimeId").value(2L))
+                .andExpect(jsonPath("$[1].runtimeName").value("java-21"))
+                .andExpect(jsonPath("$[1].runtimeDisplayName").value("Java 21"));
+
+        verify(projectService).getMyProjects(ownerUserId);
+    }
+
+    @Test
+    @DisplayName("내 프로젝트 목록 조회 시 ownerUserId가 없으면 400 Bad Request를 반환한다")
+    void getMyProjectsWithoutOwnerUserId() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/projects/my"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(projectService);
+    }
+
+    @Test
     @DisplayName("프로젝트 상세 조회")
     void getProjectDetail() throws Exception {
         Long projectId = 1L;

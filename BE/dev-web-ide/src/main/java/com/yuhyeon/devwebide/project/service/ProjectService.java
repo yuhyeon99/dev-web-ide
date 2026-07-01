@@ -1,22 +1,8 @@
 package com.yuhyeon.devwebide.project.service;
 
-import com.yuhyeon.devwebide.project.domain.Project;
-import com.yuhyeon.devwebide.project.domain.ProjectFile;
-import com.yuhyeon.devwebide.project.domain.ProjectMember;
-import com.yuhyeon.devwebide.project.domain.ProjectMemberRole;
-import com.yuhyeon.devwebide.project.domain.ProjectMemberStatus;
-import com.yuhyeon.devwebide.project.domain.ProjectSettings;
-import com.yuhyeon.devwebide.project.domain.ProjectStatus;
-import com.yuhyeon.devwebide.project.domain.ProjectType;
-import com.yuhyeon.devwebide.project.domain.ProjectVisibility;
-import com.yuhyeon.devwebide.project.dto.ProjectCreateRequest;
-import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
-import com.yuhyeon.devwebide.project.dto.ProjectDetailResponse;
-import com.yuhyeon.devwebide.project.dto.ProjectSummaryResponse;
-import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
-import com.yuhyeon.devwebide.project.repository.ProjectMemberRepository;
-import com.yuhyeon.devwebide.project.repository.ProjectRepository;
-import com.yuhyeon.devwebide.project.repository.ProjectSettingsRepository;
+import com.yuhyeon.devwebide.project.domain.*;
+import com.yuhyeon.devwebide.project.dto.*;
+import com.yuhyeon.devwebide.project.repository.*;
 import com.yuhyeon.devwebide.runtime.domain.Runtime;
 import com.yuhyeon.devwebide.runtime.repository.RuntimeRepository;
 import com.yuhyeon.devwebide.user.domain.GuestSession;
@@ -50,6 +36,7 @@ public class ProjectService {
     private final RuntimeRepository runtimeRepository;
     private final UserRepository userRepository;
     private final GuestSessionRepository guestSessionRepository;
+    private final ProjectAccessLogRepository projectAccessLogRepository;
 
     /**
      * 프로젝트 생성
@@ -419,6 +406,65 @@ public class ProjectService {
                 projectSettings,
                 projectMembers
         );
+    }
+
+    @Transactional
+    public ProjectOpenResponse openProject(
+            Long projectId,
+            Long userId,
+            Long guestSessionId
+    ) {
+        validateOpenRequester(userId, guestSessionId);
+
+        Project project = projectRepository
+                .findByIdAndStatus(projectId, ProjectStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "프로젝트를 찾을 수 없습니다."
+                ));
+
+        User user = null;
+        GuestSession guestSession = null;
+
+        if (userId != null) {
+            user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "사용자를 찾을 수 없습니다."
+                    ));
+        }
+
+        if (guestSessionId != null) {
+            guestSession = guestSessionRepository.findById(guestSessionId)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "게스트 세션을 찾을 수 없습니다."
+                    ));
+        }
+
+        LocalDateTime openedAt = LocalDateTime.now();
+
+        ProjectAccessLog accessLog = ProjectAccessLog.builder()
+                .project(project)
+                .user(user)
+                .guestSession(guestSession)
+                .accessType(ProjectAccessType.OPEN)
+                .build();
+
+        projectAccessLogRepository.save(accessLog);
+
+        return ProjectOpenResponse.from(project, openedAt);
+    }
+
+    private void validateOpenRequester(
+            Long userId,
+            Long guestSessionId
+    ) {
+        boolean hasUserId = userId != null;
+        boolean hasGuestSessionId = guestSessionId != null;
+
+        if (hasUserId == hasGuestSessionId) {
+            throw new IllegalArgumentException(
+                    "회원 사용자 또는 게스트 세션 중 하나만 지정해야 합니다."
+            );
+        }
     }
 
     /**

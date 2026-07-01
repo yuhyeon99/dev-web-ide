@@ -1,14 +1,8 @@
 package com.yuhyeon.devwebide.project.service;
 
 import com.yuhyeon.devwebide.project.domain.*;
-import com.yuhyeon.devwebide.project.dto.ProjectCreateRequest;
-import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
-import com.yuhyeon.devwebide.project.dto.ProjectDetailResponse;
-import com.yuhyeon.devwebide.project.dto.ProjectSummaryResponse;
-import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
-import com.yuhyeon.devwebide.project.repository.ProjectMemberRepository;
-import com.yuhyeon.devwebide.project.repository.ProjectRepository;
-import com.yuhyeon.devwebide.project.repository.ProjectSettingsRepository;
+import com.yuhyeon.devwebide.project.dto.*;
+import com.yuhyeon.devwebide.project.repository.*;
 import com.yuhyeon.devwebide.runtime.domain.Runtime;
 import com.yuhyeon.devwebide.runtime.domain.RuntimeLanguage;
 import com.yuhyeon.devwebide.runtime.domain.RuntimeStatus;
@@ -27,6 +21,7 @@ import org.springframework.context.annotation.Import;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -64,6 +59,8 @@ class ProjectServiceTest {
 
     @Autowired
     private GuestSessionRepository guestSessionRepository;
+    @Autowired
+    private ProjectAccessLogRepository projectAccessLogRepository;
 
     @Test
     @DisplayName("개인 프로젝트를 생성한다")
@@ -674,6 +671,186 @@ class ProjectServiceTest {
                 .hasMessageContaining("프로젝트 설정이 존재하지 않습니다.");
     }
 
+    @Test
+    @DisplayName("회원 사용자는 프로젝트를 열 수 있다")
+    void openProjectByUser() {
+        // given
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(user, runtime));
+
+        // when
+        ProjectOpenResponse response = projectService.openProject(
+                project.getId(),
+                user.getId(),
+                null
+        );
+
+        // then
+        assertThat(response.projectId()).isEqualTo(project.getId());
+        assertThat(response.name()).isEqualTo(project.getName());
+        assertThat(response.runtimeId()).isEqualTo(runtime.getId());
+        assertThat(response.openedAt()).isNotNull();
+
+        List<ProjectAccessLog> accessLogs =
+                projectAccessLogRepository.findByUserIdAndAccessTypeOrderByAccessedAtDesc(
+                        user.getId(),
+                        ProjectAccessType.OPEN
+                );
+
+        assertThat(accessLogs).hasSize(1);
+        assertThat(accessLogs.get(0).getProject().getId()).isEqualTo(project.getId());
+        assertThat(accessLogs.get(0).getUser().getId()).isEqualTo(user.getId());
+        assertThat(accessLogs.get(0).getGuestSession()).isNull();
+        assertThat(accessLogs.get(0).getAccessType()).isEqualTo(ProjectAccessType.OPEN);
+    }
+
+    @Test
+    @DisplayName("게스트 사용자는 프로젝트를 열 수 있다")
+    void openProjectByGuestSession() {
+        // given
+        GuestSession guestSession = guestSessionRepository.save(createGuestSession());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createGuestProject(guestSession, runtime));
+
+        // when
+        ProjectOpenResponse response = projectService.openProject(
+                project.getId(),
+                null,
+                guestSession.getId()
+        );
+
+        // then
+        assertThat(response.projectId()).isEqualTo(project.getId());
+        assertThat(response.name()).isEqualTo(project.getName());
+        assertThat(response.runtimeId()).isEqualTo(runtime.getId());
+        assertThat(response.openedAt()).isNotNull();
+
+        List<ProjectAccessLog> accessLogs =
+                projectAccessLogRepository.findByGuestSessionIdAndAccessTypeOrderByAccessedAtDesc(
+                        guestSession.getId(),
+                        ProjectAccessType.OPEN
+                );
+
+        assertThat(accessLogs).hasSize(1);
+        assertThat(accessLogs.get(0).getProject().getId()).isEqualTo(project.getId());
+        assertThat(accessLogs.get(0).getUser()).isNull();
+        assertThat(accessLogs.get(0).getGuestSession().getId()).isEqualTo(guestSession.getId());
+        assertThat(accessLogs.get(0).getAccessType()).isEqualTo(ProjectAccessType.OPEN);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 프로젝트를 열면 예외가 발생한다")
+    void openProjectWithNotFoundProject() {
+        // given
+        User user = userRepository.save(createUser());
+        Long notFoundProjectId = 999999L;
+
+        // when & then
+        assertThatThrownBy(() -> projectService.openProject(
+                notFoundProjectId,
+                user.getId(),
+                null
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("프로젝트를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("삭제된 프로젝트는 열 수 없다")
+    void openDeletedProject() {
+        // given
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project deletedProject = projectRepository.save(createDeletedUserProject(user, runtime));
+
+        // when & then
+        assertThatThrownBy(() -> projectService.openProject(
+                deletedProject.getId(),
+                user.getId(),
+                null
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("프로젝트를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("userId와 guestSessionId가 둘 다 없으면 예외가 발생한다")
+    void openProjectWithoutRequester() {
+        // given
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(user, runtime));
+
+        // when & then
+        assertThatThrownBy(() -> projectService.openProject(
+                project.getId(),
+                null,
+                null
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("회원 사용자 또는 게스트 세션 중 하나만 지정해야 합니다.");
+    }
+
+    @Test
+    @DisplayName("userId와 guestSessionId가 둘 다 있으면 예외가 발생한다")
+    void openProjectWithUserAndGuestSession() {
+        // given
+        User user = userRepository.save(createUser());
+        GuestSession guestSession = guestSessionRepository.save(createGuestSession());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(user, runtime));
+
+        // when & then
+        assertThatThrownBy(() -> projectService.openProject(
+                project.getId(),
+                user.getId(),
+                guestSession.getId()
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("회원 사용자 또는 게스트 세션 중 하나만 지정해야 합니다.");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 회원 사용자가 프로젝트를 열면 예외가 발생한다")
+    void openProjectWithNotFoundUser() {
+        // given
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(user, runtime));
+
+        Long notFoundUserId = 999999L;
+
+        // when & then
+        assertThatThrownBy(() -> projectService.openProject(
+                project.getId(),
+                notFoundUserId,
+                null
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("사용자를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 게스트 세션으로 프로젝트를 열면 예외가 발생한다")
+    void openProjectWithNotFoundGuestSession() {
+        // given
+        GuestSession guestSession = guestSessionRepository.save(createGuestSession());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createGuestProject(guestSession, runtime));
+
+        Long notFoundGuestSessionId = 999999L;
+
+        // when & then
+        assertThatThrownBy(() -> projectService.openProject(
+                project.getId(),
+                null,
+                notFoundGuestSessionId
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("게스트 세션을 찾을 수 없습니다.");
+    }
+
     private User createUser(String email, String nickname) {
         return User.builder()
                 .email(email)
@@ -691,6 +868,64 @@ class ProjectServiceTest {
                 .dockerImage("node:20")
                 .language(RuntimeLanguage.NODE)
                 .status(RuntimeStatus.ACTIVE)
+                .build();
+    }
+
+    private User createUser() {
+        return User.builder()
+                .email("test-" + UUID.randomUUID() + "@example.com")
+                .nickname("테스터")
+                .role(UserRole.USER)
+                .status(UserStatus.ACTIVE)
+                .build();
+    }
+
+    private GuestSession createGuestSession() {
+        return GuestSession.builder()
+                .guestToken("guest-token-" + UUID.randomUUID())
+                .expiresAt(LocalDateTime.now().plusDays(1))
+                .build();
+    }
+
+    private Project createUserProject(User user, Runtime runtime) {
+        return Project.builder()
+                .ownerUser(user)
+                .guestSession(null)
+                .runtime(runtime)
+                .name("회원 프로젝트")
+                .description("회원 프로젝트 설명")
+                .projectType(ProjectType.PERSONAL)
+                .visibility(ProjectVisibility.PRIVATE)
+                .status(ProjectStatus.ACTIVE)
+                .storagePath("/projects/" + UUID.randomUUID())
+                .build();
+    }
+
+    private Project createGuestProject(GuestSession guestSession, Runtime runtime) {
+        return Project.builder()
+                .ownerUser(null)
+                .guestSession(guestSession)
+                .runtime(runtime)
+                .name("게스트 프로젝트")
+                .description("게스트 프로젝트 설명")
+                .projectType(ProjectType.GUEST)
+                .visibility(ProjectVisibility.PRIVATE)
+                .status(ProjectStatus.ACTIVE)
+                .storagePath("/projects/" + UUID.randomUUID())
+                .build();
+    }
+
+    private Project createDeletedUserProject(User user, Runtime runtime) {
+        return Project.builder()
+                .ownerUser(user)
+                .guestSession(null)
+                .runtime(runtime)
+                .name("삭제된 프로젝트")
+                .description("삭제된 프로젝트 설명")
+                .projectType(ProjectType.PERSONAL)
+                .visibility(ProjectVisibility.PRIVATE)
+                .status(ProjectStatus.DELETED)
+                .storagePath("/projects/" + UUID.randomUUID())
                 .build();
     }
 }

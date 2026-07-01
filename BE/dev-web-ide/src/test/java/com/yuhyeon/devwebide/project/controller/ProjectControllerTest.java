@@ -460,4 +460,92 @@ class ProjectControllerTest {
                 .getProjectDetail(projectId);
     }
 
+    @Test
+    @DisplayName("회원 사용자는 프로젝트를 열 수 있다")
+    void openProjectByUser() throws Exception {
+        // given
+        Long projectId = 1L;
+        Long userId = 10L;
+        LocalDateTime openedAt = LocalDateTime.of(2026, 1, 1, 10, 30);
+
+        ProjectOpenResponse response = new ProjectOpenResponse(
+                projectId,
+                "테스트 프로젝트",
+                "테스트 프로젝트 설명",
+                ProjectType.PERSONAL,
+                ProjectVisibility.PRIVATE,
+                ProjectStatus.ACTIVE,
+                1L,
+                "nodejs",
+                "Node.js",
+                RuntimeLanguage.JAVA,
+                openedAt
+        );
+
+        when(projectService.openProject(projectId, userId, null))
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/api/projects/{projectId}/open", projectId)
+                        .param("userId", String.valueOf(userId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectId").value(projectId))
+                .andExpect(jsonPath("$.name").value("테스트 프로젝트"))
+                .andExpect(jsonPath("$.description").value("테스트 프로젝트 설명"))
+                .andExpect(jsonPath("$.projectType").value("PERSONAL"))
+                .andExpect(jsonPath("$.visibility").value("PRIVATE"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.runtimeId").value(1L))
+                .andExpect(jsonPath("$.runtimeName").value("nodejs"))
+                .andExpect(jsonPath("$.runtimeDisplayName").value("Node.js"))
+                .andExpect(jsonPath("$.runtimeLanguage").value("JAVA"))
+                .andExpect(jsonPath("$.openedAt").exists());
+
+        verify(projectService).openProject(projectId, userId, null);
+    }
+
+    @Test
+    @DisplayName("게스트 사용자는 프로젝트를 열 수 있다")
+    void openProjectByGuestSession() throws Exception {
+        // given
+        Long projectId = 1L;
+        Long guestSessionId = 20L;
+        LocalDateTime openedAt = LocalDateTime.of(2026, 1, 1, 10, 30);
+
+        ProjectOpenResponse response = new ProjectOpenResponse(
+                projectId,
+                "게스트 프로젝트",
+                "게스트 프로젝트 설명",
+                ProjectType.GUEST,
+                ProjectVisibility.PRIVATE,
+                ProjectStatus.ACTIVE,
+                1L,
+                "nodejs",
+                "Node.js",
+                RuntimeLanguage.JAVA,
+                openedAt
+        );
+
+        when(projectService.openProject(projectId, null, guestSessionId))
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/api/projects/{projectId}/open", projectId)
+                        .param("guestSessionId", String.valueOf(guestSessionId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectId").value(projectId))
+                .andExpect(jsonPath("$.name").value("게스트 프로젝트"))
+                .andExpect(jsonPath("$.description").value("게스트 프로젝트 설명"))
+                .andExpect(jsonPath("$.projectType").value("GUEST"))
+                .andExpect(jsonPath("$.visibility").value("PRIVATE"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.runtimeId").value(1L))
+                .andExpect(jsonPath("$.runtimeName").value("nodejs"))
+                .andExpect(jsonPath("$.runtimeDisplayName").value("Node.js"))
+                .andExpect(jsonPath("$.runtimeLanguage").value("JAVA"))
+                .andExpect(jsonPath("$.openedAt").exists());
+
+        verify(projectService).openProject(projectId, null, guestSessionId);
+    }
+
 }

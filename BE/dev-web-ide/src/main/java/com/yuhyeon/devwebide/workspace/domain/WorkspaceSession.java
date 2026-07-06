@@ -9,7 +9,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -83,7 +82,6 @@ public class WorkspaceSession {
     /**
      * 실행 시작 일시
      */
-    @CreatedDate
     @Column(name = "started_at", nullable = false, updatable = false)
     private LocalDateTime startedAt;
 
@@ -109,6 +107,10 @@ public class WorkspaceSession {
      * 회원 세션은 user만 가져야 하고,
      * 게스트 세션은 guestSession만 가져야 합니다.
      *
+     * startedAt은 워크스페이스 실행 세션이 생성되는 시점의 시간으로 설정합니다.
+     * lastHeartbeatAt은 별도 값이 전달되면 해당 값을 사용하고,
+     * 전달되지 않으면 startedAt과 동일한 시간으로 초기화합니다.
+     *
      * @param project 실행 대상 프로젝트
      * @param runtime 실행 런타임
      * @param user 회원 사용자
@@ -128,12 +130,15 @@ public class WorkspaceSession {
         validateRequiredFields(project, runtime, status);
         validateSessionOwner(user, guestSession);
 
+        LocalDateTime now = LocalDateTime.now();
+
         this.project = project;
         this.runtime = runtime;
         this.user = user;
         this.guestSession = guestSession;
         this.status = status;
-        this.lastHeartbeatAt = lastHeartbeatAt;
+        this.startedAt = now;
+        this.lastHeartbeatAt = lastHeartbeatAt != null ? lastHeartbeatAt : now;
     }
 
     /**

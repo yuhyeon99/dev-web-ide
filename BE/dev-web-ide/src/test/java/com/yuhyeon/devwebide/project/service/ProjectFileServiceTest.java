@@ -6,8 +6,12 @@ import com.yuhyeon.devwebide.project.domain.ProjectFileStatus;
 import com.yuhyeon.devwebide.project.domain.ProjectFileType;
 import com.yuhyeon.devwebide.project.domain.ProjectStatus;
 import com.yuhyeon.devwebide.project.dto.ProjectFileTreeResponse;
+import com.yuhyeon.devwebide.project.repository.FileVersionRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectRepository;
+import com.yuhyeon.devwebide.project.repository.ProjectSaveBatchRepository;
+import com.yuhyeon.devwebide.user.repository.GuestSessionRepository;
+import com.yuhyeon.devwebide.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +29,26 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import com.yuhyeon.devwebide.project.domain.FileVersion;
+import com.yuhyeon.devwebide.project.domain.ProjectSaveBatch;
+import com.yuhyeon.devwebide.project.domain.ProjectSaveBatchStatus;
+import com.yuhyeon.devwebide.project.dto.ProjectFileSaveItemRequest;
+import com.yuhyeon.devwebide.project.dto.ProjectFileSaveRequest;
+import com.yuhyeon.devwebide.project.dto.ProjectFileSaveResponse;
+import com.yuhyeon.devwebide.project.repository.FileVersionRepository;
+import com.yuhyeon.devwebide.project.repository.ProjectSaveBatchRepository;
+import com.yuhyeon.devwebide.user.domain.GuestSession;
+import com.yuhyeon.devwebide.user.domain.User;
+import com.yuhyeon.devwebide.user.domain.UserRole;
+import com.yuhyeon.devwebide.user.domain.UserStatus;
+import com.yuhyeon.devwebide.user.repository.GuestSessionRepository;
+import com.yuhyeon.devwebide.user.repository.UserRepository;
+import org.mockito.ArgumentCaptor;
+
+import java.time.LocalDateTime;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectFileServiceTest {
@@ -37,6 +61,21 @@ class ProjectFileServiceTest {
 
     @Mock
     private ProjectFileRepository projectFileRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private GuestSessionRepository guestSessionRepository;
+
+    @Mock
+    private ProjectSaveBatchRepository projectSaveBatchRepository;
+
+    @Mock
+    private FileVersionRepository fileVersionRepository;
+
+    @Mock
+    private ProjectFileStorageService projectFileStorageService;
 
     @Test
     @DisplayName("프로젝트 파일 트리를 조회한다")
@@ -314,5 +353,448 @@ class ProjectFileServiceTest {
         ReflectionTestUtils.setField(projectFile, "id", id);
 
         return projectFile;
+    }
+
+    @Test
+    @DisplayName("회원이 파일을 저장한다")
+    void saveFiles_userSuccess() {
+        // given
+        Long projectId = 1L;
+        Long userId = 1L;
+        Long projectFileId = 10L;
+
+        Project project = mock(Project.class);
+
+        given(project.getId())
+                .willReturn(projectId);
+
+        given(projectRepository.findByIdAndStatus(
+                projectId,
+                ProjectStatus.ACTIVE
+        )).willReturn(Optional.of(project));
+
+        User user = createUser(userId);
+
+        given(userRepository.findById(userId))
+                .willReturn(Optional.of(user));
+
+        ProjectFile projectFile = createFile(
+                project,
+                null,
+                projectFileId,
+                "App.jsx",
+                "/src/App.jsx",
+                "text/javascript",
+                120L
+        );
+
+        given(projectFileRepository.findById(projectFileId))
+                .willReturn(Optional.of(projectFile));
+
+        ProjectFileStorageService.StoredFile storedFile =
+                mock(ProjectFileStorageService.StoredFile.class);
+
+        given(storedFile.storagePath())
+                .willReturn("/projects/1/src/App.jsx");
+        given(storedFile.contentHash())
+                .willReturn("hash-app-jsx");
+        given(storedFile.sizeBytes())
+                .willReturn(200L);
+
+        given(projectFileStorageService.save(
+                eq(project),
+                eq(projectFile),
+                eq("console.log('hello');"),
+                eq(1)
+        )).willReturn(storedFile);
+
+        given(projectSaveBatchRepository.save(any(ProjectSaveBatch.class)))
+                .willAnswer(invocation -> {
+                    ProjectSaveBatch saveBatch = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(saveBatch, "id", 100L);
+                    return saveBatch;
+                });
+
+        given(fileVersionRepository.findTopByProjectFileIdOrderByVersionNoDesc(
+                projectFileId
+        )).willReturn(Optional.empty());
+
+        given(fileVersionRepository.save(any(FileVersion.class)))
+                .willAnswer(invocation -> {
+                    FileVersion fileVersion = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(fileVersion, "id", 1000L);
+                    return fileVersion;
+                });
+
+        ProjectFileSaveRequest request = new ProjectFileSaveRequest(
+                userId,
+                null,
+                List.of(
+                        new ProjectFileSaveItemRequest(
+                                projectFileId,
+                                "console.log('hello');"
+                        )
+                )
+        );
+
+        // when
+        ProjectFileSaveResponse response =
+                projectFileService.saveFiles(projectId, request);
+
+        // then
+        assertThat(response.projectId()).isEqualTo(projectId);
+        assertThat(response.saveBatchId()).isEqualTo(100L);
+        assertThat(response.status()).isEqualTo(ProjectSaveBatchStatus.SUCCESS);
+        assertThat(response.savedFileCount()).isEqualTo(1);
+        assertThat(response.files()).hasSize(1);
+
+        assertThat(response.files().get(0).projectFileId())
+                .isEqualTo(projectFileId);
+        assertThat(response.files().get(0).path())
+                .isEqualTo("/src/App.jsx");
+        assertThat(response.files().get(0).versionNo())
+                .isEqualTo(1);
+        assertThat(response.files().get(0).sizeBytes())
+                .isEqualTo(200L);
+        assertThat(response.files().get(0).contentHash())
+                .isEqualTo("hash-app-jsx");
+
+        assertThat(projectFile.getSizeBytes()).isEqualTo(200L);
+        assertThat(projectFile.getMimeType()).isEqualTo("text/javascript");
+
+        ArgumentCaptor<ProjectSaveBatch> saveBatchCaptor =
+                ArgumentCaptor.forClass(ProjectSaveBatch.class);
+
+        then(projectSaveBatchRepository).should()
+                .save(saveBatchCaptor.capture());
+
+        ProjectSaveBatch savedBatch = saveBatchCaptor.getValue();
+
+        assertThat(savedBatch.getProject()).isEqualTo(project);
+        assertThat(savedBatch.getUser()).isEqualTo(user);
+        assertThat(savedBatch.getGuestSession()).isNull();
+        assertThat(savedBatch.getStatus())
+                .isEqualTo(ProjectSaveBatchStatus.SUCCESS);
+        assertThat(savedBatch.getSavedFileCount()).isEqualTo(1);
+
+        then(fileVersionRepository).should()
+                .save(any(FileVersion.class));
+
+        then(projectFileStorageService).should()
+                .save(project, projectFile, "console.log('hello');", 1);
+    }
+
+    @Test
+    @DisplayName("게스트가 파일을 저장한다")
+    void saveFiles_guestSuccess() {
+        // given
+        Long projectId = 1L;
+        Long guestSessionId = 5L;
+        Long projectFileId = 10L;
+
+        Project project = mock(Project.class);
+
+        given(project.getId())
+                .willReturn(projectId);
+
+        given(projectRepository.findByIdAndStatus(
+                projectId,
+                ProjectStatus.ACTIVE
+        )).willReturn(Optional.of(project));
+
+        GuestSession guestSession = createGuestSession(guestSessionId);
+
+        given(guestSessionRepository.findById(guestSessionId))
+                .willReturn(Optional.of(guestSession));
+
+        ProjectFile projectFile = createFile(
+                project,
+                null,
+                projectFileId,
+                "main.py",
+                "/main.py",
+                "text/x-python",
+                50L
+        );
+
+        given(projectFileRepository.findById(projectFileId))
+                .willReturn(Optional.of(projectFile));
+
+        ProjectFileStorageService.StoredFile storedFile =
+                mock(ProjectFileStorageService.StoredFile.class);
+
+        given(storedFile.storagePath())
+                .willReturn("/projects/1/main.py");
+        given(storedFile.contentHash())
+                .willReturn("hash-main-py");
+        given(storedFile.sizeBytes())
+                .willReturn(80L);
+
+        given(projectFileStorageService.save(
+                eq(project),
+                eq(projectFile),
+                eq("print('hello')"),
+                eq(1)
+        )).willReturn(storedFile);
+
+        given(projectSaveBatchRepository.save(any(ProjectSaveBatch.class)))
+                .willAnswer(invocation -> {
+                    ProjectSaveBatch saveBatch = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(saveBatch, "id", 101L);
+                    return saveBatch;
+                });
+
+        given(fileVersionRepository.findTopByProjectFileIdOrderByVersionNoDesc(
+                projectFileId
+        )).willReturn(Optional.empty());
+
+        given(fileVersionRepository.save(any(FileVersion.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        ProjectFileSaveRequest request = new ProjectFileSaveRequest(
+                null,
+                guestSessionId,
+                List.of(
+                        new ProjectFileSaveItemRequest(
+                                projectFileId,
+                                "print('hello')"
+                        )
+                )
+        );
+
+        // when
+        ProjectFileSaveResponse response =
+                projectFileService.saveFiles(projectId, request);
+
+        // then
+        assertThat(response.projectId()).isEqualTo(projectId);
+        assertThat(response.saveBatchId()).isEqualTo(101L);
+        assertThat(response.savedFileCount()).isEqualTo(1);
+
+        ArgumentCaptor<ProjectSaveBatch> saveBatchCaptor =
+                ArgumentCaptor.forClass(ProjectSaveBatch.class);
+
+        then(projectSaveBatchRepository).should()
+                .save(saveBatchCaptor.capture());
+
+        ProjectSaveBatch savedBatch = saveBatchCaptor.getValue();
+
+        assertThat(savedBatch.getUser()).isNull();
+        assertThat(savedBatch.getGuestSession()).isEqualTo(guestSession);
+    }
+
+    @Test
+    @DisplayName("저장 시 userId와 guestSessionId가 모두 없으면 예외가 발생한다")
+    void saveFiles_noActor() {
+        // given
+        Long projectId = 1L;
+
+        ProjectFileSaveRequest request = new ProjectFileSaveRequest(
+                null,
+                null,
+                List.of(
+                        new ProjectFileSaveItemRequest(
+                                10L,
+                                "content"
+                        )
+                )
+        );
+
+        // when & then
+        assertThatThrownBy(() -> projectFileService.saveFiles(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("userId 또는 guestSessionId 중 하나만 전달해야 합니다.");
+
+        verifyNoInteractions(projectRepository);
+        verifyNoInteractions(projectFileRepository);
+        verifyNoInteractions(projectSaveBatchRepository);
+        verifyNoInteractions(fileVersionRepository);
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("저장 시 userId와 guestSessionId가 모두 있으면 예외가 발생한다")
+    void saveFiles_bothActor() {
+        // given
+        Long projectId = 1L;
+
+        ProjectFileSaveRequest request = new ProjectFileSaveRequest(
+                1L,
+                1L,
+                List.of(
+                        new ProjectFileSaveItemRequest(
+                                10L,
+                                "content"
+                        )
+                )
+        );
+
+        // when & then
+        assertThatThrownBy(() -> projectFileService.saveFiles(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("userId 또는 guestSessionId 중 하나만 전달해야 합니다.");
+
+        verifyNoInteractions(projectRepository);
+        verifyNoInteractions(projectFileRepository);
+        verifyNoInteractions(projectSaveBatchRepository);
+        verifyNoInteractions(fileVersionRepository);
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 프로젝트면 파일 저장 시 예외가 발생한다")
+    void saveFiles_projectNotFound() {
+        // given
+        Long projectId = 999L;
+
+        ProjectFileSaveRequest request = new ProjectFileSaveRequest(
+                1L,
+                null,
+                List.of(
+                        new ProjectFileSaveItemRequest(
+                                10L,
+                                "content"
+                        )
+                )
+        );
+
+        given(projectRepository.findByIdAndStatus(
+                projectId,
+                ProjectStatus.ACTIVE
+        )).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> projectFileService.saveFiles(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("존재하지 않거나 삭제된 프로젝트입니다.");
+
+        verifyNoInteractions(projectFileRepository);
+        verifyNoInteractions(projectSaveBatchRepository);
+        verifyNoInteractions(fileVersionRepository);
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 파일이면 파일 저장 시 예외가 발생한다")
+    void saveFiles_fileNotFound() {
+        // given
+        Long projectId = 1L;
+        Long userId = 1L;
+        Long projectFileId = 999L;
+
+        Project project = mock(Project.class);
+
+        given(projectRepository.findByIdAndStatus(
+                projectId,
+                ProjectStatus.ACTIVE
+        )).willReturn(Optional.of(project));
+
+        User user = createUser(userId);
+
+        given(userRepository.findById(userId))
+                .willReturn(Optional.of(user));
+
+        given(projectFileRepository.findById(projectFileId))
+                .willReturn(Optional.empty());
+
+        ProjectFileSaveRequest request = new ProjectFileSaveRequest(
+                userId,
+                null,
+                List.of(
+                        new ProjectFileSaveItemRequest(
+                                projectFileId,
+                                "content"
+                        )
+                )
+        );
+
+        // when & then
+        assertThatThrownBy(() -> projectFileService.saveFiles(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("존재하지 않는 프로젝트 파일입니다.");
+
+        verifyNoInteractions(projectSaveBatchRepository);
+        verifyNoInteractions(fileVersionRepository);
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("DIRECTORY 타입은 파일 저장할 수 없다")
+    void saveFiles_directoryType() {
+        // given
+        Long projectId = 1L;
+        Long userId = 1L;
+        Long projectFileId = 10L;
+
+        Project project = mock(Project.class);
+
+        given(project.getId())
+                .willReturn(projectId);
+
+        given(projectRepository.findByIdAndStatus(
+                projectId,
+                ProjectStatus.ACTIVE
+        )).willReturn(Optional.of(project));
+
+        User user = createUser(userId);
+
+        given(userRepository.findById(userId))
+                .willReturn(Optional.of(user));
+
+        ProjectFile directory = createDirectory(
+                project,
+                null,
+                projectFileId,
+                "src",
+                "/src"
+        );
+
+        given(projectFileRepository.findById(projectFileId))
+                .willReturn(Optional.of(directory));
+
+        ProjectFileSaveRequest request = new ProjectFileSaveRequest(
+                userId,
+                null,
+                List.of(
+                        new ProjectFileSaveItemRequest(
+                                projectFileId,
+                                "content"
+                        )
+                )
+        );
+
+        // when & then
+        assertThatThrownBy(() -> projectFileService.saveFiles(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("디렉토리는 저장할 수 없습니다.");
+
+        verifyNoInteractions(projectSaveBatchRepository);
+        verifyNoInteractions(fileVersionRepository);
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    private User createUser(Long id) {
+        User user = User.builder()
+                .email("user" + id + "@test.com")
+                .nickname("테스터" + id)
+                .role(UserRole.USER)
+                .status(UserStatus.ACTIVE)
+                .build();
+
+        ReflectionTestUtils.setField(user, "id", id);
+
+        return user;
+    }
+
+    private GuestSession createGuestSession(Long id) {
+        GuestSession guestSession = GuestSession.builder()
+                .guestToken("guest-token-" + id)
+                .clientIp("127.0.0.1")
+                .expiresAt(LocalDateTime.now().plusDays(7))
+                .build();
+
+        ReflectionTestUtils.setField(guestSession, "id", id);
+
+        return guestSession;
     }
 }

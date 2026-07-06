@@ -1,12 +1,15 @@
 package com.yuhyeon.devwebide.project.service;
 
-import com.yuhyeon.devwebide.project.domain.Project;
-import com.yuhyeon.devwebide.project.domain.ProjectFile;
-import com.yuhyeon.devwebide.project.domain.ProjectFileStatus;
-import com.yuhyeon.devwebide.project.domain.ProjectStatus;
-import com.yuhyeon.devwebide.project.dto.ProjectFileTreeResponse;
+import com.yuhyeon.devwebide.project.domain.*;
+import com.yuhyeon.devwebide.project.dto.*;
+import com.yuhyeon.devwebide.project.repository.FileVersionRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectRepository;
+import com.yuhyeon.devwebide.project.repository.ProjectSaveBatchRepository;
+import com.yuhyeon.devwebide.user.domain.GuestSession;
+import com.yuhyeon.devwebide.user.domain.User;
+import com.yuhyeon.devwebide.user.repository.GuestSessionRepository;
+import com.yuhyeon.devwebide.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +33,11 @@ public class ProjectFileService {
 
     private final ProjectRepository projectRepository;
     private final ProjectFileRepository projectFileRepository;
+    private final ProjectSaveBatchRepository projectSaveBatchRepository;
+    private final FileVersionRepository fileVersionRepository;
+    private final UserRepository userRepository;
+    private final GuestSessionRepository guestSessionRepository;
+    private final ProjectFileStorageService projectFileStorageService;
 
     /**
      * 프로젝트 파일 트리 조회
@@ -139,5 +147,136 @@ public class ProjectFileService {
         }
 
         return projectFile.getParentFile().getId();
+    }
+
+    @Transactional
+    public ProjectFileSaveResponse saveFiles(
+            Long projectId,
+            ProjectFileSaveRequest request
+    ) {
+        validateSaveActor(request.userId(), request.guestSessionId());
+
+        Project project = projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 프로젝트입니다."));
+
+        User user = findUserOrNull(request.userId());
+        GuestSession guestSession = findGuestSessionOrNull(request.guestSessionId());
+
+        List<ProjectFile> projectFiles = validateAndFindProjectFiles(projectId, request.files());
+
+        ProjectSaveBatch saveBatch = projectSaveBatchRepository.save(
+                ProjectSaveBatch.builder()
+                        .project(project)
+                        .user(user)
+                        .guestSession(guestSession)
+                        .status(ProjectSaveBatchStatus.SUCCESS)
+                        .savedFileCount(projectFiles.size())
+                        .build()
+        );
+
+        List<SavedFileResponse> savedFiles = new ArrayList<>();
+
+        for (int i = 0; i < request.files().size(); i++) {
+            ProjectFileSaveItemRequest itemRequest = request.files().get(i);
+            ProjectFile projectFile = projectFiles.get(i);
+
+            Integer nextVersionNo = getNextVersionNo(projectFile.getId());
+
+            ProjectFileStorageService.StoredFile storedFile =
+                    projectFileStorageService.save(
+                            project,
+                            projectFile,
+                            itemRequest.content(),
+                            nextVersionNo
+                    );
+
+            projectFile.updateFileMetadata(
+                    projectFile.getMimeType(),
+                    storedFile.sizeBytes()
+            );
+
+            FileVersion fileVersion = fileVersionRepository.save(
+                    FileVersion.builder()
+                            .projectFile(projectFile)
+                            .saveBatch(saveBatch)
+                            .versionNo(nextVersionNo)
+                            .storagePath(storedFile.storagePath())
+                            .contentHash(storedFile.contentHash())
+                            .sizeBytes(storedFile.sizeBytes())
+                            .build()
+            );
+
+            savedFiles.add(SavedFileResponse.from(fileVersion));
+        }
+
+        return ProjectFileSaveResponse.of(
+                project.getId(),
+                saveBatch.getId(),
+                saveBatch.getStatus(),
+                saveBatch.getSavedFileCount(),
+                savedFiles
+        );
+    }
+
+    private void validateSaveActor(Long userId, Long guestSessionId) {
+        boolean hasUserId = userId != null;
+        boolean hasGuestSessionId = guestSessionId != null;
+
+        if (hasUserId == hasGuestSessionId) {
+            throw new IllegalArgumentException("userId 또는 guestSessionId 중 하나만 전달해야 합니다.");
+        }
+    }
+
+    private User findUserOrNull(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+    }
+
+    private GuestSession findGuestSessionOrNull(Long guestSessionId) {
+        if (guestSessionId == null) {
+            return null;
+        }
+
+        return guestSessionRepository.findById(guestSessionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게스트 세션입니다."));
+    }
+
+    private List<ProjectFile> validateAndFindProjectFiles(
+            Long projectId,
+            List<ProjectFileSaveItemRequest> files
+    ) {
+        List<ProjectFile> projectFiles = new ArrayList<>();
+
+        for (ProjectFileSaveItemRequest fileRequest : files) {
+            ProjectFile projectFile = projectFileRepository
+                    .findById(fileRequest.projectFileId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 프로젝트 파일입니다."));
+
+            if (!projectFile.getProject().getId().equals(projectId)) {
+                throw new IllegalArgumentException("해당 프로젝트에 속한 파일이 아닙니다.");
+            }
+
+            if (projectFile.getStatus() != ProjectFileStatus.ACTIVE) {
+                throw new IllegalArgumentException("삭제된 파일은 저장할 수 없습니다.");
+            }
+
+            if (projectFile.getFileType() != ProjectFileType.FILE) {
+                throw new IllegalArgumentException("디렉토리는 저장할 수 없습니다.");
+            }
+
+            projectFiles.add(projectFile);
+        }
+
+        return projectFiles;
+    }
+
+    private Integer getNextVersionNo(Long projectFileId) {
+        return fileVersionRepository.findTopByProjectFileIdOrderByVersionNoDesc(projectFileId)
+                .map(fileVersion -> fileVersion.getVersionNo() + 1)
+                .orElse(1);
     }
 }

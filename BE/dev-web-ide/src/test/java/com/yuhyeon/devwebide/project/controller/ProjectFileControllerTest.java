@@ -2,7 +2,8 @@ package com.yuhyeon.devwebide.project.controller;
 
 import com.yuhyeon.devwebide.project.domain.ProjectFileStatus;
 import com.yuhyeon.devwebide.project.domain.ProjectFileType;
-import com.yuhyeon.devwebide.project.dto.ProjectFileTreeResponse;
+import com.yuhyeon.devwebide.project.domain.ProjectSaveBatchStatus;
+import com.yuhyeon.devwebide.project.dto.*;
 import com.yuhyeon.devwebide.project.service.ProjectFileService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.yuhyeon.devwebide.project.dto.ProjectFileSaveItemRequest;
+import com.yuhyeon.devwebide.project.dto.ProjectFileSaveRequest;
+import com.yuhyeon.devwebide.project.dto.ProjectFileSaveResponse;
+import com.yuhyeon.devwebide.project.dto.SavedFileResponse;
+import org.springframework.http.MediaType;
+import tools.jackson.databind.ObjectMapper;
+
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.refEq;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+
 @WebMvcTest(ProjectFileController.class)
 class ProjectFileControllerTest {
 
@@ -33,6 +45,8 @@ class ProjectFileControllerTest {
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     @DisplayName("프로젝트 파일 트리를 조회한다")
@@ -171,5 +185,57 @@ class ProjectFileControllerTest {
 
         then(projectFileService).should()
                 .getFileTree(projectId);
+    }
+
+    @Test
+    @DisplayName("프로젝트 파일을 저장한다")
+    void saveFiles() throws Exception {
+        ProjectFileSaveRequest request = new ProjectFileSaveRequest(
+                1L,
+                null,
+                List.of(
+                        new ProjectFileSaveItemRequest(
+                                10L,
+                                "console.log('hello');"
+                        )
+                )
+        );
+
+        ProjectFileSaveResponse response = new ProjectFileSaveResponse(
+                1L,
+                100L,
+                ProjectSaveBatchStatus.SUCCESS,
+                1,
+                List.of(
+                        new SavedFileResponse(
+                                10L,
+                                "/src/index.js",
+                                1,
+                                21L,
+                                "hash-abc"
+                        )
+                )
+        );
+
+        given(projectFileService.saveFiles(eq(1L), refEq(request)))
+                .willReturn(response);
+
+        mockMvc.perform(post("/api/projects/{projectId}/save", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectId").value(1L))
+                .andExpect(jsonPath("$.saveBatchId").value(100L))
+                .andExpect(jsonPath("$.status").value("SUCCESS"))
+                .andExpect(jsonPath("$.savedFileCount").value(1))
+                .andExpect(jsonPath("$.files", hasSize(1)))
+                .andExpect(jsonPath("$.files[0].projectFileId").value(10L))
+                .andExpect(jsonPath("$.files[0].path").value("/src/index.js"))
+                .andExpect(jsonPath("$.files[0].versionNo").value(1))
+                .andExpect(jsonPath("$.files[0].sizeBytes").value(21L))
+                .andExpect(jsonPath("$.files[0].contentHash").value("hash-abc"));
+
+        then(projectFileService).should()
+                .saveFiles(eq(1L), refEq(request));
     }
 }

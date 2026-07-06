@@ -1,7 +1,8 @@
-package com.yuhyeon.devwebide.project.service;
+package com.yuhyeon.devwebide.project.infrastructure;
 
 import com.yuhyeon.devwebide.project.domain.Project;
 import com.yuhyeon.devwebide.project.domain.ProjectFile;
+import com.yuhyeon.devwebide.project.service.ProjectFileStorageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +18,11 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
     private final Path storageRoot;
 
     public LocalProjectFileStorageService(
-            @Value("${app.project.storage-root:./storage}") String storageRoot
+            @Value("${app.storage.project-root:./storage}") String storageRoot
     ) {
-        this.storageRoot = Path.of(storageRoot);
+        this.storageRoot = Path.of(storageRoot)
+                .toAbsolutePath()
+                .normalize();
     }
 
     @Override
@@ -29,6 +32,8 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
             String content,
             Integer versionNo
     ) {
+        validateSaveRequest(project, projectFile, content, versionNo);
+
         try {
             byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
 
@@ -52,12 +57,39 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
         }
     }
 
+    private void validateSaveRequest(
+            Project project,
+            ProjectFile projectFile,
+            String content,
+            Integer versionNo
+    ) {
+        if (project == null) {
+            throw new IllegalArgumentException("프로젝트는 필수입니다.");
+        }
+
+        if (projectFile == null) {
+            throw new IllegalArgumentException("프로젝트 파일은 필수입니다.");
+        }
+
+        if (content == null) {
+            throw new IllegalArgumentException("파일 내용은 필수입니다.");
+        }
+
+        if (versionNo == null || versionNo <= 0) {
+            throw new IllegalArgumentException("파일 버전 번호는 1 이상이어야 합니다.");
+        }
+    }
+
     private Path resolveProjectRootPath(Project project) {
         String storagePath = removeLeadingSlash(project.getStoragePath());
 
-        return storageRoot
+        Path projectRootPath = storageRoot
                 .resolve(storagePath)
                 .normalize();
+
+        validatePathInsideBase(storageRoot, projectRootPath);
+
+        return projectRootPath;
     }
 
     private Path resolveCurrentFilePath(
@@ -66,9 +98,13 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
     ) {
         String filePath = removeLeadingSlash(projectFile.getPath());
 
-        return projectRootPath
+        Path currentFilePath = projectRootPath
                 .resolve(filePath)
                 .normalize();
+
+        validatePathInsideBase(projectRootPath, currentFilePath);
+
+        return currentFilePath;
     }
 
     private Path resolveVersionFilePath(
@@ -76,11 +112,21 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
             ProjectFile projectFile,
             Integer versionNo
     ) {
-        return projectRootPath
+        Path versionFilePath = projectRootPath
                 .resolve(".versions")
                 .resolve(String.valueOf(projectFile.getId()))
                 .resolve("v" + versionNo)
                 .normalize();
+
+        validatePathInsideBase(projectRootPath, versionFilePath);
+
+        return versionFilePath;
+    }
+
+    private void validatePathInsideBase(Path basePath, Path targetPath) {
+        if (!targetPath.startsWith(basePath)) {
+            throw new IllegalArgumentException("허용되지 않은 파일 경로입니다.");
+        }
     }
 
     private String removeLeadingSlash(String value) {

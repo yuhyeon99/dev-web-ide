@@ -360,7 +360,7 @@ public class ProjectService {
         validateOwnerUserId(ownerUserId);
 
         List<Project> projects =
-                projectRepository.findByOwnerUserIdAndStatusOrderByUpdatedAtDesc(
+                projectRepository.findByOwnerUserIdAndStatusOrderByUpdatedAtDescIdDesc(
                         ownerUserId,
                         ProjectStatus.ACTIVE
                 );

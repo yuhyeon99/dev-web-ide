@@ -27,7 +27,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
      * GET /api/projects/my 에서
      * 내가 생성한 프로젝트 목록을 조회할 때 사용합니다.
      */
-    List<Project> findByOwnerUserIdAndStatusOrderByUpdatedAtDesc(
+    List<Project> findByOwnerUserIdAndStatusOrderByUpdatedAtDescIdDesc(
             Long ownerUserId,
             ProjectStatus status
     );

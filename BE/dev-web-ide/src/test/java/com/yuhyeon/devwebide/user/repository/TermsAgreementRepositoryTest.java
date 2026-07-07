@@ -90,7 +90,7 @@ class TermsAgreementRepositoryTest {
 
     @Test
     @DisplayName("사용자의 최신 약관 동의 이력 조회")
-    void findTopByUserIdOrderByAgreedAtDesc() {
+    void findTopByUserIdOrderByAgreedAtDescIdDesc() {
         User user = User.builder()
                 .email("latest@test.com")
                 .nickname("최신테스터")
@@ -117,7 +117,7 @@ class TermsAgreementRepositoryTest {
                 termsAgreementRepository.save(secondAgreement);
 
         Optional<TermsAgreement> result =
-                termsAgreementRepository.findTopByUserIdOrderByAgreedAtDesc(
+                termsAgreementRepository.findTopByUserIdOrderByAgreedAtDescIdDesc(
                         savedUser.getId()
                 );
 

@@ -15,7 +15,7 @@ public interface TermsAgreementRepository extends JpaRepository<TermsAgreement, 
     /**
      * 특정 사용자의 최신 약관 동의 이력 조회
      */
-    Optional<TermsAgreement> findTopByUserIdOrderByAgreedAtDesc(Long userId);
+    Optional<TermsAgreement> findTopByUserIdOrderByAgreedAtDescIdDesc(Long userId);
 
     /**
      * 특정 사용자가 필수 약관에 모두 동의했는지 확인

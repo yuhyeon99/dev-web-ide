@@ -102,7 +102,7 @@ class ProjectRepositoryTest {
 
     @Test
     @DisplayName("회원 소유 프로젝트 목록 조회")
-    void findByOwnerUserIdAndStatusOrderByUpdatedAtDesc() {
+    void findByOwnerUserIdAndStatusOrderByUpdatedAtDescIdDesc() {
         User user = saveUser("owner@test.com", "소유자");
         Runtime runtime = saveRuntime("java-21", "Java 21");
 
@@ -132,7 +132,7 @@ class ProjectRepositoryTest {
         projectRepository.save(secondProject);
 
         List<Project> result =
-                projectRepository.findByOwnerUserIdAndStatusOrderByUpdatedAtDesc(
+                projectRepository.findByOwnerUserIdAndStatusOrderByUpdatedAtDescIdDesc(
                         user.getId(),
                         ProjectStatus.ACTIVE
                 );

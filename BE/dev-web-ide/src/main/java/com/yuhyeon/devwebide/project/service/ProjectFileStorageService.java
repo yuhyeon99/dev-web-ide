@@ -28,6 +28,11 @@ public interface ProjectFileStorageService {
             Integer versionNo
     );
 
+    String read(
+            Project project,
+            ProjectFile projectFile
+    );
+
     /**
      * 파일 저장 결과
      *

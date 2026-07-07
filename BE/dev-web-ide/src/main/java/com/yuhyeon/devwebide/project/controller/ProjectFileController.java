@@ -2,6 +2,7 @@ package com.yuhyeon.devwebide.project.controller;
 
 import com.yuhyeon.devwebide.project.dto.ProjectFileSaveRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileSaveResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectFileContentResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectFileTreeResponse;
 import com.yuhyeon.devwebide.project.service.ProjectFileService;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,17 @@ public class ProjectFileController {
     ) {
         List<ProjectFileTreeResponse> response =
                 projectFileService.getFileTree(projectId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{projectId}/files/{fileId}/content")
+    public ResponseEntity<ProjectFileContentResponse> getFileContent(
+            @PathVariable Long projectId,
+            @PathVariable Long fileId
+    ) {
+        ProjectFileContentResponse response =
+                projectFileService.getFileContent(projectId, fileId);
 
         return ResponseEntity.ok(response);
     }

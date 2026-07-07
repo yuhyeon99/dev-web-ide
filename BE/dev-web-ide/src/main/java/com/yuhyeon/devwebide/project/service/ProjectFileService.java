@@ -75,7 +75,7 @@ public class ProjectFileService {
      *
      * @param projectId 프로젝트 ID
      */
-    private void validateActiveProject(Long projectId) {
+    private Project validateActiveProject(Long projectId) {
         Project project = projectRepository.findByIdAndStatus(
                 projectId,
                 ProjectStatus.ACTIVE
@@ -88,6 +88,8 @@ public class ProjectFileService {
                     "활성 프로젝트만 파일 트리를 조회할 수 있습니다. projectId=" + projectId
             );
         }
+
+        return project;
     }
 
     /**
@@ -218,12 +220,42 @@ public class ProjectFileService {
         );
     }
 
+    public ProjectFileContentResponse getFileContent(Long projectId, Long fileId) {
+        Project project = validateActiveProject(projectId);
+
+        ProjectFile projectFile = projectFileRepository.findById(fileId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 프로젝트 파일입니다."));
+
+        validateReadableProjectFile(projectId, projectFile);
+
+        String content = projectFileStorageService.read(project, projectFile);
+
+        return ProjectFileContentResponse.of(projectFile, content);
+    }
+
     private void validateSaveActor(Long userId, Long guestSessionId) {
         boolean hasUserId = userId != null;
         boolean hasGuestSessionId = guestSessionId != null;
 
         if (hasUserId == hasGuestSessionId) {
             throw new IllegalArgumentException("userId 또는 guestSessionId 중 하나만 전달해야 합니다.");
+        }
+    }
+
+    private void validateReadableProjectFile(
+            Long projectId,
+            ProjectFile projectFile
+    ) {
+        if (!projectFile.getProject().getId().equals(projectId)) {
+            throw new IllegalArgumentException("해당 프로젝트에 속한 파일이 아닙니다.");
+        }
+
+        if (projectFile.getStatus() != ProjectFileStatus.ACTIVE) {
+            throw new IllegalArgumentException("삭제된 파일은 조회할 수 없습니다.");
+        }
+
+        if (projectFile.getFileType() != ProjectFileType.FILE) {
+            throw new IllegalArgumentException("디렉터리는 내용을 조회할 수 없습니다.");
         }
     }
 

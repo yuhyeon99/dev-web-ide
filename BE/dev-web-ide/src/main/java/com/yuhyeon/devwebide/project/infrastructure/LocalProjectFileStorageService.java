@@ -57,6 +57,23 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
         }
     }
 
+    @Override
+    public String read(
+            Project project,
+            ProjectFile projectFile
+    ) {
+        validateReadRequest(project, projectFile);
+
+        try {
+            Path projectRootPath = resolveProjectRootPath(project);
+            Path currentFilePath = resolveCurrentFilePath(projectRootPath, projectFile);
+
+            return Files.readString(currentFilePath, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new IllegalStateException("프로젝트 파일 읽기에 실패했습니다.", e);
+        }
+    }
+
     private void validateSaveRequest(
             Project project,
             ProjectFile projectFile,
@@ -77,6 +94,19 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
 
         if (versionNo == null || versionNo <= 0) {
             throw new IllegalArgumentException("파일 버전 번호는 1 이상이어야 합니다.");
+        }
+    }
+
+    private void validateReadRequest(
+            Project project,
+            ProjectFile projectFile
+    ) {
+        if (project == null) {
+            throw new IllegalArgumentException("?꾨줈?앺듃???꾩닔?낅땲??");
+        }
+
+        if (projectFile == null) {
+            throw new IllegalArgumentException("?꾨줈?앺듃 ?뚯씪? ?꾩닔?낅땲??");
         }
     }
 

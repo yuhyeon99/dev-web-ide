@@ -188,6 +188,44 @@ class ProjectFileControllerTest {
     }
 
     @Test
+    @DisplayName("프로젝트 파일 내용을 조회한다")
+    void getFileContent() throws Exception {
+        Long projectId = 1L;
+        Long fileId = 10L;
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 7, 7, 10, 0);
+
+        ProjectFileContentResponse response = new ProjectFileContentResponse(
+                fileId,
+                "App.jsx",
+                "/src/App.jsx",
+                "text/javascript",
+                120L,
+                "console.log('hello');",
+                updatedAt
+        );
+
+        given(projectFileService.getFileContent(projectId, fileId))
+                .willReturn(response);
+
+        mockMvc.perform(get(
+                        "/api/projects/{projectId}/files/{fileId}/content",
+                        projectId,
+                        fileId
+                ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectFileId").value(fileId))
+                .andExpect(jsonPath("$.name").value("App.jsx"))
+                .andExpect(jsonPath("$.path").value("/src/App.jsx"))
+                .andExpect(jsonPath("$.mimeType").value("text/javascript"))
+                .andExpect(jsonPath("$.sizeBytes").value(120L))
+                .andExpect(jsonPath("$.content").value("console.log('hello');"))
+                .andExpect(jsonPath("$.updatedAt").exists());
+
+        then(projectFileService).should()
+                .getFileContent(projectId, fileId);
+    }
+
+    @Test
     @DisplayName("프로젝트 파일을 저장한다")
     void saveFiles() throws Exception {
         ProjectFileSaveRequest request = new ProjectFileSaveRequest(

@@ -130,6 +130,67 @@ class LocalProjectFileStorageServiceTest {
     }
 
     @Test
+    @DisplayName("저장된 현재 파일 내용을 읽는다")
+    void readSavedFile() {
+        // given
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getId()).willReturn(35L);
+        given(projectFile.getPath()).willReturn("/src/App.js");
+
+        storageService.save(project, projectFile, "console.log('hello');", 1);
+
+        // when
+        String content = storageService.read(project, projectFile);
+
+        // then
+        assertThat(content).isEqualTo("console.log('hello');");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 파일을 읽으면 예외가 발생한다")
+    void throwExceptionWhenReadMissingFile() {
+        // given
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src/Missing.js");
+
+        // when & then
+        assertThatThrownBy(() -> storageService.read(project, projectFile))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("프로젝트 파일 읽기에 실패했습니다.");
+    }
+
+    @Test
+    @DisplayName("파일 읽기 시 경로 탈출 시도가 있으면 예외가 발생한다")
+    void rejectInvalidProjectFilePathWhenRead() {
+        // given
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/../../outside.txt");
+
+        // when & then
+        assertThatThrownBy(() -> storageService.read(project, projectFile))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("프로젝트 파일 읽기에 실패했습니다.");
+    }
+
+    @Test
     @DisplayName("프로젝트 경로가 저장 루트 밖으로 벗어나면 예외가 발생한다")
     void rejectInvalidProjectStoragePath() {
         // given

@@ -265,6 +265,164 @@ class LocalProjectFileStorageServiceTest {
     }
 
     @Test
+    @DisplayName("?뚯씪 ?대쫫??蹂寃쏀븳??")
+    void renameFile() throws Exception {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        Path sourcePath = tempDir
+                .resolve("projects/1/src/App.jsx")
+                .normalize();
+        Files.createDirectories(sourcePath.getParent());
+        Files.writeString(sourcePath, "console.log('hello');");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src/App.jsx");
+
+        storageService.rename(project, projectFile, "/src/App.tsx");
+
+        Path renamedPath = tempDir
+                .resolve("projects/1/src/App.tsx")
+                .normalize();
+
+        assertThat(Files.exists(sourcePath)).isFalse();
+        assertThat(Files.exists(renamedPath)).isTrue();
+        assertThat(Files.readString(renamedPath)).isEqualTo("console.log('hello');");
+    }
+
+    @Test
+    @DisplayName("?붾젆?곕━ ?대쫫??蹂寃쏀븳??")
+    void renameDirectory() throws Exception {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        Path sourcePath = tempDir
+                .resolve("projects/1/src")
+                .normalize();
+        Files.createDirectories(sourcePath);
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src");
+
+        storageService.rename(project, projectFile, "/app");
+
+        Path renamedPath = tempDir
+                .resolve("projects/1/app")
+                .normalize();
+
+        assertThat(Files.exists(sourcePath)).isFalse();
+        assertThat(Files.exists(renamedPath)).isTrue();
+        assertThat(renamedPath).isDirectory();
+    }
+
+    @Test
+    @DisplayName("以묒꺽 ?붾젆?곕━ ?대쫫 蹂寃???하위 ?뚯씪??維吏?쒕떎")
+    void renameDirectory_keepsNestedFiles() throws Exception {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        Path sourceFilePath = tempDir
+                .resolve("projects/1/src/components/Button.jsx")
+                .normalize();
+        Files.createDirectories(sourceFilePath.getParent());
+        Files.writeString(sourceFilePath, "export default Button;");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src");
+
+        storageService.rename(project, projectFile, "/app");
+
+        Path renamedFilePath = tempDir
+                .resolve("projects/1/app/components/Button.jsx")
+                .normalize();
+
+        assertThat(Files.exists(sourceFilePath)).isFalse();
+        assertThat(Files.exists(renamedFilePath)).isTrue();
+        assertThat(Files.readString(renamedFilePath)).isEqualTo("export default Button;");
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃? ?????遺紐??붾젆?곕━瑜??먮룞 ?앹꽦?쒕떎")
+    void renameCreatesTargetParentDirectories() throws Exception {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        Path sourcePath = tempDir
+                .resolve("projects/1/src/App.jsx")
+                .normalize();
+        Files.createDirectories(sourcePath.getParent());
+        Files.writeString(sourcePath, "console.log('hello');");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src/App.jsx");
+
+        storageService.rename(project, projectFile, "/app/main/App.jsx");
+
+        Path renamedPath = tempDir
+                .resolve("projects/1/app/main/App.jsx")
+                .normalize();
+
+        assertThat(Files.exists(renamedPath)).isTrue();
+        assertThat(Files.readString(renamedPath)).isEqualTo("console.log('hello');");
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃? ??寃쎈줈 ?덉텧 ?쒕룄媛 ?덉쑝硫??덉쇅媛 諛쒖깮?쒕떎")
+    void rejectInvalidProjectFilePathWhenRename() throws Exception {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        Path sourcePath = tempDir
+                .resolve("projects/1/src/App.jsx")
+                .normalize();
+        Files.createDirectories(sourcePath.getParent());
+        Files.writeString(sourcePath, "console.log('hello');");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src/App.jsx");
+
+        assertThatThrownBy(() -> storageService.rename(
+                project,
+                projectFile,
+                "/../../outside.txt"
+        )).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃? ??쏀났???먮낯???놁쑝硫??덉쇅媛 諛쒖깮?쒕떎")
+    void throwExceptionWhenRenameMissingSource() {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src/Missing.jsx");
+
+        assertThatThrownBy(() -> storageService.rename(
+                project,
+                projectFile,
+                "/src/App.jsx"
+        )).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     @DisplayName("파일 생성 시 경로 탈출 시도가 있으면 예외가 발생한다")
     void rejectInvalidProjectFilePathWhenCreateFile() {
         // given

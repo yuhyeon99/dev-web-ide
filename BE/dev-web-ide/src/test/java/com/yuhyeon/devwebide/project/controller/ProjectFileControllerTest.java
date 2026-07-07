@@ -32,6 +32,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.refEq;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @WebMvcTest(ProjectFileController.class)
@@ -317,6 +318,54 @@ class ProjectFileControllerTest {
 
         then(projectFileService).should()
                 .createFile(eq(projectId), refEq(request));
+    }
+
+    @Test
+    @DisplayName("?꾨줈?앺듃 ?뚯씪 ?대쫫??蹂寃쏀븳??")
+    void renameFile() throws Exception {
+        Long projectId = 1L;
+        Long fileId = 10L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 7, 10, 0);
+
+        ProjectFileRenameRequest request = new ProjectFileRenameRequest("App.tsx");
+
+        ProjectFileCreateResponse response = new ProjectFileCreateResponse(
+                fileId,
+                1L,
+                "App.tsx",
+                "/src/App.tsx",
+                ProjectFileType.FILE,
+                "text/typescript",
+                120L,
+                ProjectFileStatus.ACTIVE,
+                now,
+                now
+        );
+
+        given(projectFileService.renameFile(eq(projectId), eq(fileId), refEq(request)))
+                .willReturn(response);
+
+        mockMvc.perform(patch(
+                        "/api/projects/{projectId}/files/{fileId}/rename",
+                        projectId,
+                        fileId
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectFileId").value(fileId))
+                .andExpect(jsonPath("$.parentFileId").value(1L))
+                .andExpect(jsonPath("$.name").value("App.tsx"))
+                .andExpect(jsonPath("$.path").value("/src/App.tsx"))
+                .andExpect(jsonPath("$.fileType").value("FILE"))
+                .andExpect(jsonPath("$.mimeType").value("text/typescript"))
+                .andExpect(jsonPath("$.sizeBytes").value(120L))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.createdAt").exists())
+                .andExpect(jsonPath("$.updatedAt").exists());
+
+        then(projectFileService).should()
+                .renameFile(eq(projectId), eq(fileId), refEq(request));
     }
 
     @Test

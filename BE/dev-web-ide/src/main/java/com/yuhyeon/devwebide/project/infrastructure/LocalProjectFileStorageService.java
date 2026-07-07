@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -109,6 +110,26 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
         }
     }
 
+    @Override
+    public void rename(
+            Project project,
+            ProjectFile projectFile,
+            String newPath
+    ) {
+        validateRenameRequest(project, projectFile, newPath);
+
+        try {
+            Path projectRootPath = resolveProjectRootPath(project);
+            Path currentPath = resolveCurrentFilePath(projectRootPath, projectFile);
+            Path newFilePath = resolvePath(projectRootPath, newPath);
+
+            Files.createDirectories(newFilePath.getParent());
+            Files.move(currentPath, newFilePath, StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception e) {
+            throw new IllegalStateException("프로젝트 파일 이름 변경에 실패했습니다.", e);
+        }
+    }
+
     private void validateSaveRequest(
             Project project,
             ProjectFile projectFile,
@@ -158,6 +179,24 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
         }
     }
 
+    private void validateRenameRequest(
+            Project project,
+            ProjectFile projectFile,
+            String newPath
+    ) {
+        if (project == null) {
+            throw new IllegalArgumentException("?袁⑥쨮??븍뱜???袁⑸땾??낅빍??");
+        }
+
+        if (projectFile == null) {
+            throw new IllegalArgumentException("?袁⑥쨮??븍뱜 ???뵬?? ?袁⑸땾??낅빍??");
+        }
+
+        if (newPath == null || newPath.isBlank()) {
+            throw new IllegalArgumentException("변경할 파일 경로는 필수입니다.");
+        }
+    }
+
     private Path resolveProjectRootPath(Project project) {
         String storagePath = removeLeadingSlash(project.getStoragePath());
 
@@ -183,6 +222,21 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
         validatePathInsideBase(projectRootPath, currentFilePath);
 
         return currentFilePath;
+    }
+
+    private Path resolvePath(
+            Path projectRootPath,
+            String path
+    ) {
+        String filePath = removeLeadingSlash(path);
+
+        Path resolvedPath = projectRootPath
+                .resolve(filePath)
+                .normalize();
+
+        validatePathInsideBase(projectRootPath, resolvedPath);
+
+        return resolvedPath;
     }
 
     private Path resolveVersionFilePath(

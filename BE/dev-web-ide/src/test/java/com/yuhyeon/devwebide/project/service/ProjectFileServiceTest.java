@@ -8,6 +8,7 @@ import com.yuhyeon.devwebide.project.domain.ProjectStatus;
 import com.yuhyeon.devwebide.project.dto.ProjectFileContentResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectFileCreateRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectFileRenameRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileTreeResponse;
 import com.yuhyeon.devwebide.project.repository.FileVersionRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
@@ -910,6 +911,431 @@ class ProjectFileServiceTest {
         assertThatThrownBy(() -> projectFileService.createFile(projectId, request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("같은 위치에 동일한 이름의 파일 또는 폴더가 이미 존재합니다.");
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("?뚯씪 ?대쫫??蹂寃쏀븳??")
+    void renameFile_success() {
+        Long projectId = 1L;
+        Long parentFileId = 2L;
+        Long fileId = 10L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 7, 10, 0);
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile parentFile = createDirectory(project, null, parentFileId, "src", "/src");
+        ProjectFile projectFile = createFile(
+                project,
+                parentFile,
+                fileId,
+                "App.jsx",
+                "/src/App.jsx",
+                "text/javascript",
+                120L
+        );
+        ReflectionTestUtils.setField(projectFile, "createdAt", now);
+        ReflectionTestUtils.setField(projectFile, "updatedAt", now);
+
+        ProjectFileRenameRequest request = new ProjectFileRenameRequest("App.tsx");
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(projectFile));
+        given(projectFileRepository.existsByProjectIdAndParentFileIdAndNameAndStatus(
+                projectId,
+                parentFileId,
+                "App.tsx",
+                ProjectFileStatus.ACTIVE
+        )).willReturn(false);
+
+        ProjectFileCreateResponse response =
+                projectFileService.renameFile(projectId, fileId, request);
+
+        assertThat(response.projectFileId()).isEqualTo(fileId);
+        assertThat(response.parentFileId()).isEqualTo(parentFileId);
+        assertThat(response.name()).isEqualTo("App.tsx");
+        assertThat(response.path()).isEqualTo("/src/App.tsx");
+        assertThat(response.fileType()).isEqualTo(ProjectFileType.FILE);
+        assertThat(response.mimeType()).isEqualTo("text/typescript");
+        assertThat(response.sizeBytes()).isEqualTo(120L);
+        assertThat(response.status()).isEqualTo(ProjectFileStatus.ACTIVE);
+        assertThat(response.createdAt()).isEqualTo(now);
+        assertThat(response.updatedAt()).isEqualTo(now);
+
+        assertThat(projectFile.getName()).isEqualTo("App.tsx");
+        assertThat(projectFile.getPath()).isEqualTo("/src/App.tsx");
+        assertThat(projectFile.getMimeType()).isEqualTo("text/typescript");
+
+        then(projectRepository).should()
+                .findByIdAndStatus(projectId, ProjectStatus.ACTIVE);
+        then(projectFileStorageService).should()
+                .rename(project, projectFile, "/src/App.tsx");
+    }
+
+    @Test
+    @DisplayName("?붾젆?곕━ ?대쫫??蹂寃쏀븳??")
+    void renameDirectory_success() {
+        Long projectId = 1L;
+        Long rootFileId = 1L;
+        Long directoryId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, rootFileId, "/", "/");
+        ProjectFile directory = createDirectory(project, root, directoryId, "src", "/src");
+
+        ProjectFileRenameRequest request = new ProjectFileRenameRequest("app");
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(directoryId))
+                .willReturn(Optional.of(directory));
+        given(projectFileRepository.existsByProjectIdAndParentFileIdAndNameAndStatus(
+                projectId,
+                rootFileId,
+                "app",
+                ProjectFileStatus.ACTIVE
+        )).willReturn(false);
+        given(projectFileRepository.findByProjectIdAndStatusAndPathStartingWithOrderByPathAsc(
+                projectId,
+                ProjectFileStatus.ACTIVE,
+                "/src/"
+        )).willReturn(List.of());
+
+        ProjectFileCreateResponse response =
+                projectFileService.renameFile(projectId, directoryId, request);
+
+        assertThat(response.projectFileId()).isEqualTo(directoryId);
+        assertThat(response.parentFileId()).isEqualTo(rootFileId);
+        assertThat(response.name()).isEqualTo("app");
+        assertThat(response.path()).isEqualTo("/app");
+        assertThat(response.fileType()).isEqualTo(ProjectFileType.DIRECTORY);
+        assertThat(response.mimeType()).isNull();
+        assertThat(response.sizeBytes()).isEqualTo(0L);
+
+        then(projectFileStorageService).should()
+                .rename(project, directory, "/app");
+    }
+
+    @Test
+    @DisplayName("?붾젆?곕━ ?대쫫 蹂寃???하위 ?뚯씪 寃쎈줈瑜?媛깆떊?쒕떎")
+    void renameDirectory_updatesDescendantPaths() {
+        Long projectId = 1L;
+        Long rootFileId = 1L;
+        Long directoryId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, rootFileId, "/", "/");
+        ProjectFile directory = createDirectory(project, root, directoryId, "src", "/src");
+        ProjectFile childDirectory = createDirectory(project, directory, 11L, "components", "/src/components");
+        ProjectFile childFile = createFile(
+                project,
+                childDirectory,
+                12L,
+                "Button.jsx",
+                "/src/components/Button.jsx",
+                "text/javascript",
+                30L
+        );
+
+        ProjectFileRenameRequest request = new ProjectFileRenameRequest("app");
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(directoryId))
+                .willReturn(Optional.of(directory));
+        given(projectFileRepository.existsByProjectIdAndParentFileIdAndNameAndStatus(
+                projectId,
+                rootFileId,
+                "app",
+                ProjectFileStatus.ACTIVE
+        )).willReturn(false);
+        given(projectFileRepository.findByProjectIdAndStatusAndPathStartingWithOrderByPathAsc(
+                projectId,
+                ProjectFileStatus.ACTIVE,
+                "/src/"
+        )).willReturn(List.of(childDirectory, childFile));
+
+        projectFileService.renameFile(projectId, directoryId, request);
+
+        assertThat(directory.getPath()).isEqualTo("/app");
+        assertThat(childDirectory.getPath()).isEqualTo("/app/components");
+        assertThat(childFile.getPath()).isEqualTo("/app/components/Button.jsx");
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃????뚯씪???놁쑝硫??덉쇅媛 諛쒖깮?쒕떎")
+    void renameFile_notFound() {
+        Long projectId = 1L;
+        Long fileId = 999L;
+
+        Project project = mock(Project.class);
+        given(project.isActive()).willReturn(true);
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> projectFileService.renameFile(
+                projectId,
+                fileId,
+                new ProjectFileRenameRequest("App.tsx")
+        )).isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃????ㅻⅨ ?꾨줈?앺듃 ?뚯씪?대㈃ ?덉쇅媛 諛쒖깮?쒕떎")
+    void renameFile_projectMismatch() {
+        Long projectId = 1L;
+        Long fileId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.isActive()).willReturn(true);
+
+        Project anotherProject = mock(Project.class);
+        given(anotherProject.getId()).willReturn(2L);
+
+        ProjectFile projectFile = createFile(
+                anotherProject,
+                null,
+                fileId,
+                "App.jsx",
+                "/App.jsx",
+                "text/javascript",
+                120L
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(projectFile));
+
+        assertThatThrownBy(() -> projectFileService.renameFile(
+                projectId,
+                fileId,
+                new ProjectFileRenameRequest("App.tsx")
+        )).isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃????뚯씪???젣 ?곹깭硫??덉쇅媛 諛쒖깮?쒕떎")
+    void renameFile_deletedFile() {
+        Long projectId = 1L;
+        Long fileId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile projectFile = createProjectFile(
+                project,
+                null,
+                fileId,
+                "App.jsx",
+                "/App.jsx",
+                ProjectFileType.FILE,
+                "text/javascript",
+                120L,
+                ProjectFileStatus.DELETED
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(projectFile));
+
+        assertThatThrownBy(() -> projectFileService.renameFile(
+                projectId,
+                fileId,
+                new ProjectFileRenameRequest("App.tsx")
+        )).isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("猷⑦듃 ?붾젆?곕━???대쫫??蹂寃쏀븷 ???녿떎")
+    void renameFile_rootDirectory() {
+        Long projectId = 1L;
+        Long fileId = 1L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, fileId, "/", "/");
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(root));
+
+        assertThatThrownBy(() -> projectFileService.renameFile(
+                projectId,
+                fileId,
+                new ProjectFileRenameRequest("root")
+        )).isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃????뚯씪紐낆씠 null?대㈃ ?덉쇅媛 諛쒖깮?쒕떎")
+    void renameFile_nullName() {
+        assertInvalidRenameName(null);
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃????뚯씪紐낆씠 blank?대㈃ ?덉쇅媛 諛쒖깮?쒕떎")
+    void renameFile_blankName() {
+        assertInvalidRenameName(" ");
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃????뚯씪紐낆뿉 ?щ옒?쒓? ?덉쑝硫??덉쇅媛 諛쒖깮?쒕떎")
+    void renameFile_nameContainsSlash() {
+        assertInvalidRenameName("src/App.jsx");
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃????뚯씪紐낆뿉 ??뒳?섏떆媛 ?덉쑝硫??덉쇅媛 諛쒖깮?쒕떎")
+    void renameFile_nameContainsBackslash() {
+        assertInvalidRenameName("src\\App.jsx");
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃????뚯씪紐낆뿉 ?곸쐞 寃쎈줈媛 ?덉쑝硫??덉쇅媛 諛쒖깮?쒕떎")
+    void renameFile_nameContainsParentPath() {
+        assertInvalidRenameName("..env");
+    }
+
+    @Test
+    @DisplayName("?대쫫 蹂寃???媛숈? 遺紐??꾨옒 ?숈씪 ?대쫫???덉쑝硫??덉쇅媛 諛쒖깮?쒕떎")
+    void renameFile_duplicateName() {
+        Long projectId = 1L;
+        Long rootFileId = 1L;
+        Long fileId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, rootFileId, "/", "/");
+        ProjectFile projectFile = createFile(
+                project,
+                root,
+                fileId,
+                "App.jsx",
+                "/App.jsx",
+                "text/javascript",
+                120L
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(projectFile));
+        given(projectFileRepository.existsByProjectIdAndParentFileIdAndNameAndStatus(
+                projectId,
+                rootFileId,
+                "README.md",
+                ProjectFileStatus.ACTIVE
+        )).willReturn(true);
+
+        assertThatThrownBy(() -> projectFileService.renameFile(
+                projectId,
+                fileId,
+                new ProjectFileRenameRequest("README.md")
+        )).isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("?숈씪 ?대쫫?쇰줈 蹂寃??붿껌?섎㈃ ?꾩옱 硫뷀??곗씠?곕? 諛섑솚?쒕떎")
+    void renameFile_sameName() {
+        Long projectId = 1L;
+        Long rootFileId = 1L;
+        Long fileId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, rootFileId, "/", "/");
+        ProjectFile projectFile = createFile(
+                project,
+                root,
+                fileId,
+                "App.jsx",
+                "/App.jsx",
+                "text/javascript",
+                120L
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(projectFile));
+
+        ProjectFileCreateResponse response = projectFileService.renameFile(
+                projectId,
+                fileId,
+                new ProjectFileRenameRequest("App.jsx")
+        );
+
+        assertThat(response.projectFileId()).isEqualTo(fileId);
+        assertThat(response.name()).isEqualTo("App.jsx");
+        assertThat(response.path()).isEqualTo("/App.jsx");
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    private void assertInvalidRenameName(String name) {
+        Long projectId = 1L;
+        Long rootFileId = 1L;
+        Long fileId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, rootFileId, "/", "/");
+        ProjectFile projectFile = createFile(
+                project,
+                root,
+                fileId,
+                "App.jsx",
+                "/App.jsx",
+                "text/javascript",
+                120L
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(projectFile));
+
+        assertThatThrownBy(() -> projectFileService.renameFile(
+                projectId,
+                fileId,
+                new ProjectFileRenameRequest(name)
+        )).isInstanceOf(IllegalArgumentException.class);
 
         verifyNoInteractions(projectFileStorageService);
     }

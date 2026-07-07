@@ -2,6 +2,7 @@ package com.yuhyeon.devwebide.project.controller;
 
 import com.yuhyeon.devwebide.project.dto.ProjectFileCreateRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectFileRenameRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileSaveRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileSaveResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectFileContentResponse;
@@ -11,6 +12,7 @@ import com.yuhyeon.devwebide.project.service.ProjectFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -70,6 +72,18 @@ public class ProjectFileController {
     ) {
         ProjectFileCreateResponse response =
                 projectFileService.createFile(projectId, request);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{projectId}/files/{fileId}/rename")
+    public ResponseEntity<ProjectFileCreateResponse> renameFile(
+            @PathVariable Long projectId,
+            @PathVariable Long fileId,
+            @Valid @RequestBody ProjectFileRenameRequest request
+    ) {
+        ProjectFileCreateResponse response =
+                projectFileService.renameFile(projectId, fileId, request);
 
         return ResponseEntity.ok(response);
     }

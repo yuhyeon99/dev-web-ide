@@ -98,6 +98,12 @@ public interface ProjectFileRepository extends JpaRepository<ProjectFile, Long> 
             ProjectFileStatus status
     );
 
+    List<ProjectFile> findByProjectIdAndStatusAndPathStartingWithOrderByPathAsc(
+            Long projectId,
+            ProjectFileStatus status,
+            String pathPrefix
+    );
+
     /**
      * 특정 부모 폴더 아래 같은 이름의 활성 파일/폴더 존재 여부 확인
      *

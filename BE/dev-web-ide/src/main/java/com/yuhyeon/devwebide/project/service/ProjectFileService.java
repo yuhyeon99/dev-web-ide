@@ -277,6 +277,54 @@ public class ProjectFileService {
         return ProjectFileCreateResponse.from(savedProjectFile);
     }
 
+    @Transactional
+    public ProjectFileCreateResponse renameFile(
+            Long projectId,
+            Long fileId,
+            ProjectFileRenameRequest request
+    ) {
+        Project project = validateActiveProject(projectId);
+
+        ProjectFile projectFile = projectFileRepository.findById(fileId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 프로젝트 파일입니다."));
+
+        validateRenamableProjectFile(projectId, projectFile);
+        validateFileName(request.name());
+
+        if (projectFile.getName().equals(request.name())) {
+            return ProjectFileCreateResponse.from(projectFile);
+        }
+
+        Long parentFileId = getParentFileId(projectFile);
+
+        if (projectFileRepository.existsByProjectIdAndParentFileIdAndNameAndStatus(
+                projectId,
+                parentFileId,
+                request.name(),
+                ProjectFileStatus.ACTIVE
+        )) {
+            throw new IllegalArgumentException("같은 위치에 동일한 이름의 파일 또는 폴더가 이미 존재합니다.");
+        }
+
+        String oldPath = projectFile.getPath();
+        String newPath = buildRenamePath(projectFile, request.name());
+
+        projectFileStorageService.rename(project, projectFile, newPath);
+
+        projectFile.rename(request.name(), newPath);
+
+        if (projectFile.getFileType() == ProjectFileType.FILE) {
+            projectFile.updateFileMetadata(
+                    resolveMimeType(request.name(), ProjectFileType.FILE),
+                    projectFile.getSizeBytes()
+            );
+        } else {
+            renameDescendantPaths(projectId, oldPath, newPath);
+        }
+
+        return ProjectFileCreateResponse.from(projectFile);
+    }
+
     private void validateSaveActor(Long userId, Long guestSessionId) {
         boolean hasUserId = userId != null;
         boolean hasGuestSessionId = guestSessionId != null;
@@ -300,6 +348,43 @@ public class ProjectFileService {
 
         if (projectFile.getFileType() != ProjectFileType.FILE) {
             throw new IllegalArgumentException("디렉터리는 내용을 조회할 수 없습니다.");
+        }
+    }
+
+    private void validateRenamableProjectFile(
+            Long projectId,
+            ProjectFile projectFile
+    ) {
+        if (!projectFile.getProject().getId().equals(projectId)) {
+            throw new IllegalArgumentException("해당 프로젝트에 속한 파일이 아닙니다.");
+        }
+
+        if (projectFile.getStatus() != ProjectFileStatus.ACTIVE) {
+            throw new IllegalArgumentException("삭제된 파일은 이름을 변경할 수 없습니다.");
+        }
+
+        if (projectFile.isRootDirectory()) {
+            throw new IllegalArgumentException("루트 디렉터리는 이름을 변경할 수 없습니다.");
+        }
+    }
+
+    private void renameDescendantPaths(
+            Long projectId,
+            String oldPath,
+            String newPath
+    ) {
+        List<ProjectFile> descendants =
+                projectFileRepository.findByProjectIdAndStatusAndPathStartingWithOrderByPathAsc(
+                        projectId,
+                        ProjectFileStatus.ACTIVE,
+                        oldPath + "/"
+                );
+
+        for (ProjectFile descendant : descendants) {
+            String descendantNewPath =
+                    newPath + descendant.getPath().substring(oldPath.length());
+
+            descendant.move(descendant.getParentFile(), descendantNewPath);
         }
     }
 
@@ -356,6 +441,14 @@ public class ProjectFileService {
         }
 
         return parentFile.getPath() + "/" + name;
+    }
+
+    private String buildRenamePath(ProjectFile projectFile, String name) {
+        if (projectFile.getParentFile() == null) {
+            return "/" + name;
+        }
+
+        return buildPath(projectFile.getParentFile(), name);
     }
 
     private String resolveMimeType(String name, ProjectFileType fileType) {

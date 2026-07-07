@@ -43,6 +43,12 @@ public interface ProjectFileStorageService {
             ProjectFile projectFile
     );
 
+    void rename(
+            Project project,
+            ProjectFile projectFile,
+            String newPath
+    );
+
     /**
      * 파일 저장 결과
      *

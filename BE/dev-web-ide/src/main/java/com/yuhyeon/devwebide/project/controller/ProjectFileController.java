@@ -1,9 +1,12 @@
 package com.yuhyeon.devwebide.project.controller;
 
+import com.yuhyeon.devwebide.project.dto.ProjectFileCreateRequest;
+import com.yuhyeon.devwebide.project.dto.ProjectFileCreateResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectFileSaveRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileSaveResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectFileContentResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectFileTreeResponse;
+import jakarta.validation.Valid;
 import com.yuhyeon.devwebide.project.service.ProjectFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -56,6 +59,17 @@ public class ProjectFileController {
     ) {
         ProjectFileContentResponse response =
                 projectFileService.getFileContent(projectId, fileId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{projectId}/files")
+    public ResponseEntity<ProjectFileCreateResponse> createFile(
+            @PathVariable Long projectId,
+            @Valid @RequestBody ProjectFileCreateRequest request
+    ) {
+        ProjectFileCreateResponse response =
+                projectFileService.createFile(projectId, request);
 
         return ResponseEntity.ok(response);
     }

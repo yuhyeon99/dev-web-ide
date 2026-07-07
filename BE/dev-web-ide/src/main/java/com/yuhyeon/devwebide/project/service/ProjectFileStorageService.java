@@ -33,6 +33,16 @@ public interface ProjectFileStorageService {
             ProjectFile projectFile
     );
 
+    void createFile(
+            Project project,
+            ProjectFile projectFile
+    );
+
+    void createDirectory(
+            Project project,
+            ProjectFile projectFile
+    );
+
     /**
      * 파일 저장 결과
      *

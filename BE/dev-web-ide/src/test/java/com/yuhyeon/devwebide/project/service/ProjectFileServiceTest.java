@@ -6,6 +6,8 @@ import com.yuhyeon.devwebide.project.domain.ProjectFileStatus;
 import com.yuhyeon.devwebide.project.domain.ProjectFileType;
 import com.yuhyeon.devwebide.project.domain.ProjectStatus;
 import com.yuhyeon.devwebide.project.dto.ProjectFileContentResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectFileCreateRequest;
+import com.yuhyeon.devwebide.project.dto.ProjectFileCreateResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectFileTreeResponse;
 import com.yuhyeon.devwebide.project.repository.FileVersionRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
@@ -505,6 +507,444 @@ class ProjectFileServiceTest {
         assertThatThrownBy(() -> projectFileService.getFileContent(projectId, fileId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("디렉터리는 내용을 조회할 수 없습니다.");
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("프로젝트 파일을 생성한다")
+    void createFile_success() {
+        // given
+        Long projectId = 1L;
+        Long rootFileId = 1L;
+        Long projectFileId = 10L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 7, 10, 0);
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, rootFileId, "/", "/");
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                null,
+                "App.jsx",
+                ProjectFileType.FILE
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+
+        given(projectFileRepository.findByProjectIdAndParentFileIsNullAndStatus(
+                projectId,
+                ProjectFileStatus.ACTIVE
+        )).willReturn(Optional.of(root));
+
+        given(projectFileRepository.existsByProjectIdAndParentFileIdAndNameAndStatus(
+                projectId,
+                rootFileId,
+                "App.jsx",
+                ProjectFileStatus.ACTIVE
+        )).willReturn(false);
+
+        given(projectFileRepository.save(any(ProjectFile.class)))
+                .willAnswer(invocation -> {
+                    ProjectFile projectFile = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(projectFile, "id", projectFileId);
+                    ReflectionTestUtils.setField(projectFile, "createdAt", now);
+                    ReflectionTestUtils.setField(projectFile, "updatedAt", now);
+                    return projectFile;
+                });
+
+        // when
+        ProjectFileCreateResponse response =
+                projectFileService.createFile(projectId, request);
+
+        // then
+        assertThat(response.projectFileId()).isEqualTo(projectFileId);
+        assertThat(response.parentFileId()).isEqualTo(rootFileId);
+        assertThat(response.name()).isEqualTo("App.jsx");
+        assertThat(response.path()).isEqualTo("/App.jsx");
+        assertThat(response.fileType()).isEqualTo(ProjectFileType.FILE);
+        assertThat(response.mimeType()).isEqualTo("text/javascript");
+        assertThat(response.sizeBytes()).isEqualTo(0L);
+        assertThat(response.status()).isEqualTo(ProjectFileStatus.ACTIVE);
+        assertThat(response.createdAt()).isEqualTo(now);
+        assertThat(response.updatedAt()).isEqualTo(now);
+
+        then(projectRepository).should()
+                .findByIdAndStatus(projectId, ProjectStatus.ACTIVE);
+
+        then(projectFileStorageService).should()
+                .createFile(eq(project), any(ProjectFile.class));
+    }
+
+    @Test
+    @DisplayName("프로젝트 디렉터리를 생성한다")
+    void createDirectory_success() {
+        // given
+        Long projectId = 1L;
+        Long rootFileId = 1L;
+        Long projectFileId = 11L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 7, 10, 0);
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, rootFileId, "/", "/");
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                null,
+                "src",
+                ProjectFileType.DIRECTORY
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+
+        given(projectFileRepository.findByProjectIdAndParentFileIsNullAndStatus(
+                projectId,
+                ProjectFileStatus.ACTIVE
+        )).willReturn(Optional.of(root));
+
+        given(projectFileRepository.existsByProjectIdAndParentFileIdAndNameAndStatus(
+                projectId,
+                rootFileId,
+                "src",
+                ProjectFileStatus.ACTIVE
+        )).willReturn(false);
+
+        given(projectFileRepository.save(any(ProjectFile.class)))
+                .willAnswer(invocation -> {
+                    ProjectFile projectFile = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(projectFile, "id", projectFileId);
+                    ReflectionTestUtils.setField(projectFile, "createdAt", now);
+                    ReflectionTestUtils.setField(projectFile, "updatedAt", now);
+                    return projectFile;
+                });
+
+        // when
+        ProjectFileCreateResponse response =
+                projectFileService.createFile(projectId, request);
+
+        // then
+        assertThat(response.projectFileId()).isEqualTo(projectFileId);
+        assertThat(response.parentFileId()).isEqualTo(rootFileId);
+        assertThat(response.name()).isEqualTo("src");
+        assertThat(response.path()).isEqualTo("/src");
+        assertThat(response.fileType()).isEqualTo(ProjectFileType.DIRECTORY);
+        assertThat(response.mimeType()).isNull();
+        assertThat(response.sizeBytes()).isEqualTo(0L);
+        assertThat(response.status()).isEqualTo(ProjectFileStatus.ACTIVE);
+
+        then(projectFileStorageService).should()
+                .createDirectory(eq(project), any(ProjectFile.class));
+    }
+
+    @Test
+    @DisplayName("부모 디렉터리 하위에 파일을 생성한다")
+    void createFile_underParentDirectory() {
+        // given
+        Long projectId = 1L;
+        Long parentFileId = 2L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile src = createDirectory(project, null, parentFileId, "src", "/src");
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                parentFileId,
+                "index.ts",
+                ProjectFileType.FILE
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+
+        given(projectFileRepository.findById(parentFileId))
+                .willReturn(Optional.of(src));
+
+        given(projectFileRepository.existsByProjectIdAndParentFileIdAndNameAndStatus(
+                projectId,
+                parentFileId,
+                "index.ts",
+                ProjectFileStatus.ACTIVE
+        )).willReturn(false);
+
+        given(projectFileRepository.save(any(ProjectFile.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        // when
+        ProjectFileCreateResponse response =
+                projectFileService.createFile(projectId, request);
+
+        // then
+        assertThat(response.parentFileId()).isEqualTo(parentFileId);
+        assertThat(response.path()).isEqualTo("/src/index.ts");
+        assertThat(response.mimeType()).isEqualTo("text/typescript");
+    }
+
+    @Test
+    @DisplayName("부모 파일이 없으면 예외가 발생한다")
+    void createFile_parentNotFound() {
+        // given
+        Long projectId = 1L;
+        Long parentFileId = 999L;
+
+        Project project = mock(Project.class);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                parentFileId,
+                "App.jsx",
+                ProjectFileType.FILE
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+
+        given(projectFileRepository.findById(parentFileId))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> projectFileService.createFile(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("부모 파일을 찾을 수 없습니다.");
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("부모 파일이 다른 프로젝트 소속이면 예외가 발생한다")
+    void createFile_parentProjectMismatch() {
+        // given
+        Long projectId = 1L;
+        Long parentFileId = 2L;
+
+        Project project = mock(Project.class);
+        given(project.isActive()).willReturn(true);
+
+        Project anotherProject = mock(Project.class);
+        given(anotherProject.getId()).willReturn(2L);
+
+        ProjectFile parentFile = createDirectory(
+                anotherProject,
+                null,
+                parentFileId,
+                "src",
+                "/src"
+        );
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                parentFileId,
+                "App.jsx",
+                ProjectFileType.FILE
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+
+        given(projectFileRepository.findById(parentFileId))
+                .willReturn(Optional.of(parentFile));
+
+        // when & then
+        assertThatThrownBy(() -> projectFileService.createFile(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("해당 프로젝트에 속한 부모 파일이 아닙니다.");
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("삭제된 부모 파일이면 예외가 발생한다")
+    void createFile_deletedParent() {
+        // given
+        Long projectId = 1L;
+        Long parentFileId = 2L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile parentFile = createProjectFile(
+                project,
+                null,
+                parentFileId,
+                "src",
+                "/src",
+                ProjectFileType.DIRECTORY,
+                null,
+                0L,
+                ProjectFileStatus.DELETED
+        );
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                parentFileId,
+                "App.jsx",
+                ProjectFileType.FILE
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+
+        given(projectFileRepository.findById(parentFileId))
+                .willReturn(Optional.of(parentFile));
+
+        // when & then
+        assertThatThrownBy(() -> projectFileService.createFile(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("삭제된 폴더에는 파일을 생성할 수 없습니다.");
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("부모가 파일이면 예외가 발생한다")
+    void createFile_parentIsFile() {
+        // given
+        Long projectId = 1L;
+        Long parentFileId = 2L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile parentFile = createFile(
+                project,
+                null,
+                parentFileId,
+                "README.md",
+                "/README.md",
+                "text/markdown",
+                10L
+        );
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                parentFileId,
+                "App.jsx",
+                ProjectFileType.FILE
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+
+        given(projectFileRepository.findById(parentFileId))
+                .willReturn(Optional.of(parentFile));
+
+        // when & then
+        assertThatThrownBy(() -> projectFileService.createFile(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("디렉터리 하위에만 파일을 생성할 수 있습니다.");
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("파일명이 null이면 예외가 발생한다")
+    void createFile_nullName() {
+        assertInvalidFileName(null);
+    }
+
+    @Test
+    @DisplayName("파일명이 blank이면 예외가 발생한다")
+    void createFile_blankName() {
+        assertInvalidFileName(" ");
+    }
+
+    @Test
+    @DisplayName("파일명에 슬래시가 있으면 예외가 발생한다")
+    void createFile_nameContainsSlash() {
+        assertInvalidFileName("src/App.jsx");
+    }
+
+    @Test
+    @DisplayName("파일명에 역슬래시가 있으면 예외가 발생한다")
+    void createFile_nameContainsBackslash() {
+        assertInvalidFileName("src\\App.jsx");
+    }
+
+    @Test
+    @DisplayName("파일명에 상위 경로가 있으면 예외가 발생한다")
+    void createFile_nameContainsParentPath() {
+        assertInvalidFileName("..env");
+    }
+
+    @Test
+    @DisplayName("같은 부모 아래 동일 이름이 있으면 예외가 발생한다")
+    void createFile_duplicateName() {
+        // given
+        Long projectId = 1L;
+        Long rootFileId = 1L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, rootFileId, "/", "/");
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                null,
+                "App.jsx",
+                ProjectFileType.FILE
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+
+        given(projectFileRepository.findByProjectIdAndParentFileIsNullAndStatus(
+                projectId,
+                ProjectFileStatus.ACTIVE
+        )).willReturn(Optional.of(root));
+
+        given(projectFileRepository.existsByProjectIdAndParentFileIdAndNameAndStatus(
+                projectId,
+                rootFileId,
+                "App.jsx",
+                ProjectFileStatus.ACTIVE
+        )).willReturn(true);
+
+        // when & then
+        assertThatThrownBy(() -> projectFileService.createFile(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("같은 위치에 동일한 이름의 파일 또는 폴더가 이미 존재합니다.");
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    private void assertInvalidFileName(String name) {
+        Long projectId = 1L;
+        Long rootFileId = 1L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, rootFileId, "/", "/");
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                null,
+                name,
+                ProjectFileType.FILE
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+
+        given(projectFileRepository.findByProjectIdAndParentFileIsNullAndStatus(
+                projectId,
+                ProjectFileStatus.ACTIVE
+        )).willReturn(Optional.of(root));
+
+        String expectedMessage = name == null || name.isBlank()
+                ? "파일/폴더 이름은 필수입니다."
+                : "사용할 수 없는 파일/폴더 이름입니다.";
+
+        assertThatThrownBy(() -> projectFileService.createFile(projectId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(expectedMessage);
 
         verifyNoInteractions(projectFileStorageService);
     }

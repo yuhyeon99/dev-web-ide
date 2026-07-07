@@ -74,6 +74,41 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
         }
     }
 
+    @Override
+    public void createFile(
+            Project project,
+            ProjectFile projectFile
+    ) {
+        validateCreateRequest(project, projectFile);
+
+        try {
+            Path projectRootPath = resolveProjectRootPath(project);
+            Path currentFilePath = resolveCurrentFilePath(projectRootPath, projectFile);
+
+            Files.createDirectories(currentFilePath.getParent());
+            Files.write(currentFilePath, new byte[0]);
+        } catch (Exception e) {
+            throw new IllegalStateException("프로젝트 파일 생성에 실패했습니다.", e);
+        }
+    }
+
+    @Override
+    public void createDirectory(
+            Project project,
+            ProjectFile projectFile
+    ) {
+        validateCreateRequest(project, projectFile);
+
+        try {
+            Path projectRootPath = resolveProjectRootPath(project);
+            Path currentDirectoryPath = resolveCurrentFilePath(projectRootPath, projectFile);
+
+            Files.createDirectories(currentDirectoryPath);
+        } catch (Exception e) {
+            throw new IllegalStateException("프로젝트 디렉터리 생성에 실패했습니다.", e);
+        }
+    }
+
     private void validateSaveRequest(
             Project project,
             ProjectFile projectFile,
@@ -107,6 +142,19 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
 
         if (projectFile == null) {
             throw new IllegalArgumentException("?꾨줈?앺듃 ?뚯씪? ?꾩닔?낅땲??");
+        }
+    }
+
+    private void validateCreateRequest(
+            Project project,
+            ProjectFile projectFile
+    ) {
+        if (project == null) {
+            throw new IllegalArgumentException("?袁⑥쨮??븍뱜???袁⑸땾??낅빍??");
+        }
+
+        if (projectFile == null) {
+            throw new IllegalArgumentException("?袁⑥쨮??븍뱜 ???뵬?? ?袁⑸땾??낅빍??");
         }
     }
 

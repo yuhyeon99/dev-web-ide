@@ -131,7 +131,12 @@
 - [x] 파일 버전 번호 증가 처리
 - [x] 파일 메타데이터 크기 갱신
 - [x] `ProjectFileServiceTest` 구현
-- [~] 파일 생성 API는 확인되지 않음
+- [x] 파일 생성 API 구현
+- [x] 파일 생성 시 ACTIVE 프로젝트 검증
+- [x] 파일 생성 시 부모 디렉터리 검증
+- [x] 파일명 검증
+- [x] 중복 이름 검증
+- [x] StorageService 파일/디렉터리 생성 구현
 - [x] 파일 내용 조회 API 구현
 - [x] 파일 내용 조회 시 ACTIVE 프로젝트 검증
 - [x] 파일 내용 조회 시 파일 소속/상태/타입 검증
@@ -144,6 +149,8 @@
 - [x] `ProjectFileStorageService` 인터페이스 구현
 - [x] `LocalProjectFileStorageService` 구현
 - [x] 현재 파일 저장 구현
+- [x] 현재 파일 생성 구현
+- [x] 디렉터리 생성 구현
 - [x] 현재 파일 내용 읽기 구현
 - [x] `.versions/{projectFileId}/v{versionNo}` 버전 파일 저장 구현
 - [x] UTF-8 바이트 기준 파일 크기 계산
@@ -206,6 +213,7 @@
 - [x] `GET /api/projects/{projectId}`
 - [x] `POST /api/projects/{projectId}/open`
 - [x] `GET /api/projects/{projectId}/files/tree`
+- [x] `POST /api/projects/{projectId}/files`
 - [x] `GET /api/projects/{projectId}/files/{fileId}/content`
 - [x] `POST /api/projects/{projectId}/save`
 - [x] `POST /api/projects/{projectId}/run`
@@ -255,7 +263,7 @@
 
 - [x] RuntimeController 테스트
 - [x] ProjectController 테스트
-- [x] ProjectFileController 테스트: 파일 트리 조회, 파일 내용 조회, 파일 저장
+- [x] ProjectFileController 테스트: 파일 트리 조회, 파일 생성, 파일 내용 조회, 파일 저장
 - [x] ProjectRunController 테스트
 - [x] TerminalLogController 테스트
 - [x] WorkspaceSessionStopController 테스트
@@ -282,7 +290,6 @@
 - [ ] 프로젝트 수정 API
 - [ ] 프로젝트 삭제/복구 API
 - [ ] 팀 멤버 초대/수락/권한 변경/제거 API
-- [ ] 파일 생성 API
 - [ ] 파일 이름 변경 API
 - [ ] 파일/디렉터리 삭제 API
 - [ ] 컨테이너 상태 STARTING -> RUNNING 전환 처리

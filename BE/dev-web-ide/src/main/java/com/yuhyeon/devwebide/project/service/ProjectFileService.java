@@ -233,6 +233,50 @@ public class ProjectFileService {
         return ProjectFileContentResponse.of(projectFile, content);
     }
 
+    @Transactional
+    public ProjectFileCreateResponse createFile(
+            Long projectId,
+            ProjectFileCreateRequest request
+    ) {
+        Project project = validateActiveProject(projectId);
+        ProjectFile parentFile = findParentFile(projectId, request.parentFileId());
+
+        validateFileName(request.name());
+
+        String path = buildPath(parentFile, request.name());
+        Long parentFileId = parentFile.getId();
+
+        if (projectFileRepository.existsByProjectIdAndParentFileIdAndNameAndStatus(
+                projectId,
+                parentFileId,
+                request.name(),
+                ProjectFileStatus.ACTIVE
+        )) {
+            throw new IllegalArgumentException("같은 위치에 동일한 이름의 파일 또는 폴더가 이미 존재합니다.");
+        }
+
+        ProjectFile projectFile = ProjectFile.builder()
+                .project(project)
+                .parentFile(parentFile)
+                .name(request.name())
+                .path(path)
+                .fileType(request.fileType())
+                .mimeType(resolveMimeType(request.name(), request.fileType()))
+                .sizeBytes(0L)
+                .status(ProjectFileStatus.ACTIVE)
+                .build();
+
+        ProjectFile savedProjectFile = projectFileRepository.save(projectFile);
+
+        if (savedProjectFile.getFileType() == ProjectFileType.FILE) {
+            projectFileStorageService.createFile(project, savedProjectFile);
+        } else {
+            projectFileStorageService.createDirectory(project, savedProjectFile);
+        }
+
+        return ProjectFileCreateResponse.from(savedProjectFile);
+    }
+
     private void validateSaveActor(Long userId, Long guestSessionId) {
         boolean hasUserId = userId != null;
         boolean hasGuestSessionId = guestSessionId != null;
@@ -257,6 +301,103 @@ public class ProjectFileService {
         if (projectFile.getFileType() != ProjectFileType.FILE) {
             throw new IllegalArgumentException("디렉터리는 내용을 조회할 수 없습니다.");
         }
+    }
+
+    private ProjectFile findParentFile(Long projectId, Long parentFileId) {
+        if (parentFileId == null) {
+            ProjectFile rootDirectory = projectFileRepository.findByProjectIdAndParentFileIsNullAndStatus(
+                    projectId,
+                    ProjectFileStatus.ACTIVE
+            ).orElseThrow(() -> new IllegalArgumentException("프로젝트 루트 디렉터리를 찾을 수 없습니다."));
+
+            validateParentDirectory(projectId, rootDirectory);
+
+            return rootDirectory;
+        }
+
+        ProjectFile parentFile = projectFileRepository.findById(parentFileId)
+                .orElseThrow(() -> new IllegalArgumentException("부모 파일을 찾을 수 없습니다."));
+
+        validateParentDirectory(projectId, parentFile);
+
+        return parentFile;
+    }
+
+    private void validateParentDirectory(
+            Long projectId,
+            ProjectFile parentFile
+    ) {
+        if (!parentFile.getProject().getId().equals(projectId)) {
+            throw new IllegalArgumentException("해당 프로젝트에 속한 부모 파일이 아닙니다.");
+        }
+
+        if (parentFile.getStatus() != ProjectFileStatus.ACTIVE) {
+            throw new IllegalArgumentException("삭제된 폴더에는 파일을 생성할 수 없습니다.");
+        }
+
+        if (parentFile.getFileType() != ProjectFileType.DIRECTORY) {
+            throw new IllegalArgumentException("디렉터리 하위에만 파일을 생성할 수 있습니다.");
+        }
+    }
+
+    private void validateFileName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("파일/폴더 이름은 필수입니다.");
+        }
+
+        if (name.contains("/") || name.contains("\\") || name.contains("..")) {
+            throw new IllegalArgumentException("사용할 수 없는 파일/폴더 이름입니다.");
+        }
+    }
+
+    private String buildPath(ProjectFile parentFile, String name) {
+        if (parentFile.isRootDirectory()) {
+            return "/" + name;
+        }
+
+        return parentFile.getPath() + "/" + name;
+    }
+
+    private String resolveMimeType(String name, ProjectFileType fileType) {
+        if (fileType == ProjectFileType.DIRECTORY) {
+            return null;
+        }
+
+        String lowerName = name.toLowerCase();
+
+        if (lowerName.endsWith(".js") || lowerName.endsWith(".jsx")) {
+            return "text/javascript";
+        }
+
+        if (lowerName.endsWith(".ts") || lowerName.endsWith(".tsx")) {
+            return "text/typescript";
+        }
+
+        if (lowerName.endsWith(".json")) {
+            return "application/json";
+        }
+
+        if (lowerName.endsWith(".md")) {
+            return "text/markdown";
+        }
+
+        if (lowerName.endsWith(".py")) {
+            return "text/x-python";
+        }
+
+        if (lowerName.endsWith(".java")) {
+            return "text/x-java-source";
+        }
+
+        if (lowerName.endsWith(".html")) {
+            return "text/html";
+        }
+
+        if (lowerName.endsWith(".css")) {
+            return "text/css";
+        }
+
+        return "text/plain";
     }
 
     private User findUserOrNull(Long userId) {

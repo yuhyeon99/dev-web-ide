@@ -191,6 +191,99 @@ class LocalProjectFileStorageServiceTest {
     }
 
     @Test
+    @DisplayName("빈 파일을 생성한다")
+    void createFile() {
+        // given
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src/App.js");
+
+        // when
+        storageService.createFile(project, projectFile);
+
+        // then
+        Path currentFilePath = tempDir
+                .resolve("projects/1/src/App.js")
+                .normalize();
+
+        assertThat(Files.exists(currentFilePath)).isTrue();
+        assertThat(currentFilePath).isRegularFile();
+    }
+
+    @Test
+    @DisplayName("디렉터리를 생성한다")
+    void createDirectory() {
+        // given
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src/components");
+
+        // when
+        storageService.createDirectory(project, projectFile);
+
+        // then
+        Path directoryPath = tempDir
+                .resolve("projects/1/src/components")
+                .normalize();
+
+        assertThat(Files.exists(directoryPath)).isTrue();
+        assertThat(directoryPath).isDirectory();
+    }
+
+    @Test
+    @DisplayName("중첩 경로의 부모 디렉터리를 자동 생성한다")
+    void createParentDirectoriesAutomatically() {
+        // given
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src/main/App.java");
+
+        // when
+        storageService.createFile(project, projectFile);
+
+        // then
+        Path filePath = tempDir
+                .resolve("projects/1/src/main/App.java")
+                .normalize();
+
+        assertThat(Files.exists(filePath)).isTrue();
+    }
+
+    @Test
+    @DisplayName("파일 생성 시 경로 탈출 시도가 있으면 예외가 발생한다")
+    void rejectInvalidProjectFilePathWhenCreateFile() {
+        // given
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/../../outside.txt");
+
+        // when & then
+        assertThatThrownBy(() -> storageService.createFile(project, projectFile))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("프로젝트 파일 생성에 실패했습니다.");
+    }
+
+    @Test
     @DisplayName("프로젝트 경로가 저장 루트 밖으로 벗어나면 예외가 발생한다")
     void rejectInvalidProjectStoragePath() {
         // given

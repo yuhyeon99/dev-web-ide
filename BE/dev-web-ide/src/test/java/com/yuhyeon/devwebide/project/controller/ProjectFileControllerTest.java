@@ -226,6 +226,100 @@ class ProjectFileControllerTest {
     }
 
     @Test
+    @DisplayName("프로젝트 파일을 생성한다")
+    void createFile() throws Exception {
+        Long projectId = 1L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 7, 10, 0);
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                1L,
+                "App.jsx",
+                ProjectFileType.FILE
+        );
+
+        ProjectFileCreateResponse response = new ProjectFileCreateResponse(
+                10L,
+                1L,
+                "App.jsx",
+                "/src/App.jsx",
+                ProjectFileType.FILE,
+                "text/javascript",
+                0L,
+                ProjectFileStatus.ACTIVE,
+                now,
+                now
+        );
+
+        given(projectFileService.createFile(eq(projectId), refEq(request)))
+                .willReturn(response);
+
+        mockMvc.perform(post("/api/projects/{projectId}/files", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectFileId").value(10L))
+                .andExpect(jsonPath("$.parentFileId").value(1L))
+                .andExpect(jsonPath("$.name").value("App.jsx"))
+                .andExpect(jsonPath("$.path").value("/src/App.jsx"))
+                .andExpect(jsonPath("$.fileType").value("FILE"))
+                .andExpect(jsonPath("$.mimeType").value("text/javascript"))
+                .andExpect(jsonPath("$.sizeBytes").value(0L))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.createdAt").exists())
+                .andExpect(jsonPath("$.updatedAt").exists());
+
+        then(projectFileService).should()
+                .createFile(eq(projectId), refEq(request));
+    }
+
+    @Test
+    @DisplayName("프로젝트 디렉터리를 생성한다")
+    void createDirectory() throws Exception {
+        Long projectId = 1L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 7, 10, 0);
+
+        ProjectFileCreateRequest request = new ProjectFileCreateRequest(
+                1L,
+                "components",
+                ProjectFileType.DIRECTORY
+        );
+
+        ProjectFileCreateResponse response = new ProjectFileCreateResponse(
+                11L,
+                1L,
+                "components",
+                "/src/components",
+                ProjectFileType.DIRECTORY,
+                null,
+                0L,
+                ProjectFileStatus.ACTIVE,
+                now,
+                now
+        );
+
+        given(projectFileService.createFile(eq(projectId), refEq(request)))
+                .willReturn(response);
+
+        mockMvc.perform(post("/api/projects/{projectId}/files", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectFileId").value(11L))
+                .andExpect(jsonPath("$.parentFileId").value(1L))
+                .andExpect(jsonPath("$.name").value("components"))
+                .andExpect(jsonPath("$.path").value("/src/components"))
+                .andExpect(jsonPath("$.fileType").value("DIRECTORY"))
+                .andExpect(jsonPath("$.mimeType").doesNotExist())
+                .andExpect(jsonPath("$.sizeBytes").value(0L))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.createdAt").exists())
+                .andExpect(jsonPath("$.updatedAt").exists());
+
+        then(projectFileService).should()
+                .createFile(eq(projectId), refEq(request));
+    }
+
+    @Test
     @DisplayName("프로젝트 파일을 저장한다")
     void saveFiles() throws Exception {
         ProjectFileSaveRequest request = new ProjectFileSaveRequest(

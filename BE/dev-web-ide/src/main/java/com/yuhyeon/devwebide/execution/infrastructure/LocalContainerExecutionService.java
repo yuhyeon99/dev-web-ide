@@ -1,5 +1,6 @@
 package com.yuhyeon.devwebide.execution.service;
 
+import com.yuhyeon.devwebide.execution.domain.ContainerInstance;
 import com.yuhyeon.devwebide.execution.domain.ContainerInstanceStatus;
 import com.yuhyeon.devwebide.project.domain.Project;
 import com.yuhyeon.devwebide.runtime.domain.Runtime;
@@ -32,5 +33,10 @@ public class LocalContainerExecutionService implements ContainerExecutionService
                 ContainerInstanceStatus.RUNNING,
                 project.getStoragePath()
         );
+    }
+
+    @Override
+    public void stop(ContainerInstance containerInstance) {
+        // 실제 컨테이너 종료 연동 전 no-op
     }
 }

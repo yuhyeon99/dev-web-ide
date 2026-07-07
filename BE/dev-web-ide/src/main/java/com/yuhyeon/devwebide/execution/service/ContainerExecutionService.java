@@ -1,5 +1,6 @@
 package com.yuhyeon.devwebide.execution.service;
 
+import com.yuhyeon.devwebide.execution.domain.ContainerInstance;
 import com.yuhyeon.devwebide.project.domain.Project;
 import com.yuhyeon.devwebide.runtime.domain.Runtime;
 import com.yuhyeon.devwebide.workspace.domain.WorkspaceSession;
@@ -25,4 +26,6 @@ public interface ContainerExecutionService {
             Runtime runtime,
             WorkspaceSession workspaceSession
     );
+
+    void stop(ContainerInstance containerInstance);
 }

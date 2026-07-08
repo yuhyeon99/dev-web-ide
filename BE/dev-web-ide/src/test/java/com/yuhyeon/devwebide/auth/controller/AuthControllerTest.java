@@ -1,0 +1,83 @@
+package com.yuhyeon.devwebide.auth.controller;
+
+import com.yuhyeon.devwebide.auth.dto.AuthLogoutResponse;
+import com.yuhyeon.devwebide.auth.service.AuthService;
+import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest(AuthController.class)
+class AuthControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private AuthService authService;
+
+    @MockitoBean
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @Test
+    @DisplayName("로그아웃 API 요청에 성공한다")
+    void logout() throws Exception {
+        String refreshToken = "refresh-token";
+        LocalDateTime revokedAt = LocalDateTime.of(2026, 7, 8, 10, 0);
+        AuthLogoutResponse response = AuthLogoutResponse.of(true, revokedAt);
+
+        given(authService.logout(refreshToken))
+                .willReturn(response);
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .cookie(new Cookie("refreshToken", refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.loggedOut").value(true))
+                .andExpect(jsonPath("$.revokedAt").exists())
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("refreshToken=")
+                ))
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("Path=/")
+                ))
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("Max-Age=0")
+                ))
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("HttpOnly")
+                ));
+
+        then(authService).should()
+                .logout(refreshToken);
+    }
+
+    @Test
+    @DisplayName("Refresh Token Cookie가 없으면 Service 예외 흐름으로 연결된다")
+    void logoutWithoutRefreshTokenCookie() {
+        given(authService.logout(null))
+                .willThrow(new IllegalArgumentException("Refresh Token이 필요합니다."));
+
+        assertThatThrownBy(() -> mockMvc.perform(post("/api/auth/logout")))
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+
+        then(authService).should()
+                .logout(null);
+    }
+}

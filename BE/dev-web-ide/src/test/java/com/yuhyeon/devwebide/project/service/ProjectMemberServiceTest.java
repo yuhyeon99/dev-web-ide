@@ -339,6 +339,190 @@ class ProjectMemberServiceTest {
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    @DisplayName("프로젝트 멤버 초대를 수락한다")
+    void acceptInvitation() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User invitedUser = saveUser("invited");
+        ProjectMember invitedMember = saveProjectMember(
+                testProject.project(),
+                invitedUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.INVITED
+        );
+
+        ProjectMemberManageResponse response = projectMemberService.acceptInvitation(
+                testProject.project().getId(),
+                invitedMember.getId(),
+                invitedUser.getId()
+        );
+
+        ProjectMember acceptedMember = projectMemberRepository.findById(invitedMember.getId())
+                .orElseThrow();
+
+        assertThat(acceptedMember.getStatus()).isEqualTo(ProjectMemberStatus.ACTIVE);
+        assertThat(acceptedMember.getJoinedAt()).isNotNull();
+        assertThat(response.projectMemberId()).isEqualTo(invitedMember.getId());
+        assertThat(response.userId()).isEqualTo(invitedUser.getId());
+        assertThat(response.role()).isEqualTo(ProjectMemberRole.EDITOR);
+        assertThat(response.status()).isEqualTo(ProjectMemberStatus.ACTIVE);
+        assertThat(response.invitedAt()).isNotNull();
+        assertThat(response.joinedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 프로젝트의 초대는 수락할 수 없다")
+    void acceptInvitationWithNotFoundProject() {
+        User invitedUser = saveUser("invited");
+
+        assertThatThrownBy(() -> projectMemberService.acceptInvitation(
+                999999L,
+                1L,
+                invitedUser.getId()
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("ACTIVE가 아닌 프로젝트의 초대는 수락할 수 없다")
+    void acceptInvitationWithInactiveProject() {
+        TestProject testProject = createTestProject(ProjectStatus.DELETED);
+        User invitedUser = saveUser("invited");
+        ProjectMember invitedMember = saveProjectMember(
+                testProject.project(),
+                invitedUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.INVITED
+        );
+
+        assertThatThrownBy(() -> projectMemberService.acceptInvitation(
+                testProject.project().getId(),
+                invitedMember.getId(),
+                invitedUser.getId()
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 요청자는 초대를 수락할 수 없다")
+    void acceptInvitationWithNotFoundRequester() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User invitedUser = saveUser("invited");
+        ProjectMember invitedMember = saveProjectMember(
+                testProject.project(),
+                invitedUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.INVITED
+        );
+
+        assertThatThrownBy(() -> projectMemberService.acceptInvitation(
+                testProject.project().getId(),
+                invitedMember.getId(),
+                999999L
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 멤버의 초대는 수락할 수 없다")
+    void acceptInvitationWithNotFoundMember() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User invitedUser = saveUser("invited");
+
+        assertThatThrownBy(() -> projectMemberService.acceptInvitation(
+                testProject.project().getId(),
+                999999L,
+                invitedUser.getId()
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("다른 프로젝트의 멤버 초대는 수락할 수 없다")
+    void acceptInvitationWithOtherProjectMember() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        TestProject otherProject = createTestProject(ProjectStatus.ACTIVE);
+        User invitedUser = saveUser("invited");
+        ProjectMember invitedMember = saveProjectMember(
+                otherProject.project(),
+                invitedUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.INVITED
+        );
+
+        assertThatThrownBy(() -> projectMemberService.acceptInvitation(
+                testProject.project().getId(),
+                invitedMember.getId(),
+                invitedUser.getId()
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("초대 대상 사용자가 아니면 초대를 수락할 수 없다")
+    void acceptInvitationByOtherUser() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User invitedUser = saveUser("invited");
+        User otherUser = saveUser("other");
+        ProjectMember invitedMember = saveProjectMember(
+                testProject.project(),
+                invitedUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.INVITED
+        );
+
+        assertThatThrownBy(() -> projectMemberService.acceptInvitation(
+                testProject.project().getId(),
+                invitedMember.getId(),
+                otherUser.getId()
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("이미 ACTIVE 상태인 멤버는 초대를 수락할 수 없다")
+    void acceptActiveMemberInvitation() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User memberUser = saveUser("member");
+        ProjectMember member = saveProjectMember(
+                testProject.project(),
+                memberUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.ACTIVE
+        );
+
+        assertThatThrownBy(() -> projectMemberService.acceptInvitation(
+                testProject.project().getId(),
+                member.getId(),
+                memberUser.getId()
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("REMOVED 상태인 멤버는 초대를 수락할 수 없다")
+    void acceptRemovedMemberInvitation() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User memberUser = saveUser("member");
+        ProjectMember member = saveProjectMember(
+                testProject.project(),
+                memberUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.REMOVED
+        );
+
+        assertThatThrownBy(() -> projectMemberService.acceptInvitation(
+                testProject.project().getId(),
+                member.getId(),
+                memberUser.getId()
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("OWNER 멤버는 초대 수락 대상이 아니다")
+    void acceptOwnerInvitation() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+
+        assertThatThrownBy(() -> projectMemberService.acceptInvitation(
+                testProject.project().getId(),
+                testProject.ownerMember().getId(),
+                testProject.owner().getId()
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
     private TestProject createTestProject(ProjectStatus status) {
         User owner = saveUser("owner");
         Runtime runtime = runtimeRepository.save(createRuntime());

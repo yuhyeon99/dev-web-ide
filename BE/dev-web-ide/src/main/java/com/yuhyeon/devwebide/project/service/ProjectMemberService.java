@@ -103,6 +103,36 @@ public class ProjectMemberService {
         return ProjectMemberManageResponse.from(projectMember);
     }
 
+    @Transactional
+    public ProjectMemberManageResponse acceptInvitation(
+            Long projectId,
+            Long memberId,
+            Long requesterUserId
+    ) {
+        getActiveProject(projectId);
+        User requester = getUser(requesterUserId);
+
+        ProjectMember projectMember = projectMemberRepository
+                .findByIdAndProjectId(memberId, projectId)
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트 멤버를 찾을 수 없습니다."));
+
+        if (!projectMember.getUser().getId().equals(requester.getId())) {
+            throw new IllegalArgumentException("초대 대상 사용자만 초대를 수락할 수 있습니다.");
+        }
+
+        if (projectMember.isOwner()) {
+            throw new IllegalArgumentException("OWNER 멤버는 초대 수락 대상이 아닙니다.");
+        }
+
+        if (!projectMember.isInvited()) {
+            throw new IllegalArgumentException("INVITED 상태의 멤버만 초대를 수락할 수 있습니다.");
+        }
+
+        projectMember.join(LocalDateTime.now());
+
+        return ProjectMemberManageResponse.from(projectMember);
+    }
+
     private Project getActiveProject(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다."));

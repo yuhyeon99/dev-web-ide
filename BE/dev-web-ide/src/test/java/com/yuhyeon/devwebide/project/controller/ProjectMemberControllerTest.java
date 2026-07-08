@@ -149,6 +149,35 @@ class ProjectMemberControllerTest {
     }
 
     @Test
+    @DisplayName("프로젝트 멤버 초대 수락 API 요청에 성공한다")
+    void acceptInvitation() throws Exception {
+        Long projectId = 1L;
+        Long memberId = 2L;
+        Long requesterUserId = 20L;
+        ProjectMemberManageResponse response = createResponse(
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.ACTIVE
+        );
+
+        given(projectMemberService.acceptInvitation(projectId, memberId, requesterUserId))
+                .willReturn(response);
+
+        mockMvc.perform(post("/api/projects/{projectId}/members/{memberId}/accept", projectId, memberId)
+                        .header("X-User-Id", requesterUserId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectMemberId").value(1L))
+                .andExpect(jsonPath("$.userId").value(20L))
+                .andExpect(jsonPath("$.nickname").value("member"))
+                .andExpect(jsonPath("$.role").value("EDITOR"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.invitedAt").exists())
+                .andExpect(jsonPath("$.joinedAt").exists());
+
+        then(projectMemberService).should()
+                .acceptInvitation(projectId, memberId, requesterUserId);
+    }
+
+    @Test
     @DisplayName("멤버 초대 요청에서 userId가 없으면 400 Bad Request를 반환한다")
     void inviteMemberWithoutUserId() throws Exception {
         ProjectMemberInviteRequest request = new ProjectMemberInviteRequest(

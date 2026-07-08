@@ -125,14 +125,17 @@
 - [x] 실행 중 WorkspaceSession 삭제 차단 구현
 - [x] 실제 저장소 삭제 없이 프로젝트 상태만 변경하는 정책 반영
 - [x] 프로젝트 멤버 초대 API 구현
+- [x] 프로젝트 멤버 초대 수락 API 구현
 - [x] 프로젝트 멤버 권한 변경 API 구현
 - [x] 프로젝트 멤버 제거 API 구현
 - [x] OWNER 기반 임시 권한 검증 구현
 - [x] 중복 멤버 초대 방지 구현
 - [x] OWNER 권한 변경/제거 금지 구현
+- [x] 초대 수락 시 INVITED -> ACTIVE 전환 구현
+- [x] 초대 대상 사용자 본인 검증 구현
+- [x] 초대 수락 시 joinedAt 기록 구현
 - [x] `ProjectServiceTest` 구현
 - [~] 프로젝트 복구 API는 확인되지 않음
-- [~] 프로젝트 멤버 초대 수락 API는 확인되지 않음
 
 ### 프로젝트 파일 서비스
 
@@ -248,6 +251,7 @@
 - [x] `DELETE /api/projects/{projectId}`
 - [x] `POST /api/projects/{projectId}/open`
 - [x] `POST /api/projects/{projectId}/members`
+- [x] `POST /api/projects/{projectId}/members/{memberId}/accept`
 - [x] `PATCH /api/projects/{projectId}/members/{memberId}`
 - [x] `DELETE /api/projects/{projectId}/members/{memberId}`
 - [x] `GET /api/projects/{projectId}/files/tree`
@@ -331,7 +335,6 @@
 - [ ] 실제 OAuth 로그인/회원가입/로그아웃 API
 - [ ] Spring Security 기반 인증/인가와 userId 주입
 - [ ] 프로젝트 복구 API
-- [ ] 프로젝트 멤버 초대 수락 API
 - [ ] 컨테이너 상태 STARTING -> RUNNING 전환 처리
 - [ ] 실제 Docker/ECS/Fargate 실행 연동
 - [ ] 컨테이너 출력 수집 후 TerminalLog 저장 처리

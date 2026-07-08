@@ -52,4 +52,16 @@ public class ProjectMemberController {
 
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/{memberId}/accept")
+    public ResponseEntity<ProjectMemberManageResponse> acceptInvitation(
+            @PathVariable Long projectId,
+            @PathVariable Long memberId,
+            @RequestHeader("X-User-Id") Long requesterUserId
+    ) {
+        ProjectMemberManageResponse response =
+                projectMemberService.acceptInvitation(projectId, memberId, requesterUserId);
+
+        return ResponseEntity.ok(response);
+    }
 }

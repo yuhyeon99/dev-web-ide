@@ -27,6 +27,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -548,4 +549,129 @@ class ProjectControllerTest {
         verify(projectService).openProject(projectId, null, guestSessionId);
     }
 
+    @Test
+    @DisplayName("프로젝트 수정 API 요청에 성공한다")
+    void updateProject() throws Exception {
+        Long projectId = 1L;
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                "updated-project",
+                "updated description"
+        );
+
+        RuntimeResponse runtime = new RuntimeResponse(
+                1L,
+                "node-20",
+                "Node.js 20",
+                "20",
+                "node:20",
+                RuntimeLanguage.NODE
+        );
+
+        ProjectSettingsResponse settings = new ProjectSettingsResponse(
+                true,
+                false,
+                false,
+                true
+        );
+
+        ProjectMemberResponse member = new ProjectMemberResponse(
+                1L,
+                "owner",
+                ProjectMemberRole.OWNER,
+                ProjectMemberStatus.ACTIVE,
+                LocalDateTime.of(2026, 7, 8, 10, 0)
+        );
+
+        ProjectDetailResponse response = new ProjectDetailResponse(
+                projectId,
+                "updated-project",
+                "updated description",
+                ProjectType.PERSONAL,
+                ProjectVisibility.PRIVATE,
+                ProjectStatus.ACTIVE,
+                "/projects/1",
+                runtime,
+                settings,
+                List.of(member),
+                LocalDateTime.of(2026, 7, 8, 9, 0),
+                LocalDateTime.of(2026, 7, 8, 10, 30)
+        );
+
+        given(projectService.updateProject(
+                eq(projectId),
+                any(ProjectUpdateRequest.class)
+        )).willReturn(response);
+
+        mockMvc.perform(patch("/api/projects/{projectId}", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(projectId))
+                .andExpect(jsonPath("$.name").value("updated-project"))
+                .andExpect(jsonPath("$.description").value("updated description"))
+                .andExpect(jsonPath("$.projectType").value("PERSONAL"))
+                .andExpect(jsonPath("$.visibility").value("PRIVATE"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.storagePath").value("/projects/1"))
+                .andExpect(jsonPath("$.runtime.id").value(1L))
+                .andExpect(jsonPath("$.runtime.name").value("node-20"))
+                .andExpect(jsonPath("$.settings.autoSaveEnabled").value(true))
+                .andExpect(jsonPath("$.members[0].userId").value(1L))
+                .andExpect(jsonPath("$.members[0].nickname").value("owner"))
+                .andExpect(jsonPath("$.members[0].role").value("OWNER"))
+                .andExpect(jsonPath("$.members[0].status").value("ACTIVE"));
+
+        then(projectService)
+                .should()
+                .updateProject(eq(projectId), any(ProjectUpdateRequest.class));
+    }
+
+    @Test
+    @DisplayName("프로젝트 수정 요청에서 이름이 비어 있으면 400 Bad Request를 반환한다")
+    void updateProjectWithBlankName() throws Exception {
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                "",
+                "updated description"
+        );
+
+        mockMvc.perform(patch("/api/projects/{projectId}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(projectService);
+    }
+
+    @Test
+    @DisplayName("프로젝트 수정 요청에서 이름이 200자를 초과하면 400 Bad Request를 반환한다")
+    void updateProjectWithTooLongName() throws Exception {
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                "a".repeat(201),
+                "updated description"
+        );
+
+        mockMvc.perform(patch("/api/projects/{projectId}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(projectService);
+    }
+
+    @Test
+    @DisplayName("프로젝트 수정 요청에서 설명이 500자를 초과하면 400 Bad Request를 반환한다")
+    void updateProjectWithTooLongDescription() throws Exception {
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                "updated-project",
+                "a".repeat(501)
+        );
+
+        mockMvc.perform(patch("/api/projects/{projectId}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(projectService);
+    }
 }

@@ -408,6 +408,40 @@ public class ProjectService {
         );
     }
 
+    public ProjectDetailResponse updateProject(
+            Long projectId,
+            ProjectUpdateRequest request
+    ) {
+        Project project = projectRepository.findByIdAndStatus(
+                        projectId,
+                        ProjectStatus.ACTIVE
+                )
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "존재하지 않거나 삭제된 프로젝트입니다. projectId=" + projectId
+                ));
+
+        project.rename(request.name());
+        project.updateDescription(request.description());
+
+        ProjectSettings projectSettings =
+                projectSettingsRepository.findByProjectId(projectId)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "프로젝트 설정이 존재하지 않습니다. projectId=" + projectId
+                        ));
+
+        List<ProjectMember> projectMembers =
+                projectMemberRepository.findByProjectIdAndStatusOrderByJoinedAtDesc(
+                        projectId,
+                        ProjectMemberStatus.ACTIVE
+                );
+
+        return ProjectDetailResponse.from(
+                project,
+                projectSettings,
+                projectMembers
+        );
+    }
+
     @Transactional
     public ProjectOpenResponse openProject(
             Long projectId,

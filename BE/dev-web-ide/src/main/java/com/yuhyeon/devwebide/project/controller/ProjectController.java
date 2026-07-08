@@ -107,6 +107,17 @@ public class ProjectController {
      * @param guestSessionId 게스트 세션 ID
      * @return 프로젝트 열기 응답
      */
+    @PatchMapping("/{projectId}")
+    public ResponseEntity<ProjectDetailResponse> updateProject(
+            @PathVariable Long projectId,
+            @Valid @RequestBody ProjectUpdateRequest request
+    ) {
+        ProjectDetailResponse response =
+                projectService.updateProject(projectId, request);
+
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{projectId}/open")
     public ResponseEntity<ProjectOpenResponse> openProject(
             @PathVariable Long projectId,

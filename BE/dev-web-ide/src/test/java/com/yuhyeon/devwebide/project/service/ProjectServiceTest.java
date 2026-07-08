@@ -851,6 +851,100 @@ class ProjectServiceTest {
                 .hasMessage("게스트 세션을 찾을 수 없습니다.");
     }
 
+    @Test
+    @DisplayName("프로젝트 이름과 설명을 수정한다")
+    void updateProject() {
+        User owner = userRepository.save(createUser());
+        User member = userRepository.save(createUser(
+                "update-member@test.com",
+                "update-member"
+        ));
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(owner, runtime));
+
+        ProjectSettings projectSettings = ProjectSettings.builder()
+                .project(project)
+                .autoSaveEnabled(true)
+                .formatOnSaveEnabled(false)
+                .guestCanEdit(false)
+                .shareCursorPosition(true)
+                .build();
+
+        projectSettingsRepository.save(projectSettings);
+
+        ProjectMember projectMember = ProjectMember.builder()
+                .project(project)
+                .user(member)
+                .role(ProjectMemberRole.EDITOR)
+                .status(ProjectMemberStatus.ACTIVE)
+                .invitedByUser(owner)
+                .invitedAt(LocalDateTime.now().minusDays(1))
+                .joinedAt(LocalDateTime.now())
+                .build();
+
+        projectMemberRepository.save(projectMember);
+
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                "updated-project",
+                "updated description"
+        );
+
+        ProjectDetailResponse response =
+                projectService.updateProject(project.getId(), request);
+
+        Project updatedProject = projectRepository.findById(project.getId())
+                .orElseThrow();
+
+        assertThat(updatedProject.getName()).isEqualTo("updated-project");
+        assertThat(updatedProject.getDescription()).isEqualTo("updated description");
+
+        assertThat(response.id()).isEqualTo(project.getId());
+        assertThat(response.name()).isEqualTo("updated-project");
+        assertThat(response.description()).isEqualTo("updated description");
+        assertThat(response.projectType()).isEqualTo(ProjectType.PERSONAL);
+        assertThat(response.visibility()).isEqualTo(ProjectVisibility.PRIVATE);
+        assertThat(response.status()).isEqualTo(ProjectStatus.ACTIVE);
+        assertThat(response.runtime().id()).isEqualTo(runtime.getId());
+
+        assertThat(response.settings().autoSaveEnabled()).isTrue();
+        assertThat(response.settings().formatOnSaveEnabled()).isFalse();
+        assertThat(response.settings().guestCanEdit()).isFalse();
+        assertThat(response.settings().shareCursorPosition()).isTrue();
+
+        assertThat(response.members()).hasSize(1);
+        assertThat(response.members().get(0).userId()).isEqualTo(member.getId());
+        assertThat(response.members().get(0).nickname()).isEqualTo("update-member");
+        assertThat(response.members().get(0).role()).isEqualTo(ProjectMemberRole.EDITOR);
+        assertThat(response.members().get(0).status()).isEqualTo(ProjectMemberStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 프로젝트는 수정할 수 없다")
+    void updateProjectNotFound() {
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                "updated-project",
+                "updated description"
+        );
+
+        assertThatThrownBy(() -> projectService.updateProject(999999L, request))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("삭제된 프로젝트는 수정할 수 없다")
+    void updateDeletedProject() {
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project deletedProject = projectRepository.save(createDeletedUserProject(user, runtime));
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                "updated-project",
+                "updated description"
+        );
+
+        assertThatThrownBy(() -> projectService.updateProject(deletedProject.getId(), request))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     private User createUser(String email, String nickname) {
         return User.builder()
                 .email(email)

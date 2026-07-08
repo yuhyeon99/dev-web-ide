@@ -8,6 +8,7 @@ import com.yuhyeon.devwebide.project.domain.ProjectStatus;
 import com.yuhyeon.devwebide.project.dto.ProjectFileContentResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectFileCreateRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectFileDeleteResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectFileRenameRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileTreeResponse;
 import com.yuhyeon.devwebide.project.repository.FileVersionRepository;
@@ -1336,6 +1337,234 @@ class ProjectFileServiceTest {
                 fileId,
                 new ProjectFileRenameRequest(name)
         )).isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("프로젝트 파일을 삭제한다")
+    void deleteFile_success() {
+        Long projectId = 1L;
+        Long fileId = 10L;
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 7, 8, 10, 0);
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile projectFile = createFile(
+                project,
+                null,
+                fileId,
+                "App.jsx",
+                "/App.jsx",
+                "text/javascript",
+                120L
+        );
+        ReflectionTestUtils.setField(projectFile, "updatedAt", updatedAt);
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(projectFile));
+
+        ProjectFileDeleteResponse response =
+                projectFileService.deleteFile(projectId, fileId);
+
+        assertThat(projectFile.getStatus()).isEqualTo(ProjectFileStatus.DELETED);
+        assertThat(response.projectFileId()).isEqualTo(fileId);
+        assertThat(response.fileType()).isEqualTo(ProjectFileType.FILE);
+        assertThat(response.path()).isEqualTo("/App.jsx");
+        assertThat(response.status()).isEqualTo(ProjectFileStatus.DELETED);
+        assertThat(response.deleted()).isTrue();
+        assertThat(response.updatedAt()).isEqualTo(updatedAt);
+
+        then(projectRepository).should()
+                .findByIdAndStatus(projectId, ProjectStatus.ACTIVE);
+        then(projectFileStorageService).should()
+                .delete(project, projectFile);
+    }
+
+    @Test
+    @DisplayName("프로젝트 디렉터리를 삭제한다")
+    void deleteDirectory_success() {
+        Long projectId = 1L;
+        Long directoryId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile directory = createDirectory(project, null, directoryId, "src", "/src");
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(directoryId))
+                .willReturn(Optional.of(directory));
+        given(projectFileRepository.findByProjectIdAndStatusAndPathStartingWithOrderByPathAsc(
+                projectId,
+                ProjectFileStatus.ACTIVE,
+                "/src/"
+        )).willReturn(List.of());
+
+        ProjectFileDeleteResponse response =
+                projectFileService.deleteFile(projectId, directoryId);
+
+        assertThat(directory.getStatus()).isEqualTo(ProjectFileStatus.DELETED);
+        assertThat(response.projectFileId()).isEqualTo(directoryId);
+        assertThat(response.fileType()).isEqualTo(ProjectFileType.DIRECTORY);
+        assertThat(response.path()).isEqualTo("/src");
+        assertThat(response.status()).isEqualTo(ProjectFileStatus.DELETED);
+        assertThat(response.deleted()).isTrue();
+
+        then(projectFileStorageService).should()
+                .delete(project, directory);
+    }
+
+    @Test
+    @DisplayName("디렉터리 삭제 시 하위 파일과 폴더도 삭제 상태로 변경한다")
+    void deleteDirectory_deletesDescendants() {
+        Long projectId = 1L;
+        Long directoryId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile directory = createDirectory(project, null, directoryId, "src", "/src");
+        ProjectFile childDirectory = createDirectory(project, directory, 11L, "components", "/src/components");
+        ProjectFile childFile = createFile(
+                project,
+                childDirectory,
+                12L,
+                "Button.jsx",
+                "/src/components/Button.jsx",
+                "text/javascript",
+                30L
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(directoryId))
+                .willReturn(Optional.of(directory));
+        given(projectFileRepository.findByProjectIdAndStatusAndPathStartingWithOrderByPathAsc(
+                projectId,
+                ProjectFileStatus.ACTIVE,
+                "/src/"
+        )).willReturn(List.of(childDirectory, childFile));
+
+        projectFileService.deleteFile(projectId, directoryId);
+
+        assertThat(directory.getStatus()).isEqualTo(ProjectFileStatus.DELETED);
+        assertThat(childDirectory.getStatus()).isEqualTo(ProjectFileStatus.DELETED);
+        assertThat(childFile.getStatus()).isEqualTo(ProjectFileStatus.DELETED);
+    }
+
+    @Test
+    @DisplayName("삭제할 파일이 없으면 예외가 발생한다")
+    void deleteFile_notFound() {
+        Long projectId = 1L;
+        Long fileId = 999L;
+
+        Project project = mock(Project.class);
+        given(project.isActive()).willReturn(true);
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> projectFileService.deleteFile(projectId, fileId))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("다른 프로젝트 파일은 삭제할 수 없다")
+    void deleteFile_projectMismatch() {
+        Long projectId = 1L;
+        Long fileId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.isActive()).willReturn(true);
+
+        Project anotherProject = mock(Project.class);
+        given(anotherProject.getId()).willReturn(2L);
+
+        ProjectFile projectFile = createFile(
+                anotherProject,
+                null,
+                fileId,
+                "App.jsx",
+                "/App.jsx",
+                "text/javascript",
+                120L
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(projectFile));
+
+        assertThatThrownBy(() -> projectFileService.deleteFile(projectId, fileId))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("이미 삭제된 파일은 다시 삭제할 수 없다")
+    void deleteFile_alreadyDeleted() {
+        Long projectId = 1L;
+        Long fileId = 10L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile projectFile = createProjectFile(
+                project,
+                null,
+                fileId,
+                "App.jsx",
+                "/App.jsx",
+                ProjectFileType.FILE,
+                "text/javascript",
+                120L,
+                ProjectFileStatus.DELETED
+        );
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(projectFile));
+
+        assertThatThrownBy(() -> projectFileService.deleteFile(projectId, fileId))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(projectFileStorageService);
+    }
+
+    @Test
+    @DisplayName("루트 디렉터리는 삭제할 수 없다")
+    void deleteFile_rootDirectory() {
+        Long projectId = 1L;
+        Long fileId = 1L;
+
+        Project project = mock(Project.class);
+        given(project.getId()).willReturn(projectId);
+        given(project.isActive()).willReturn(true);
+
+        ProjectFile root = createDirectory(project, null, fileId, "/", "/");
+
+        given(projectRepository.findByIdAndStatus(projectId, ProjectStatus.ACTIVE))
+                .willReturn(Optional.of(project));
+        given(projectFileRepository.findById(fileId))
+                .willReturn(Optional.of(root));
+
+        assertThatThrownBy(() -> projectFileService.deleteFile(projectId, fileId))
+                .isInstanceOf(IllegalArgumentException.class);
 
         verifyNoInteractions(projectFileStorageService);
     }

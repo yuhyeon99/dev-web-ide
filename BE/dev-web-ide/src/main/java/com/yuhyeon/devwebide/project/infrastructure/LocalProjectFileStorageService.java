@@ -12,6 +12,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Comparator;
+import java.util.stream.Stream;
 
 @Service
 public class LocalProjectFileStorageService implements ProjectFileStorageService {
@@ -130,6 +132,31 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
         }
     }
 
+    @Override
+    public void delete(
+            Project project,
+            ProjectFile projectFile
+    ) {
+        validateDeleteRequest(project, projectFile);
+
+        try {
+            Path projectRootPath = resolveProjectRootPath(project);
+            Path currentPath = resolveCurrentFilePath(projectRootPath, projectFile);
+
+            if (!Files.exists(currentPath)) {
+                throw new IllegalStateException("삭제할 프로젝트 파일을 찾을 수 없습니다.");
+            }
+
+            if (Files.isDirectory(currentPath)) {
+                deleteDirectoryRecursively(currentPath);
+            } else {
+                Files.delete(currentPath);
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("프로젝트 파일 삭제에 실패했습니다.", e);
+        }
+    }
+
     private void validateSaveRequest(
             Project project,
             ProjectFile projectFile,
@@ -197,6 +224,19 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
         }
     }
 
+    private void validateDeleteRequest(
+            Project project,
+            ProjectFile projectFile
+    ) {
+        if (project == null) {
+            throw new IllegalArgumentException("?熬곣뫁夷??釉띾콦???熬곣뫖????낅퉵??");
+        }
+
+        if (projectFile == null) {
+            throw new IllegalArgumentException("?熬곣뫁夷??釉띾콦 ???逾?? ?熬곣뫖????낅퉵??");
+        }
+    }
+
     private Path resolveProjectRootPath(Project project) {
         String storagePath = removeLeadingSlash(project.getStoragePath());
 
@@ -253,6 +293,22 @@ public class LocalProjectFileStorageService implements ProjectFileStorageService
         validatePathInsideBase(projectRootPath, versionFilePath);
 
         return versionFilePath;
+    }
+
+    private void deleteDirectoryRecursively(Path directoryPath) throws Exception {
+        try (Stream<Path> paths = Files.walk(directoryPath)) {
+            paths.sorted(Comparator.reverseOrder())
+                    .forEach(path -> {
+                        try {
+                            Files.delete(path);
+                        } catch (Exception e) {
+                            throw new IllegalStateException(
+                                    "프로젝트 디렉터리 삭제에 실패했습니다.",
+                                    e
+                            );
+                        }
+                    });
+        }
     }
 
     private void validatePathInsideBase(Path basePath, Path targetPath) {

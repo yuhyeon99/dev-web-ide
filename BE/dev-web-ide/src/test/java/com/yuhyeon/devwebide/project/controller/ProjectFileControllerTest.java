@@ -32,6 +32,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.refEq;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -366,6 +367,42 @@ class ProjectFileControllerTest {
 
         then(projectFileService).should()
                 .renameFile(eq(projectId), eq(fileId), refEq(request));
+    }
+
+    @Test
+    @DisplayName("프로젝트 파일을 삭제한다")
+    void deleteFile() throws Exception {
+        Long projectId = 1L;
+        Long fileId = 10L;
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 7, 8, 10, 0);
+
+        ProjectFileDeleteResponse response = new ProjectFileDeleteResponse(
+                fileId,
+                ProjectFileType.FILE,
+                "/src/App.jsx",
+                ProjectFileStatus.DELETED,
+                true,
+                updatedAt
+        );
+
+        given(projectFileService.deleteFile(projectId, fileId))
+                .willReturn(response);
+
+        mockMvc.perform(delete(
+                        "/api/projects/{projectId}/files/{fileId}",
+                        projectId,
+                        fileId
+                ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectFileId").value(fileId))
+                .andExpect(jsonPath("$.fileType").value("FILE"))
+                .andExpect(jsonPath("$.path").value("/src/App.jsx"))
+                .andExpect(jsonPath("$.status").value("DELETED"))
+                .andExpect(jsonPath("$.deleted").value(true))
+                .andExpect(jsonPath("$.updatedAt").exists());
+
+        then(projectFileService).should()
+                .deleteFile(projectId, fileId);
     }
 
     @Test

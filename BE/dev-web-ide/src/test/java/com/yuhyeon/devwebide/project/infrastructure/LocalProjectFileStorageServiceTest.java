@@ -423,6 +423,107 @@ class LocalProjectFileStorageServiceTest {
     }
 
     @Test
+    @DisplayName("파일을 삭제한다")
+    void deleteFile() throws Exception {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        Path filePath = tempDir
+                .resolve("projects/1/src/App.jsx")
+                .normalize();
+        Files.createDirectories(filePath.getParent());
+        Files.writeString(filePath, "console.log('hello');");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src/App.jsx");
+
+        storageService.delete(project, projectFile);
+
+        assertThat(Files.exists(filePath)).isFalse();
+    }
+
+    @Test
+    @DisplayName("디렉터리를 삭제한다")
+    void deleteDirectory() throws Exception {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        Path directoryPath = tempDir
+                .resolve("projects/1/src")
+                .normalize();
+        Files.createDirectories(directoryPath);
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src");
+
+        storageService.delete(project, projectFile);
+
+        assertThat(Files.exists(directoryPath)).isFalse();
+    }
+
+    @Test
+    @DisplayName("중첩 디렉터리 삭제 시 하위 파일도 제거한다")
+    void deleteDirectory_deletesNestedFiles() throws Exception {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        Path filePath = tempDir
+                .resolve("projects/1/src/components/Button.jsx")
+                .normalize();
+        Files.createDirectories(filePath.getParent());
+        Files.writeString(filePath, "export default Button;");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src");
+
+        storageService.delete(project, projectFile);
+
+        assertThat(Files.exists(filePath)).isFalse();
+        assertThat(Files.exists(tempDir.resolve("projects/1/src"))).isFalse();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 파일을 삭제하면 예외가 발생한다")
+    void throwExceptionWhenDeleteMissingFile() {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/src/Missing.jsx");
+
+        assertThatThrownBy(() -> storageService.delete(project, projectFile))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("삭제 시 경로 탈출 시도가 있으면 예외가 발생한다")
+    void rejectInvalidProjectFilePathWhenDelete() {
+        LocalProjectFileStorageService storageService =
+                new LocalProjectFileStorageService(tempDir.toString());
+
+        Project project = mock(Project.class);
+        given(project.getStoragePath()).willReturn("/projects/1");
+
+        ProjectFile projectFile = mock(ProjectFile.class);
+        given(projectFile.getPath()).willReturn("/../../outside.txt");
+
+        assertThatThrownBy(() -> storageService.delete(project, projectFile))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     @DisplayName("파일 생성 시 경로 탈출 시도가 있으면 예외가 발생한다")
     void rejectInvalidProjectFilePathWhenCreateFile() {
         // given

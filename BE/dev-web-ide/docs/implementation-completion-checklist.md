@@ -148,7 +148,12 @@
 - [x] 중복 이름 검증
 - [x] 디렉터리 하위 path 갱신
 - [x] StorageService rename 구현
-- [~] 파일/디렉터리 삭제 API는 확인되지 않음
+- [x] 파일/디렉터리 삭제 API 구현
+- [x] 파일/디렉터리 삭제 시 ACTIVE 프로젝트 검증
+- [x] 파일/디렉터리 삭제 시 파일 소속/상태 검증
+- [x] root directory 삭제 차단
+- [x] 디렉터리 하위 파일/폴더 soft delete
+- [x] StorageService delete 구현
 
 ### 로컬 파일 저장소
 
@@ -159,6 +164,8 @@
 - [x] 디렉터리 생성 구현
 - [x] 파일 rename 구현
 - [x] 디렉터리 rename 구현
+- [x] 파일 삭제 구현
+- [x] 디렉터리 삭제 구현
 - [x] 현재 파일 내용 읽기 구현
 - [x] `.versions/{projectFileId}/v{versionNo}` 버전 파일 저장 구현
 - [x] UTF-8 바이트 기준 파일 크기 계산
@@ -224,6 +231,7 @@
 - [x] `POST /api/projects/{projectId}/files`
 - [x] `GET /api/projects/{projectId}/files/{fileId}/content`
 - [x] `PATCH /api/projects/{projectId}/files/{fileId}/rename`
+- [x] `DELETE /api/projects/{projectId}/files/{fileId}`
 - [x] `POST /api/projects/{projectId}/save`
 - [x] `POST /api/projects/{projectId}/run`
 - [x] `GET /api/workspace-sessions/{workspaceSessionId}/terminal/logs`
@@ -272,7 +280,7 @@
 
 - [x] RuntimeController 테스트
 - [x] ProjectController 테스트
-- [x] ProjectFileController 테스트: 파일 트리 조회, 파일 생성, 파일 내용 조회, 파일 저장, 파일 이름 변경
+- [x] ProjectFileController 테스트: 파일 트리 조회, 파일 생성, 파일 내용 조회, 파일 저장, 파일 이름 변경, 파일/디렉터리 삭제
 - [x] ProjectRunController 테스트
 - [x] TerminalLogController 테스트
 - [x] WorkspaceSessionStopController 테스트
@@ -299,7 +307,6 @@
 - [ ] 프로젝트 수정 API
 - [ ] 프로젝트 삭제/복구 API
 - [ ] 팀 멤버 초대/수락/권한 변경/제거 API
-- [ ] 파일/디렉터리 삭제 API
 - [ ] 컨테이너 상태 STARTING -> RUNNING 전환 처리
 - [ ] 실제 Docker/ECS/Fargate 실행 연동
 - [ ] 컨테이너 출력 수집 후 TerminalLog 저장 처리

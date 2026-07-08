@@ -325,6 +325,26 @@ public class ProjectFileService {
         return ProjectFileCreateResponse.from(projectFile);
     }
 
+    @Transactional
+    public ProjectFileDeleteResponse deleteFile(Long projectId, Long fileId) {
+        Project project = validateActiveProject(projectId);
+
+        ProjectFile projectFile = projectFileRepository.findById(fileId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 프로젝트 파일입니다."));
+
+        validateDeletableProjectFile(projectId, projectFile);
+
+        projectFileStorageService.delete(project, projectFile);
+
+        if (projectFile.getFileType() == ProjectFileType.DIRECTORY) {
+            deleteDescendants(projectId, projectFile.getPath());
+        }
+
+        projectFile.delete();
+
+        return ProjectFileDeleteResponse.from(projectFile);
+    }
+
     private void validateSaveActor(Long userId, Long guestSessionId) {
         boolean hasUserId = userId != null;
         boolean hasGuestSessionId = guestSessionId != null;
@@ -368,6 +388,23 @@ public class ProjectFileService {
         }
     }
 
+    private void validateDeletableProjectFile(
+            Long projectId,
+            ProjectFile projectFile
+    ) {
+        if (!projectFile.getProject().getId().equals(projectId)) {
+            throw new IllegalArgumentException("해당 프로젝트에 속한 파일이 아닙니다.");
+        }
+
+        if (projectFile.getStatus() != ProjectFileStatus.ACTIVE) {
+            throw new IllegalArgumentException("삭제된 파일은 다시 삭제할 수 없습니다.");
+        }
+
+        if (projectFile.isRootDirectory()) {
+            throw new IllegalArgumentException("루트 디렉터리는 삭제할 수 없습니다.");
+        }
+    }
+
     private void renameDescendantPaths(
             Long projectId,
             String oldPath,
@@ -385,6 +422,22 @@ public class ProjectFileService {
                     newPath + descendant.getPath().substring(oldPath.length());
 
             descendant.move(descendant.getParentFile(), descendantNewPath);
+        }
+    }
+
+    private void deleteDescendants(
+            Long projectId,
+            String path
+    ) {
+        List<ProjectFile> descendants =
+                projectFileRepository.findByProjectIdAndStatusAndPathStartingWithOrderByPathAsc(
+                        projectId,
+                        ProjectFileStatus.ACTIVE,
+                        path + "/"
+                );
+
+        for (ProjectFile descendant : descendants) {
+            descendant.delete();
         }
     }
 

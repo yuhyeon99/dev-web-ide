@@ -2,6 +2,7 @@ package com.yuhyeon.devwebide.project.controller;
 
 import com.yuhyeon.devwebide.project.dto.ProjectFileCreateRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectFileDeleteResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectFileRenameRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileSaveRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectFileSaveResponse;
@@ -11,6 +12,7 @@ import jakarta.validation.Valid;
 import com.yuhyeon.devwebide.project.service.ProjectFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -84,6 +86,17 @@ public class ProjectFileController {
     ) {
         ProjectFileCreateResponse response =
                 projectFileService.renameFile(projectId, fileId, request);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{projectId}/files/{fileId}")
+    public ResponseEntity<ProjectFileDeleteResponse> deleteFile(
+            @PathVariable Long projectId,
+            @PathVariable Long fileId
+    ) {
+        ProjectFileDeleteResponse response =
+                projectFileService.deleteFile(projectId, fileId);
 
         return ResponseEntity.ok(response);
     }

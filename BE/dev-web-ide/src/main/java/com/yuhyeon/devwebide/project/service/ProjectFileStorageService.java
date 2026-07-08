@@ -49,6 +49,11 @@ public interface ProjectFileStorageService {
             String newPath
     );
 
+    void delete(
+            Project project,
+            ProjectFile projectFile
+    );
+
     /**
      * 파일 저장 결과
      *

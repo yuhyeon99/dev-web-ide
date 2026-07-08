@@ -39,6 +39,9 @@
 - [x] `GuestSessionRepository` 구현: 게스트 토큰 조회/존재 여부/만료 전 조회
 - [x] `AuthSessionRepository` 구현: refresh token hash 조회/활성 세션 조회
 - [x] 사용자/인증 저장소 테스트 구현
+- [x] 게스트 세션 생성 API 구현
+- [x] 게스트 토큰 생성 구현
+- [x] 게스트 세션 만료 시각 설정 구현
 - [~] 실제 OAuth 로그인 플로우, 토큰 발급, 로그아웃 API는 미연동
 - [~] Spring Security 기반 인증 객체 주입은 미구현
 
@@ -222,6 +225,7 @@
 
 ## API 구현
 
+- [x] `POST /api/guest-sessions`
 - [x] `GET /api/runtimes`
 - [x] `POST /api/projects`
 - [x] `GET /api/projects/my`
@@ -275,6 +279,7 @@
 - [x] ProjectRunService 테스트
 - [x] WorkspaceSessionStopService 테스트
 - [x] TerminalLogService 테스트
+- [x] GuestSessionService 테스트
 
 ### Controller 테스트
 
@@ -284,6 +289,7 @@
 - [x] ProjectRunController 테스트
 - [x] TerminalLogController 테스트
 - [x] WorkspaceSessionStopController 테스트
+- [x] GuestSessionController 테스트
 
 ### `ProjectRunServiceTest.java` 세부 확인
 
@@ -303,7 +309,6 @@
 
 - [ ] 실제 OAuth 로그인/회원가입/로그아웃 API
 - [ ] Spring Security 기반 인증/인가와 userId 주입
-- [ ] 게스트 세션 생성 API
 - [ ] 프로젝트 수정 API
 - [ ] 프로젝트 삭제/복구 API
 - [ ] 팀 멤버 초대/수락/권한 변경/제거 API

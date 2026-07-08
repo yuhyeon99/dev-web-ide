@@ -26,6 +26,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -673,5 +674,32 @@ class ProjectControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(projectService);
+    }
+
+    @Test
+    @DisplayName("프로젝트 삭제 API 요청에 성공한다")
+    void deleteProject() throws Exception {
+        Long projectId = 1L;
+        ProjectDeleteResponse response = new ProjectDeleteResponse(
+                projectId,
+                ProjectStatus.DELETED,
+                true,
+                LocalDateTime.of(2026, 7, 8, 10, 30)
+        );
+
+        given(projectService.deleteProject(projectId))
+                .willReturn(response);
+
+        mockMvc.perform(delete("/api/projects/{projectId}", projectId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.projectId").value(projectId))
+                .andExpect(jsonPath("$.status").value("DELETED"))
+                .andExpect(jsonPath("$.deleted").value(true))
+                .andExpect(jsonPath("$.updatedAt").exists());
+
+        then(projectService)
+                .should()
+                .deleteProject(projectId);
     }
 }

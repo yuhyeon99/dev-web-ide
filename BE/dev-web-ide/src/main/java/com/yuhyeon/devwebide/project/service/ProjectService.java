@@ -9,6 +9,8 @@ import com.yuhyeon.devwebide.user.domain.GuestSession;
 import com.yuhyeon.devwebide.user.domain.User;
 import com.yuhyeon.devwebide.user.repository.GuestSessionRepository;
 import com.yuhyeon.devwebide.user.repository.UserRepository;
+import com.yuhyeon.devwebide.workspace.domain.WorkspaceSessionStatus;
+import com.yuhyeon.devwebide.workspace.repository.WorkspaceSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +39,7 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final GuestSessionRepository guestSessionRepository;
     private final ProjectAccessLogRepository projectAccessLogRepository;
+    private final WorkspaceSessionRepository workspaceSessionRepository;
 
     /**
      * 프로젝트 생성
@@ -440,6 +443,47 @@ public class ProjectService {
                 projectSettings,
                 projectMembers
         );
+    }
+
+    public ProjectDeleteResponse deleteProject(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "프로젝트를 찾을 수 없습니다."
+                ));
+
+        if (project.getStatus() == ProjectStatus.DELETED) {
+            throw new IllegalArgumentException("이미 삭제된 프로젝트입니다.");
+        }
+
+        if (project.getStatus() != ProjectStatus.ACTIVE) {
+            throw new IllegalArgumentException("ACTIVE 상태의 프로젝트만 삭제할 수 있습니다.");
+        }
+
+        validateNoRunningWorkspaceSession(projectId);
+
+        project.delete();
+
+        return ProjectDeleteResponse.from(project);
+    }
+
+    private void validateNoRunningWorkspaceSession(Long projectId) {
+        boolean hasStartingSession = workspaceSessionRepository
+                .findTopByProjectIdAndStatusOrderByStartedAtDesc(
+                        projectId,
+                        WorkspaceSessionStatus.STARTING
+                )
+                .isPresent();
+
+        boolean hasRunningSession = workspaceSessionRepository
+                .findTopByProjectIdAndStatusOrderByStartedAtDesc(
+                        projectId,
+                        WorkspaceSessionStatus.RUNNING
+                )
+                .isPresent();
+
+        if (hasStartingSession || hasRunningSession) {
+            throw new IllegalArgumentException("실행 중인 워크스페이스 세션이 있는 프로젝트는 삭제할 수 없습니다.");
+        }
     }
 
     @Transactional

@@ -120,8 +120,12 @@
 - [x] 프로젝트 이름 수정 구현
 - [x] 프로젝트 설명 수정 구현
 - [x] 프로젝트 수정 시 ACTIVE 프로젝트 검증
+- [x] 프로젝트 삭제 API 구현
+- [x] 프로젝트 soft delete 구현
+- [x] 실행 중 WorkspaceSession 삭제 차단 구현
+- [x] 실제 저장소 삭제 없이 프로젝트 상태만 변경하는 정책 반영
 - [x] `ProjectServiceTest` 구현
-- [~] 프로젝트 삭제 API는 확인되지 않음
+- [~] 프로젝트 복구 API는 확인되지 않음
 - [~] 프로젝트 멤버 초대/권한 변경/제거 전용 API는 확인되지 않음
 
 ### 프로젝트 파일 서비스
@@ -235,6 +239,7 @@
 - [x] `GET /api/projects/my`
 - [x] `GET /api/projects/{projectId}`
 - [x] `PATCH /api/projects/{projectId}`
+- [x] `DELETE /api/projects/{projectId}`
 - [x] `POST /api/projects/{projectId}/open`
 - [x] `GET /api/projects/{projectId}/files/tree`
 - [x] `POST /api/projects/{projectId}/files`
@@ -289,7 +294,7 @@
 ### Controller 테스트
 
 - [x] RuntimeController 테스트
-- [x] ProjectController 테스트: 프로젝트 생성, 목록 조회, 상세 조회, 수정, 열기
+- [x] ProjectController 테스트: 프로젝트 생성, 목록 조회, 상세 조회, 수정, 삭제, 열기
 - [x] ProjectFileController 테스트: 파일 트리 조회, 파일 생성, 파일 내용 조회, 파일 저장, 파일 이름 변경, 파일/디렉터리 삭제
 - [x] ProjectRunController 테스트
 - [x] TerminalLogController 테스트
@@ -314,7 +319,7 @@
 
 - [ ] 실제 OAuth 로그인/회원가입/로그아웃 API
 - [ ] Spring Security 기반 인증/인가와 userId 주입
-- [ ] 프로젝트 삭제/복구 API
+- [ ] 프로젝트 복구 API
 - [ ] 팀 멤버 초대/수락/권한 변경/제거 API
 - [ ] 컨테이너 상태 STARTING -> RUNNING 전환 처리
 - [ ] 실제 Docker/ECS/Fargate 실행 연동

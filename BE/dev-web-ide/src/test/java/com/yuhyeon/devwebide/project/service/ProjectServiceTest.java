@@ -13,6 +13,9 @@ import com.yuhyeon.devwebide.user.domain.UserRole;
 import com.yuhyeon.devwebide.user.domain.UserStatus;
 import com.yuhyeon.devwebide.user.repository.GuestSessionRepository;
 import com.yuhyeon.devwebide.user.repository.UserRepository;
+import com.yuhyeon.devwebide.workspace.domain.WorkspaceSession;
+import com.yuhyeon.devwebide.workspace.domain.WorkspaceSessionStatus;
+import com.yuhyeon.devwebide.workspace.repository.WorkspaceSessionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +64,9 @@ class ProjectServiceTest {
     private GuestSessionRepository guestSessionRepository;
     @Autowired
     private ProjectAccessLogRepository projectAccessLogRepository;
+
+    @Autowired
+    private WorkspaceSessionRepository workspaceSessionRepository;
 
     @Test
     @DisplayName("개인 프로젝트를 생성한다")
@@ -945,6 +951,125 @@ class ProjectServiceTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    @DisplayName("프로젝트를 삭제한다")
+    void deleteProject() {
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(user, runtime));
+
+        ProjectDeleteResponse response = projectService.deleteProject(project.getId());
+
+        Project deletedProject = projectRepository.findById(project.getId())
+                .orElseThrow();
+
+        assertThat(deletedProject.getStatus()).isEqualTo(ProjectStatus.DELETED);
+        assertThat(response.projectId()).isEqualTo(project.getId());
+        assertThat(response.status()).isEqualTo(ProjectStatus.DELETED);
+        assertThat(response.deleted()).isTrue();
+        assertThat(response.updatedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 프로젝트는 삭제할 수 없다")
+    void deleteProjectNotFound() {
+        assertThatThrownBy(() -> projectService.deleteProject(999999L))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("이미 삭제된 프로젝트는 다시 삭제할 수 없다")
+    void deleteDeletedProject() {
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project deletedProject = projectRepository.save(createDeletedUserProject(user, runtime));
+
+        assertThatThrownBy(() -> projectService.deleteProject(deletedProject.getId()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("STARTING 워크스페이스 세션이 있으면 프로젝트를 삭제할 수 없다")
+    void deleteProjectWithStartingWorkspaceSession() {
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(user, runtime));
+
+        workspaceSessionRepository.save(createWorkspaceSession(
+                project,
+                runtime,
+                user,
+                WorkspaceSessionStatus.STARTING
+        ));
+
+        assertThatThrownBy(() -> projectService.deleteProject(project.getId()))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(projectRepository.findById(project.getId()).orElseThrow().getStatus())
+                .isEqualTo(ProjectStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("RUNNING 워크스페이스 세션이 있으면 프로젝트를 삭제할 수 없다")
+    void deleteProjectWithRunningWorkspaceSession() {
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(user, runtime));
+
+        workspaceSessionRepository.save(createWorkspaceSession(
+                project,
+                runtime,
+                user,
+                WorkspaceSessionStatus.RUNNING
+        ));
+
+        assertThatThrownBy(() -> projectService.deleteProject(project.getId()))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(projectRepository.findById(project.getId()).orElseThrow().getStatus())
+                .isEqualTo(ProjectStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("STOPPED 워크스페이스 세션만 있으면 프로젝트를 삭제할 수 있다")
+    void deleteProjectWithStoppedWorkspaceSession() {
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(user, runtime));
+
+        workspaceSessionRepository.save(createWorkspaceSession(
+                project,
+                runtime,
+                user,
+                WorkspaceSessionStatus.STOPPED
+        ));
+
+        ProjectDeleteResponse response = projectService.deleteProject(project.getId());
+
+        assertThat(response.status()).isEqualTo(ProjectStatus.DELETED);
+        assertThat(response.deleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("FAILED 워크스페이스 세션만 있으면 프로젝트를 삭제할 수 있다")
+    void deleteProjectWithFailedWorkspaceSession() {
+        User user = userRepository.save(createUser());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(user, runtime));
+
+        workspaceSessionRepository.save(createWorkspaceSession(
+                project,
+                runtime,
+                user,
+                WorkspaceSessionStatus.FAILED
+        ));
+
+        ProjectDeleteResponse response = projectService.deleteProject(project.getId());
+
+        assertThat(response.status()).isEqualTo(ProjectStatus.DELETED);
+        assertThat(response.deleted()).isTrue();
+    }
+
     private User createUser(String email, String nickname) {
         return User.builder()
                 .email(email)
@@ -1020,6 +1145,21 @@ class ProjectServiceTest {
                 .visibility(ProjectVisibility.PRIVATE)
                 .status(ProjectStatus.DELETED)
                 .storagePath("/projects/" + UUID.randomUUID())
+                .build();
+    }
+
+    private WorkspaceSession createWorkspaceSession(
+            Project project,
+            Runtime runtime,
+            User user,
+            WorkspaceSessionStatus status
+    ) {
+        return WorkspaceSession.builder()
+                .project(project)
+                .runtime(runtime)
+                .user(user)
+                .guestSession(null)
+                .status(status)
                 .build();
     }
 }

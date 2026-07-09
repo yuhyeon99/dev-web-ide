@@ -1,11 +1,13 @@
 package com.yuhyeon.devwebide.project.controller;
 
+import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.project.dto.*;
 import com.yuhyeon.devwebide.project.service.ProjectService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,27 +29,18 @@ public class ProjectController {
      *
      * 개인 프로젝트, 팀 프로젝트, 게스트 프로젝트를 생성합니다.
      *
-     * 현재는 인증 기능 구현 전이므로
-     * 임시로 Header에서 사용자 ID와 게스트 세션 ID를 전달받습니다.
-     *
-     * 추후 Spring Security 적용 시
-     * X-User-Id, X-Guest-Session-Id 대신 인증 객체에서 꺼내도록 변경합니다.
-     *
      * @param request 프로젝트 생성 요청
-     * @param ownerUserId 현재 로그인한 회원 사용자 ID
-     * @param guestSessionId 현재 게스트 세션 ID
+     * @param principal 인증 사용자 정보
      * @return 생성된 프로젝트 정보
      */
     @PostMapping
     public ResponseEntity<ProjectCreateResponse> createProject(
             @Valid @RequestBody ProjectCreateRequest request,
-            @RequestHeader(value = "X-User-Id", required = false) Long ownerUserId,
-            @RequestHeader(value = "X-Guest-Session-Id", required = false) Long guestSessionId
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         ProjectCreateResponse response = projectService.createProject(
                 request,
-                ownerUserId,
-                guestSessionId
+                principal
         );
 
         return ResponseEntity
@@ -59,17 +52,16 @@ public class ProjectController {
      * 내 프로젝트 목록 조회
      *
      * 로그인한 사용자가 생성한 프로젝트 목록을 조회합니다.
-     * 인증 연동 전까지는 ownerUserId를 RequestParam으로 받습니다.
      *
-     * @param ownerUserId 프로젝트 소유자 ID
+     * @param principal 인증 사용자 정보
      * @return 내 프로젝트 목록
      */
     @GetMapping("/my")
     public ResponseEntity<List<ProjectSummaryResponse>> getMyProjects(
-            @RequestParam Long ownerUserId
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         List<ProjectSummaryResponse> response =
-                projectService.getMyProjects(ownerUserId);
+                projectService.getMyProjects(principal);
 
         return ResponseEntity.ok(response);
     }
@@ -85,10 +77,11 @@ public class ProjectController {
      */
     @GetMapping("/{projectId}")
     public ResponseEntity<ProjectDetailResponse> getProjectDetail(
-            @PathVariable Long projectId
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         ProjectDetailResponse response =
-                projectService.getProjectDetail(projectId);
+                projectService.getProjectDetail(projectId, principal);
 
         return ResponseEntity.ok(response);
     }

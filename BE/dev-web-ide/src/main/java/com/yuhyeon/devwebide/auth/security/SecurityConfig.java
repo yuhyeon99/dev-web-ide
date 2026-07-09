@@ -48,6 +48,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/runtimes").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/projects").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/projects/my").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/projects/*").authenticated()
                         .anyRequest().permitAll()
                 )
                 .addFilterBefore(

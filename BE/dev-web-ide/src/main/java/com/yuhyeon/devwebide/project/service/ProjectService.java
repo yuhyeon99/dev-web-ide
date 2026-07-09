@@ -1,5 +1,6 @@
 package com.yuhyeon.devwebide.project.service;
 
+import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.project.domain.*;
 import com.yuhyeon.devwebide.project.dto.*;
 import com.yuhyeon.devwebide.project.repository.*;
@@ -40,26 +41,27 @@ public class ProjectService {
     private final GuestSessionRepository guestSessionRepository;
     private final ProjectAccessLogRepository projectAccessLogRepository;
     private final WorkspaceSessionRepository workspaceSessionRepository;
+    private final ProjectAuthorizationService projectAuthorizationService;
 
     /**
      * 프로젝트 생성
      *
      * 개인 프로젝트, 팀 프로젝트, 게스트 프로젝트를 생성합니다.
      *
-     * ownerUserId는 회원 프로젝트 생성 시 사용하고,
-     * guestSessionId는 게스트 프로젝트 생성 시 사용합니다.
-     *
      * @param request 프로젝트 생성 요청
-     * @param ownerUserId 현재 로그인한 회원 사용자 ID
-     * @param guestSessionId 현재 게스트 세션 ID
+     * @param principal 인증 사용자 정보
      * @return 생성된 프로젝트 응답
      */
     public ProjectCreateResponse createProject(
             ProjectCreateRequest request,
-            Long ownerUserId,
-            Long guestSessionId
+            AuthenticatedPrincipal principal
     ) {
         validateProjectCreateRequest(request);
+        Long ownerUserId = projectAuthorizationService.requireUserPrincipal(principal);
+
+        if (request.isGuestProject()) {
+            throw new IllegalArgumentException("게스트 프로젝트 생성은 이번 전환 범위에서 지원하지 않습니다.");
+        }
 
         Runtime runtime = getActiveRuntime(request.runtimeId());
 
@@ -67,7 +69,7 @@ public class ProjectService {
                 request,
                 runtime,
                 ownerUserId,
-                guestSessionId
+                null
         );
 
         Project savedProject = projectRepository.save(project);
@@ -356,10 +358,11 @@ public class ProjectService {
      * 로그인한 사용자가 생성한 ACTIVE 상태의 프로젝트 목록을 조회합니다.
      * 삭제 처리된 프로젝트는 조회하지 않습니다.
      *
-     * @param ownerUserId 로그인한 사용자 ID
+     * @param principal 인증 사용자 정보
      * @return 내 프로젝트 목록
      */
-    public List<ProjectSummaryResponse> getMyProjects(Long ownerUserId) {
+    public List<ProjectSummaryResponse> getMyProjects(AuthenticatedPrincipal principal) {
+        Long ownerUserId = projectAuthorizationService.requireUserPrincipal(principal);
         validateOwnerUserId(ownerUserId);
 
         List<Project> projects =
@@ -380,10 +383,16 @@ public class ProjectService {
      * 프로젝트 기본 정보, 런타임, 설정, 활성 멤버 목록을 함께 반환합니다.
      *
      * @param projectId 프로젝트 ID
+     * @param principal 인증 사용자 정보
      * @return 프로젝트 상세 응답
      */
     @Transactional(readOnly = true)
-    public ProjectDetailResponse getProjectDetail(Long projectId) {
+    public ProjectDetailResponse getProjectDetail(
+            Long projectId,
+            AuthenticatedPrincipal principal
+    ) {
+        Long userId = projectAuthorizationService.requireUserPrincipal(principal);
+
         Project project = projectRepository.findByIdAndStatus(
                         projectId,
                         ProjectStatus.ACTIVE
@@ -391,6 +400,8 @@ public class ProjectService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "존재하지 않거나 삭제된 프로젝트입니다. projectId=" + projectId
                 ));
+
+        projectAuthorizationService.requireCanViewProject(project, userId);
 
         ProjectSettings projectSettings =
                 projectSettingsRepository.findByProjectId(projectId)

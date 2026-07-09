@@ -68,7 +68,7 @@
 - [x] 토큰 재발급 시 user session ACTIVE 검증 구현
 - [x] 토큰 재발급 시 guest session 만료 검증 구현
 - [~] 실제 OAuth provider 검증 연동은 미구현
-- [~] Project 계열 API의 Spring Security 기반 인가 전환은 미구현
+- [~] Project 계열 API의 Spring Security 기반 인가 전환은 일부만 완료
 
 ### 런타임 도메인
 
@@ -138,6 +138,10 @@
 - [x] 내 프로젝트 목록 조회 구현
 - [x] ACTIVE 프로젝트만 목록 조회하도록 구현
 - [x] 프로젝트 상세 조회 구현
+- [x] 프로젝트 기본 API 1차 Security principal 기반 전환: 생성/내 프로젝트 목록/상세 조회
+- [x] `ProjectAuthorizationService` 1차 구현
+- [x] 프로젝트 상세 조회 owner 권한 검증 구현
+- [x] 프로젝트 상세 조회 ACTIVE member 권한 검증 구현
 - [x] 프로젝트 상세에 런타임/설정/활성 멤버 포함
 - [x] 프로젝트 열기 구현
 - [x] 프로젝트 열기 시 접근 로그 저장
@@ -293,7 +297,7 @@
 - [x] `GET /api/workspace-sessions/{workspaceSessionId}/terminal/logs`
 - [x] `POST /api/workspace-sessions/{workspaceSessionId}/stop`
 - [x] 주요 API 컨트롤러 테스트 구현
-- [~] 인증 연동 전 임시로 header/request param/body의 userId, guestSessionId 사용
+- [~] ProjectMember/File/Run/Workspace/Terminal API는 인증 연동 전 임시로 header/request param/body의 userId, guestSessionId 사용
 - [~] 전역 예외 응답 포맷/ControllerAdvice는 확인되지 않음
 
 ## DTO 및 검증
@@ -325,7 +329,7 @@
 
 ### Service 테스트
 
-- [x] ProjectService 테스트
+- [x] ProjectService 테스트: Project 기본 API principal 기반 전환 포함
 - [x] ProjectMemberService 테스트
 - [x] ProjectFileService 테스트
 - [x] LocalProjectFileStorageService 테스트
@@ -342,7 +346,7 @@
 ### Controller 테스트
 
 - [x] RuntimeController 테스트
-- [x] ProjectController 테스트: 프로젝트 생성, 목록 조회, 상세 조회, 수정, 삭제, 열기
+- [x] ProjectController 테스트: Project 기본 API Security principal 기반 전환, 수정, 삭제, 열기
 - [x] ProjectMemberController 테스트
 - [x] ProjectFileController 테스트: 파일 트리 조회, 파일 생성, 파일 내용 조회, 파일 저장, 파일 이름 변경, 파일/디렉터리 삭제
 - [x] ProjectRunController 테스트
@@ -371,7 +375,9 @@
 ## 현재 미완료 또는 추가 구현 필요 항목
 
 - [ ] 실제 OAuth provider 검증 연동
-- [ ] Project 계열 API의 Spring Security 기반 인가 전환
+- [ ] ProjectMember API Security principal 기반 전환
+- [ ] ProjectFile API Security principal 기반 전환
+- [ ] ProjectRun / WorkspaceSessionStop / TerminalLog API Security principal 기반 전환
 - [ ] 프로젝트 복구 API
 - [ ] 컨테이너 상태 STARTING -> RUNNING 전환 처리
 - [ ] 실제 Docker/ECS/Fargate 실행 연동

@@ -1,5 +1,6 @@
 package com.yuhyeon.devwebide.project.service;
 
+import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.project.domain.*;
 import com.yuhyeon.devwebide.project.dto.*;
 import com.yuhyeon.devwebide.project.repository.*;
@@ -36,7 +37,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * ProjectFile이 정상적으로 함께 생성되는지 검증합니다.
  */
 @DataJpaTest
-@Import(ProjectService.class)
+@Import({
+        ProjectService.class,
+        ProjectAuthorizationService.class
+})
 class ProjectServiceTest {
 
     @Autowired
@@ -94,8 +98,7 @@ class ProjectServiceTest {
         // when
         ProjectCreateResponse response = projectService.createProject(
                 request,
-                ownerUser.getId(),
-                null
+                userPrincipal(ownerUser)
         );
 
         // then
@@ -158,8 +161,7 @@ class ProjectServiceTest {
         // when
         ProjectCreateResponse response = projectService.createProject(
                 request,
-                ownerUser.getId(),
-                null
+                userPrincipal(ownerUser)
         );
 
         // then
@@ -202,8 +204,8 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("게스트 프로젝트를 생성한다")
-    void createGuestProject() {
+    @DisplayName("GUEST principal이면 프로젝트 생성 예외가 발생한다")
+    void createProjectWithGuestPrincipal() {
         // given
         GuestSession guestSession = saveGuestSession(
                 "guest-token"
@@ -223,29 +225,13 @@ class ProjectServiceTest {
                 List.of()
         );
 
-        // when
-        ProjectCreateResponse response = projectService.createProject(
+        // when & then
+        assertThatThrownBy(() -> projectService.createProject(
                 request,
-                null,
-                guestSession.getId()
-        );
-
-        // then
-        Project project = projectRepository.findById(response.id())
-                .orElseThrow();
-
-        assertThat(project.getOwnerUser()).isNull();
-        assertThat(project.getGuestSession().getId()).isEqualTo(guestSession.getId());
-        assertThat(project.getProjectType()).isEqualTo(ProjectType.GUEST);
-        assertThat(project.getVisibility()).isEqualTo(ProjectVisibility.PRIVATE);
-
-        assertThat(projectSettingsRepository.existsByProjectId(project.getId()))
-                .isTrue();
-
-        assertThat(projectFileRepository.findByProjectIdAndParentFileIsNullAndStatus(
-                project.getId(),
-                ProjectFileStatus.ACTIVE
-        )).isPresent();
+                guestPrincipal(guestSession)
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("회원 인증이 필요합니다.");
     }
 
     @Test
@@ -269,8 +255,7 @@ class ProjectServiceTest {
         // when & then
         assertThatThrownBy(() -> projectService.createProject(
                 request,
-                ownerUser.getId(),
-                null
+                userPrincipal(ownerUser)
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("존재하지 않는 런타임입니다.");
@@ -302,8 +287,7 @@ class ProjectServiceTest {
         // when & then
         assertThatThrownBy(() -> projectService.createProject(
                 request,
-                ownerUser.getId(),
-                null
+                userPrincipal(ownerUser)
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("팀 프로젝트의 공개 범위는 TEAM이어야 합니다.");
@@ -341,7 +325,7 @@ class ProjectServiceTest {
 
         // when
         List<ProjectSummaryResponse> result =
-                projectService.getMyProjects(ownerUser.getId());
+                projectService.getMyProjects(userPrincipal(ownerUser));
 
         // then
         assertThat(result).hasSize(2);
@@ -400,7 +384,7 @@ class ProjectServiceTest {
 
         // when
         List<ProjectSummaryResponse> result =
-                projectService.getMyProjects(ownerUser.getId());
+                projectService.getMyProjects(userPrincipal(ownerUser));
 
         // then
         assertThat(result).hasSize(1);
@@ -446,12 +430,22 @@ class ProjectServiceTest {
 
         // when
         List<ProjectSummaryResponse> result =
-                projectService.getMyProjects(ownerUser.getId());
+                projectService.getMyProjects(userPrincipal(ownerUser));
 
         // then
         assertThat(result).hasSize(1);
         assertThat(result.get(0).id()).isEqualTo(myProject.getId());
         assertThat(result.get(0).name()).isEqualTo("my-project");
+    }
+
+    @Test
+    @DisplayName("GUEST principal이면 내 프로젝트 목록 조회 예외가 발생한다")
+    void getMyProjectsWithGuestPrincipal() {
+        GuestSession guestSession = saveGuestSession("guest-my-projects-token");
+
+        assertThatThrownBy(() -> projectService.getMyProjects(guestPrincipal(guestSession)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("회원 인증이 필요합니다.");
     }
 
     /**
@@ -599,7 +593,7 @@ class ProjectServiceTest {
 
         // when
         ProjectDetailResponse response =
-                projectService.getProjectDetail(savedProject.getId());
+                projectService.getProjectDetail(savedProject.getId(), userPrincipal(owner));
 
         // then
         assertThat(response.id()).isEqualTo(savedProject.getId());
@@ -628,13 +622,88 @@ class ProjectServiceTest {
     }
 
     @Test
+    @DisplayName("ACTIVE 멤버는 프로젝트 상세를 조회할 수 있다")
+    void getProjectDetailByActiveMember() {
+        User owner = userRepository.save(createUser(
+                "owner-member-detail@test.com",
+                "프로젝트소유자"
+        ));
+        User member = userRepository.save(createUser(
+                "active-member-detail@test.com",
+                "활성멤버"
+        ));
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createTeamProject(owner, runtime));
+        projectSettingsRepository.save(createProjectSettings(project));
+        projectMemberRepository.save(ProjectMember.builder()
+                .project(project)
+                .user(member)
+                .role(ProjectMemberRole.EDITOR)
+                .status(ProjectMemberStatus.ACTIVE)
+                .invitedByUser(owner)
+                .invitedAt(LocalDateTime.now().minusDays(1))
+                .joinedAt(LocalDateTime.now())
+                .build());
+
+        ProjectDetailResponse response =
+                projectService.getProjectDetail(project.getId(), userPrincipal(member));
+
+        assertThat(response.id()).isEqualTo(project.getId());
+        assertThat(response.members()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("owner 또는 ACTIVE 멤버가 아니면 프로젝트 상세 조회 예외가 발생한다")
+    void getProjectDetailWithoutPermission() {
+        User owner = userRepository.save(createUser(
+                "owner-no-permission@test.com",
+                "소유자"
+        ));
+        User otherUser = userRepository.save(createUser(
+                "other-no-permission@test.com",
+                "다른사용자"
+        ));
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(owner, runtime));
+        projectSettingsRepository.save(createProjectSettings(project));
+
+        assertThatThrownBy(() -> projectService.getProjectDetail(
+                project.getId(),
+                userPrincipal(otherUser)
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("프로젝트를 조회할 권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("GUEST principal이면 프로젝트 상세 조회 예외가 발생한다")
+    void getProjectDetailWithGuestPrincipal() {
+        GuestSession guestSession = saveGuestSession("guest-detail-token");
+
+        assertThatThrownBy(() -> projectService.getProjectDetail(
+                1L,
+                guestPrincipal(guestSession)
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("회원 인증이 필요합니다.");
+    }
+
+    @Test
     @DisplayName("존재하지 않는 프로젝트 상세 조회 시 예외 발생")
     void getProjectDetailNotFound() {
         // given
         Long notExistsProjectId = 999999L;
 
         // when & then
-        assertThatThrownBy(() -> projectService.getProjectDetail(notExistsProjectId))
+        User user = userRepository.save(createUser(
+                "not-found-detail@test.com",
+                "상세조회사용자"
+        ));
+
+        assertThatThrownBy(() -> projectService.getProjectDetail(
+                notExistsProjectId,
+                userPrincipal(user)
+        ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("존재하지 않거나 삭제된 프로젝트입니다.");
     }
@@ -672,7 +741,10 @@ class ProjectServiceTest {
         Project savedProject = projectRepository.save(project);
 
         // when & then
-        assertThatThrownBy(() -> projectService.getProjectDetail(savedProject.getId()))
+        assertThatThrownBy(() -> projectService.getProjectDetail(
+                savedProject.getId(),
+                userPrincipal(owner)
+        ))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("프로젝트 설정이 존재하지 않습니다.");
     }
@@ -1120,6 +1192,30 @@ class ProjectServiceTest {
                 .build();
     }
 
+    private Project createTeamProject(User user, Runtime runtime) {
+        return Project.builder()
+                .ownerUser(user)
+                .guestSession(null)
+                .runtime(runtime)
+                .name("팀 프로젝트")
+                .description("팀 프로젝트 설명")
+                .projectType(ProjectType.TEAM)
+                .visibility(ProjectVisibility.TEAM)
+                .status(ProjectStatus.ACTIVE)
+                .storagePath("/projects/" + UUID.randomUUID())
+                .build();
+    }
+
+    private ProjectSettings createProjectSettings(Project project) {
+        return ProjectSettings.builder()
+                .project(project)
+                .autoSaveEnabled(true)
+                .formatOnSaveEnabled(false)
+                .guestCanEdit(false)
+                .shareCursorPosition(true)
+                .build();
+    }
+
     private Project createGuestProject(GuestSession guestSession, Runtime runtime) {
         return Project.builder()
                 .ownerUser(null)
@@ -1161,5 +1257,25 @@ class ProjectServiceTest {
                 .guestSession(null)
                 .status(status)
                 .build();
+    }
+
+    private AuthenticatedPrincipal userPrincipal(User user) {
+        return new AuthenticatedPrincipal(
+                100L,
+                "USER",
+                user.getId(),
+                null,
+                "USER"
+        );
+    }
+
+    private AuthenticatedPrincipal guestPrincipal(GuestSession guestSession) {
+        return new AuthenticatedPrincipal(
+                100L,
+                "GUEST",
+                null,
+                guestSession.getId(),
+                null
+        );
     }
 }

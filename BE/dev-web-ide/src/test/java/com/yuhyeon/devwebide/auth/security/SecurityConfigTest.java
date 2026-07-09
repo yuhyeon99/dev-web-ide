@@ -5,7 +5,21 @@ import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.auth.service.AuthService;
 import com.yuhyeon.devwebide.auth.service.GuestSessionService;
 import com.yuhyeon.devwebide.auth.service.OAuthLoginService;
+import com.yuhyeon.devwebide.project.domain.ProjectStatus;
+import com.yuhyeon.devwebide.project.domain.ProjectType;
+import com.yuhyeon.devwebide.project.domain.ProjectVisibility;
+import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectDetailResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectMemberResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectOpenResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectSettingsResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectSummaryResponse;
+import com.yuhyeon.devwebide.project.service.ProjectService;
+import com.yuhyeon.devwebide.project.domain.ProjectMemberRole;
+import com.yuhyeon.devwebide.project.domain.ProjectMemberStatus;
 import com.yuhyeon.devwebide.runtime.service.RuntimeService;
+import com.yuhyeon.devwebide.runtime.domain.RuntimeLanguage;
+import com.yuhyeon.devwebide.runtime.dto.RuntimeResponse;
 import com.yuhyeon.devwebide.user.domain.UserRole;
 import com.yuhyeon.devwebide.user.domain.UserStatus;
 import com.yuhyeon.devwebide.user.dto.UserMeResponse;
@@ -53,6 +67,9 @@ class SecurityConfigTest {
 
     @MockitoBean
     private RuntimeService runtimeService;
+
+    @MockitoBean
+    private ProjectService projectService;
 
     @Test
     @DisplayName("permitAll 경로는 인증 없이 접근할 수 있다")
@@ -109,6 +126,154 @@ class SecurityConfigTest {
 
         mockMvc.perform(get("/api/users/me")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Project 기본 API는 인증이 없으면 401을 반환한다")
+    void projectBasicApisWithoutAuthentication() throws Exception {
+        mockMvc.perform(post("/api/projects")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "name": "project",
+                                  "description": "description",
+                                  "runtimeId": 1,
+                                  "projectType": "PERSONAL",
+                                  "visibility": "PRIVATE",
+                                  "memberUserIds": []
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/projects/my"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/projects/1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("유효한 Bearer token이면 Project 기본 API에 접근할 수 있다")
+    void projectBasicApisWithValidBearerToken() throws Exception {
+        AuthenticatedPrincipal principal = new AuthenticatedPrincipal(
+                100L,
+                "USER",
+                1L,
+                null,
+                "USER"
+        );
+
+        given(accessTokenAuthenticationService.authenticate("project-access-token"))
+                .willReturn(principal);
+        given(projectService.createProject(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(principal)
+        )).willReturn(new ProjectCreateResponse(
+                1L,
+                "project",
+                "description",
+                ProjectType.PERSONAL,
+                ProjectVisibility.PRIVATE,
+                ProjectStatus.ACTIVE,
+                1L,
+                "node-20",
+                "Node.js 20",
+                RuntimeLanguage.NODE,
+                LocalDateTime.of(2026, 7, 9, 10, 0)
+        ));
+        given(projectService.getMyProjects(principal))
+                .willReturn(List.of(new ProjectSummaryResponse(
+                        1L,
+                        "project",
+                        "description",
+                        ProjectType.PERSONAL,
+                        ProjectVisibility.PRIVATE,
+                        ProjectStatus.ACTIVE,
+                        1L,
+                        "node-20",
+                        "Node.js 20",
+                        RuntimeLanguage.NODE,
+                        LocalDateTime.of(2026, 7, 9, 10, 0),
+                        LocalDateTime.of(2026, 7, 9, 10, 0)
+                )));
+        given(projectService.getProjectDetail(1L, principal))
+                .willReturn(new ProjectDetailResponse(
+                        1L,
+                        "project",
+                        "description",
+                        ProjectType.PERSONAL,
+                        ProjectVisibility.PRIVATE,
+                        ProjectStatus.ACTIVE,
+                        "/projects/1",
+                        new RuntimeResponse(
+                                1L,
+                                "node-20",
+                                "Node.js 20",
+                                "20",
+                                "node:20",
+                                RuntimeLanguage.NODE
+                        ),
+                        new ProjectSettingsResponse(
+                                true,
+                                false,
+                                false,
+                                true
+                        ),
+                        List.of(new ProjectMemberResponse(
+                                1L,
+                                "user",
+                                ProjectMemberRole.OWNER,
+                                ProjectMemberStatus.ACTIVE,
+                                LocalDateTime.of(2026, 7, 9, 10, 0)
+                        )),
+                        LocalDateTime.of(2026, 7, 9, 10, 0),
+                        LocalDateTime.of(2026, 7, 9, 10, 0)
+                ));
+
+        mockMvc.perform(post("/api/projects")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer project-access-token")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "name": "project",
+                                  "description": "description",
+                                  "runtimeId": 1,
+                                  "projectType": "PERSONAL",
+                                  "visibility": "PRIVATE",
+                                  "memberUserIds": []
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/projects/my")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer project-access-token"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/projects/1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer project-access-token"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("이번 범위에서 제외한 Project open API는 permitAll을 유지한다")
+    void excludedProjectOpenApiPermitAll() throws Exception {
+        given(projectService.openProject(1L, null, null))
+                .willReturn(new ProjectOpenResponse(
+                        1L,
+                        "project",
+                        "description",
+                        ProjectType.PERSONAL,
+                        ProjectVisibility.PRIVATE,
+                        ProjectStatus.ACTIVE,
+                        1L,
+                        "node-20",
+                        "Node.js 20",
+                        RuntimeLanguage.NODE,
+                        LocalDateTime.of(2026, 7, 9, 10, 0)
+                ));
+
+        mockMvc.perform(post("/api/projects/1/open"))
                 .andExpect(status().isOk());
     }
 }

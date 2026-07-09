@@ -49,6 +49,10 @@
 - [x] 토큰 재발급 API 구현
 - [x] TokenService 구현
 - [x] JWT Access Token 발급 구현
+- [x] Access Token 검증 구현
+- [x] JWT signature / exp / claim 검증 구현
+- [x] Access Token 기반 AuthSession active 재검증 구현
+- [x] 현재 사용자 조회 서비스 구현
 - [x] 토큰 재발급 시 refresh token hash 기반 AuthSession 검증 구현
 - [x] 토큰 재발급 시 user session ACTIVE 검증 구현
 - [x] 토큰 재발급 시 guest session 만료 검증 구현
@@ -255,6 +259,7 @@
 - [x] `POST /api/guest-sessions`
 - [x] `POST /api/auth/logout`
 - [x] `POST /api/auth/refresh`
+- [x] `GET /api/users/me`
 - [x] `GET /api/runtimes`
 - [x] `POST /api/projects`
 - [x] `GET /api/projects/my`
@@ -316,8 +321,9 @@
 - [x] WorkspaceSessionStopService 테스트
 - [x] TerminalLogService 테스트
 - [x] GuestSessionService 테스트
-- [x] TokenService 테스트
+- [x] TokenService 테스트: Access Token 발급/검증 포함
 - [x] AuthService 테스트: 로그아웃, 토큰 재발급 포함
+- [x] UserService 테스트
 
 ### Controller 테스트
 
@@ -330,6 +336,7 @@
 - [x] WorkspaceSessionStopController 테스트
 - [x] GuestSessionController 테스트
 - [x] AuthController 테스트: 로그아웃, 토큰 재발급 포함
+- [x] UserController 테스트
 
 ### `ProjectRunServiceTest.java` 세부 확인
 

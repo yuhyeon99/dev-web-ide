@@ -1,5 +1,6 @@
 package com.yuhyeon.devwebide.auth.service;
 
+import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.user.domain.*;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -12,9 +13,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TokenServiceTest {
 
@@ -112,6 +115,179 @@ class TokenServiceTest {
         assertThat(tokenService.getAccessTokenExpiresInSeconds()).isEqualTo(1800L);
     }
 
+    @Test
+    @DisplayName("유효한 회원 Access Token을 검증한다")
+    void validateUserAccessToken() {
+        String accessToken = tokenService.createAccessToken(
+                createUserAuthSession(),
+                LocalDateTime.of(2026, 7, 10, 10, 0)
+        );
+
+        AuthenticatedPrincipal principal = tokenService.validateAccessToken(accessToken);
+
+        assertThat(principal.sessionId()).isEqualTo(100L);
+        assertThat(principal.sessionType()).isEqualTo("USER");
+        assertThat(principal.userId()).isEqualTo(1L);
+        assertThat(principal.guestSessionId()).isNull();
+        assertThat(principal.role()).isEqualTo("USER");
+    }
+
+    @Test
+    @DisplayName("유효한 게스트 Access Token을 검증한다")
+    void validateGuestAccessToken() {
+        String accessToken = tokenService.createAccessToken(
+                createGuestAuthSession(),
+                LocalDateTime.of(2026, 7, 10, 10, 0)
+        );
+
+        AuthenticatedPrincipal principal = tokenService.validateAccessToken(accessToken);
+
+        assertThat(principal.sessionId()).isEqualTo(200L);
+        assertThat(principal.sessionType()).isEqualTo("GUEST");
+        assertThat(principal.userId()).isNull();
+        assertThat(principal.guestSessionId()).isEqualTo(10L);
+        assertThat(principal.role()).isNull();
+    }
+
+    @Test
+    @DisplayName("signature가 유효하지 않은 Access Token이면 예외가 발생한다")
+    void validateAccessTokenWithInvalidSignature() {
+        String accessToken = createToken("different-secret-key-for-invalid-signature-test")
+                .subject("user:1")
+                .claim("sessionId", 100L)
+                .claim("sessionType", "USER")
+                .claim("userId", 1L)
+                .claim("role", "USER")
+                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
+                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .compact();
+
+        assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유효하지 않은 Access Token입니다.");
+    }
+
+    @Test
+    @DisplayName("만료된 Access Token이면 예외가 발생한다")
+    void validateAccessTokenWithExpiredToken() {
+        String accessToken = createToken(JWT_SECRET)
+                .subject("user:1")
+                .claim("sessionId", 100L)
+                .claim("sessionType", "USER")
+                .claim("userId", 1L)
+                .claim("role", "USER")
+                .issuedAt(toDate(LocalDateTime.of(2026, 7, 8, 10, 0)))
+                .expiration(toDate(LocalDateTime.of(2026, 7, 8, 10, 30)))
+                .compact();
+
+        assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유효하지 않은 Access Token입니다.");
+    }
+
+    @Test
+    @DisplayName("sessionType claim이 없으면 예외가 발생한다")
+    void validateAccessTokenWithoutSessionType() {
+        String accessToken = createToken(JWT_SECRET)
+                .subject("user:1")
+                .claim("sessionId", 100L)
+                .claim("userId", 1L)
+                .claim("role", "USER")
+                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
+                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .compact();
+
+        assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유효하지 않은 Access Token입니다.");
+    }
+
+    @Test
+    @DisplayName("sessionType claim 값이 잘못되면 예외가 발생한다")
+    void validateAccessTokenWithInvalidSessionType() {
+        String accessToken = createToken(JWT_SECRET)
+                .subject("user:1")
+                .claim("sessionId", 100L)
+                .claim("sessionType", "INVALID")
+                .claim("userId", 1L)
+                .claim("role", "USER")
+                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
+                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .compact();
+
+        assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유효하지 않은 Access Token입니다.");
+    }
+
+    @Test
+    @DisplayName("회원 Access Token에 userId claim이 없으면 예외가 발생한다")
+    void validateUserAccessTokenWithoutUserId() {
+        String accessToken = createToken(JWT_SECRET)
+                .subject("user:1")
+                .claim("sessionId", 100L)
+                .claim("sessionType", "USER")
+                .claim("role", "USER")
+                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
+                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .compact();
+
+        assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유효하지 않은 Access Token입니다.");
+    }
+
+    @Test
+    @DisplayName("게스트 Access Token에 guestSessionId claim이 없으면 예외가 발생한다")
+    void validateGuestAccessTokenWithoutGuestSessionId() {
+        String accessToken = createToken(JWT_SECRET)
+                .subject("guest:10")
+                .claim("sessionId", 200L)
+                .claim("sessionType", "GUEST")
+                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
+                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .compact();
+
+        assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유효하지 않은 Access Token입니다.");
+    }
+
+    @Test
+    @DisplayName("회원 Access Token의 sub와 userId가 다르면 예외가 발생한다")
+    void validateUserAccessTokenWithMismatchedSubject() {
+        String accessToken = createToken(JWT_SECRET)
+                .subject("user:2")
+                .claim("sessionId", 100L)
+                .claim("sessionType", "USER")
+                .claim("userId", 1L)
+                .claim("role", "USER")
+                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
+                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .compact();
+
+        assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유효하지 않은 Access Token입니다.");
+    }
+
+    @Test
+    @DisplayName("게스트 Access Token의 sub와 guestSessionId가 다르면 예외가 발생한다")
+    void validateGuestAccessTokenWithMismatchedSubject() {
+        String accessToken = createToken(JWT_SECRET)
+                .subject("guest:11")
+                .claim("sessionId", 200L)
+                .claim("sessionType", "GUEST")
+                .claim("guestSessionId", 10L)
+                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
+                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .compact();
+
+        assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유효하지 않은 Access Token입니다.");
+    }
+
     private Claims parseClaims(String accessToken) {
         SecretKey key = Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8));
 
@@ -120,6 +296,17 @@ class TokenServiceTest {
                 .build()
                 .parseSignedClaims(accessToken)
                 .getPayload();
+    }
+
+    private io.jsonwebtoken.JwtBuilder createToken(String secret) {
+        SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+
+        return Jwts.builder()
+                .signWith(key, Jwts.SIG.HS256);
+    }
+
+    private Date toDate(LocalDateTime dateTime) {
+        return Date.from(dateTime.atZone(ZoneId.systemDefault()).toInstant());
     }
 
     private AuthSession createUserAuthSession() {

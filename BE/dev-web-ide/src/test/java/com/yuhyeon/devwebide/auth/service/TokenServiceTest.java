@@ -116,6 +116,39 @@ class TokenServiceTest {
     }
 
     @Test
+    @DisplayName("Refresh Token을 생성한다")
+    void createRefreshToken() {
+        String refreshToken = tokenService.createRefreshToken();
+
+        assertThat(refreshToken).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("Refresh Token은 매번 다른 값을 반환한다")
+    void createRefreshTokenReturnsDifferentValue() {
+        String firstRefreshToken = tokenService.createRefreshToken();
+        String secondRefreshToken = tokenService.createRefreshToken();
+
+        assertThat(firstRefreshToken).isNotEqualTo(secondRefreshToken);
+    }
+
+    @Test
+    @DisplayName("Refresh Token 만료 시간은 14일 기준이다")
+    void calculateRefreshTokenExpiresAt() {
+        LocalDateTime issuedAt = LocalDateTime.of(2026, 7, 10, 10, 0);
+
+        LocalDateTime expiresAt = tokenService.calculateRefreshTokenExpiresAt(issuedAt);
+
+        assertThat(expiresAt).isEqualTo(issuedAt.plusDays(14));
+    }
+
+    @Test
+    @DisplayName("Refresh Token expiresIn은 14일을 초 단위로 반환한다")
+    void getRefreshTokenExpiresInSeconds() {
+        assertThat(tokenService.getRefreshTokenExpiresInSeconds()).isEqualTo(1_209_600L);
+    }
+
+    @Test
     @DisplayName("유효한 회원 Access Token을 검증한다")
     void validateUserAccessToken() {
         String accessToken = tokenService.createAccessToken(

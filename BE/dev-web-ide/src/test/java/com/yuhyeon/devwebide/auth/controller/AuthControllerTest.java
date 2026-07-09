@@ -2,20 +2,30 @@ package com.yuhyeon.devwebide.auth.controller;
 
 import com.yuhyeon.devwebide.auth.dto.AuthLogoutResponse;
 import com.yuhyeon.devwebide.auth.dto.AuthTokenRefreshResponse;
+import com.yuhyeon.devwebide.auth.dto.OAuthLoginResponse;
+import com.yuhyeon.devwebide.auth.dto.OAuthLoginResult;
 import com.yuhyeon.devwebide.auth.service.AuthService;
+import com.yuhyeon.devwebide.auth.service.OAuthLoginService;
+import com.yuhyeon.devwebide.user.domain.UserRole;
+import com.yuhyeon.devwebide.user.domain.UserStatus;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -31,7 +41,132 @@ class AuthControllerTest {
     private AuthService authService;
 
     @MockitoBean
+    private OAuthLoginService oAuthLoginService;
+
+    @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @Test
+    @DisplayName("Mock OAuth 로그인 API 요청에 성공한다")
+    void oauthLogin() throws Exception {
+        LocalDateTime accessTokenExpiresAt = LocalDateTime.of(2026, 7, 9, 10, 30);
+        OAuthLoginResponse response = new OAuthLoginResponse(
+                "access-token",
+                "Bearer",
+                1800L,
+                accessTokenExpiresAt,
+                1L,
+                "user@test.com",
+                "user",
+                UserRole.USER,
+                UserStatus.ACTIVE,
+                true
+        );
+        OAuthLoginResult result = new OAuthLoginResult(
+                response,
+                "refresh-token",
+                1_209_600L
+        );
+
+        given(oAuthLoginService.login(any(), eq("127.0.0.1"), eq("Chrome")))
+                .willReturn(result);
+
+        mockMvc.perform(post("/api/auth/oauth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.USER_AGENT, "Chrome")
+                        .content("""
+                                {
+                                  "provider": "GITHUB",
+                                  "providerUserId": "github-user-id",
+                                  "providerEmail": "user@test.com",
+                                  "nickname": "user",
+                                  "termsAgreed": true,
+                                  "privacyAgreed": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(1800L))
+                .andExpect(jsonPath("$.accessTokenExpiresAt").exists())
+                .andExpect(jsonPath("$.userId").value(1L))
+                .andExpect(jsonPath("$.email").value("user@test.com"))
+                .andExpect(jsonPath("$.nickname").value("user"))
+                .andExpect(jsonPath("$.role").value("USER"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.newUser").value(true))
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("refreshToken=refresh-token")
+                ))
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("HttpOnly")
+                ))
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("Path=/")
+                ))
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("Max-Age=1209600")
+                ));
+
+        ArgumentCaptor<com.yuhyeon.devwebide.auth.dto.OAuthLoginRequest> requestCaptor =
+                ArgumentCaptor.forClass(com.yuhyeon.devwebide.auth.dto.OAuthLoginRequest.class);
+        then(oAuthLoginService).should()
+                .login(requestCaptor.capture(), eq("127.0.0.1"), eq("Chrome"));
+        assertThat(requestCaptor.getValue().provider().name()).isEqualTo("GITHUB");
+        assertThat(requestCaptor.getValue().providerUserId()).isEqualTo("github-user-id");
+        assertThat(requestCaptor.getValue().providerEmail()).isEqualTo("user@test.com");
+        assertThat(requestCaptor.getValue().nickname()).isEqualTo("user");
+        assertThat(requestCaptor.getValue().termsAgreed()).isTrue();
+        assertThat(requestCaptor.getValue().privacyAgreed()).isTrue();
+    }
+
+    @Test
+    @DisplayName("X-Forwarded-For가 있으면 첫 번째 IP를 Service로 전달한다")
+    void oauthLoginWithXForwardedFor() throws Exception {
+        OAuthLoginResponse response = new OAuthLoginResponse(
+                "access-token",
+                "Bearer",
+                1800L,
+                LocalDateTime.of(2026, 7, 9, 10, 30),
+                1L,
+                "user@test.com",
+                "user",
+                UserRole.USER,
+                UserStatus.ACTIVE,
+                false
+        );
+        OAuthLoginResult result = new OAuthLoginResult(
+                response,
+                "refresh-token",
+                1_209_600L
+        );
+
+        given(oAuthLoginService.login(any(), eq("203.0.113.10"), eq("Chrome")))
+                .willReturn(result);
+
+        mockMvc.perform(post("/api/auth/oauth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.USER_AGENT, "Chrome")
+                        .header("X-Forwarded-For", "203.0.113.10, 10.0.0.1")
+                        .content("""
+                                {
+                                  "provider": "GITHUB",
+                                  "providerUserId": "github-user-id",
+                                  "providerEmail": "user@test.com",
+                                  "nickname": "user",
+                                  "termsAgreed": true,
+                                  "privacyAgreed": true
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        then(oAuthLoginService).should()
+                .login(any(), eq("203.0.113.10"), eq("Chrome"));
+    }
 
     @Test
     @DisplayName("로그아웃 API 요청에 성공한다")

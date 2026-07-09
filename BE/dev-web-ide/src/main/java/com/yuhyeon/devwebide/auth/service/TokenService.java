@@ -13,8 +13,10 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HexFormat;
 
@@ -24,6 +26,10 @@ public class TokenService {
     private static final String SHA_256 = "SHA-256";
     private static final String USER_SESSION_TYPE = "USER";
     private static final String GUEST_SESSION_TYPE = "GUEST";
+    private static final int REFRESH_TOKEN_BYTE_LENGTH = 32;
+    private static final long REFRESH_TOKEN_EXPIRATION_DAYS = 14L;
+
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${app.jwt.secret}")
     private String jwtSecret;
@@ -39,6 +45,15 @@ public class TokenService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("Refresh Token 해시를 생성할 수 없습니다.", e);
         }
+    }
+
+    public String createRefreshToken() {
+        byte[] tokenBytes = new byte[REFRESH_TOKEN_BYTE_LENGTH];
+        secureRandom.nextBytes(tokenBytes);
+
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(tokenBytes);
     }
 
     public String createAccessToken(AuthSession authSession, LocalDateTime issuedAt) {
@@ -111,6 +126,14 @@ public class TokenService {
 
     public long getAccessTokenExpiresInSeconds() {
         return accessTokenExpirationMinutes * 60;
+    }
+
+    public LocalDateTime calculateRefreshTokenExpiresAt(LocalDateTime issuedAt) {
+        return issuedAt.plusDays(REFRESH_TOKEN_EXPIRATION_DAYS);
+    }
+
+    public long getRefreshTokenExpiresInSeconds() {
+        return REFRESH_TOKEN_EXPIRATION_DAYS * 24 * 60 * 60;
     }
 
     private String createSubject(AuthSession authSession) {

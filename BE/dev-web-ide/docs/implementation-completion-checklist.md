@@ -53,10 +53,17 @@
 - [x] JWT signature / exp / claim 검증 구현
 - [x] Access Token 기반 AuthSession active 재검증 구현
 - [x] 현재 사용자 조회 서비스 구현
+- [x] Mock OAuth Login API 구현
+- [x] OAuthAccount 기반 User 조회/생성 구현
+- [x] 신규 가입 시 TermsAgreement 생성 구현
+- [x] AuthSession 생성 구현
+- [x] refreshToken hash 저장 구현
+- [x] refreshToken Cookie 발급 구현
+- [x] 로그인 성공 시 Access Token 발급 구현
 - [x] 토큰 재발급 시 refresh token hash 기반 AuthSession 검증 구현
 - [x] 토큰 재발급 시 user session ACTIVE 검증 구현
 - [x] 토큰 재발급 시 guest session 만료 검증 구현
-- [~] 실제 OAuth 로그인 플로우는 미연동
+- [~] 실제 OAuth provider 검증 연동은 미구현
 - [~] Spring Security 기반 인증 객체 주입은 미구현
 
 ### 런타임 도메인
@@ -257,6 +264,7 @@
 ## API 구현
 
 - [x] `POST /api/guest-sessions`
+- [x] `POST /api/auth/oauth/login`
 - [x] `POST /api/auth/logout`
 - [x] `POST /api/auth/refresh`
 - [x] `GET /api/users/me`
@@ -321,7 +329,8 @@
 - [x] WorkspaceSessionStopService 테스트
 - [x] TerminalLogService 테스트
 - [x] GuestSessionService 테스트
-- [x] TokenService 테스트: Access Token 발급/검증 포함
+- [x] TokenService 테스트: Access Token 발급/검증, refresh token 생성 포함
+- [x] OAuthLoginService 테스트
 - [x] AuthService 테스트: 로그아웃, 토큰 재발급 포함
 - [x] UserService 테스트
 
@@ -335,7 +344,7 @@
 - [x] TerminalLogController 테스트
 - [x] WorkspaceSessionStopController 테스트
 - [x] GuestSessionController 테스트
-- [x] AuthController 테스트: 로그아웃, 토큰 재발급 포함
+- [x] AuthController 테스트: Mock OAuth 로그인, 로그아웃, 토큰 재발급 포함
 - [x] UserController 테스트
 
 ### `ProjectRunServiceTest.java` 세부 확인
@@ -354,7 +363,7 @@
 
 ## 현재 미완료 또는 추가 구현 필요 항목
 
-- [ ] 실제 OAuth 로그인/회원가입 API
+- [ ] 실제 OAuth provider 검증 연동
 - [ ] Spring Security 기반 인증/인가와 userId 주입
 - [ ] 프로젝트 복구 API
 - [ ] 컨테이너 상태 STARTING -> RUNNING 전환 처리

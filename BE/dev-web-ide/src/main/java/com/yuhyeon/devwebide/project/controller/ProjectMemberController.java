@@ -1,5 +1,6 @@
 package com.yuhyeon.devwebide.project.controller;
 
+import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.project.dto.ProjectMemberInviteRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectMemberManageResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectMemberRoleUpdateRequest;
@@ -7,6 +8,7 @@ import com.yuhyeon.devwebide.project.service.ProjectMemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,11 +21,11 @@ public class ProjectMemberController {
     @PostMapping
     public ResponseEntity<ProjectMemberManageResponse> inviteMember(
             @PathVariable Long projectId,
-            @RequestHeader("X-User-Id") Long requesterUserId,
-            @Valid @RequestBody ProjectMemberInviteRequest request
+            @Valid @RequestBody ProjectMemberInviteRequest request,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         ProjectMemberManageResponse response =
-                projectMemberService.inviteMember(projectId, requesterUserId, request);
+                projectMemberService.inviteMember(projectId, request, principal);
 
         return ResponseEntity.ok(response);
     }
@@ -32,11 +34,11 @@ public class ProjectMemberController {
     public ResponseEntity<ProjectMemberManageResponse> updateMemberRole(
             @PathVariable Long projectId,
             @PathVariable Long memberId,
-            @RequestHeader("X-User-Id") Long requesterUserId,
-            @Valid @RequestBody ProjectMemberRoleUpdateRequest request
+            @Valid @RequestBody ProjectMemberRoleUpdateRequest request,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         ProjectMemberManageResponse response =
-                projectMemberService.updateMemberRole(projectId, memberId, requesterUserId, request);
+                projectMemberService.updateMemberRole(projectId, memberId, request, principal);
 
         return ResponseEntity.ok(response);
     }
@@ -45,10 +47,10 @@ public class ProjectMemberController {
     public ResponseEntity<ProjectMemberManageResponse> removeMember(
             @PathVariable Long projectId,
             @PathVariable Long memberId,
-            @RequestHeader("X-User-Id") Long requesterUserId
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         ProjectMemberManageResponse response =
-                projectMemberService.removeMember(projectId, memberId, requesterUserId);
+                projectMemberService.removeMember(projectId, memberId, principal);
 
         return ResponseEntity.ok(response);
     }
@@ -57,10 +59,10 @@ public class ProjectMemberController {
     public ResponseEntity<ProjectMemberManageResponse> acceptInvitation(
             @PathVariable Long projectId,
             @PathVariable Long memberId,
-            @RequestHeader("X-User-Id") Long requesterUserId
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         ProjectMemberManageResponse response =
-                projectMemberService.acceptInvitation(projectId, memberId, requesterUserId);
+                projectMemberService.acceptInvitation(projectId, memberId, principal);
 
         return ResponseEntity.ok(response);
     }

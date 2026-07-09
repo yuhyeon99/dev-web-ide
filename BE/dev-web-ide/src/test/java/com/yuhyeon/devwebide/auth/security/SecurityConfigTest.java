@@ -11,10 +11,16 @@ import com.yuhyeon.devwebide.project.domain.ProjectVisibility;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectDeleteResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectDetailResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectFileTreeResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectMemberInviteRequest;
+import com.yuhyeon.devwebide.project.dto.ProjectMemberManageResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectMemberResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectMemberRoleUpdateRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectOpenResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectSettingsResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectSummaryResponse;
+import com.yuhyeon.devwebide.project.service.ProjectFileService;
+import com.yuhyeon.devwebide.project.service.ProjectMemberService;
 import com.yuhyeon.devwebide.project.service.ProjectService;
 import com.yuhyeon.devwebide.project.domain.ProjectMemberRole;
 import com.yuhyeon.devwebide.project.domain.ProjectMemberStatus;
@@ -73,6 +79,12 @@ class SecurityConfigTest {
 
     @MockitoBean
     private ProjectService projectService;
+
+    @MockitoBean
+    private ProjectMemberService projectMemberService;
+
+    @MockitoBean
+    private ProjectFileService projectFileService;
 
     @Test
     @DisplayName("permitAll 경로는 인증 없이 접근할 수 있다")
@@ -345,11 +357,109 @@ class SecurityConfigTest {
     }
 
     @Test
-    @DisplayName("이번 범위에서 제외한 ProjectMember API는 permitAll을 유지한다")
-    void excludedProjectMemberApiPermitAll() throws Exception {
+    @DisplayName("ProjectMember API는 인증이 없으면 401을 반환한다")
+    void projectMemberApisWithoutAuthentication() throws Exception {
         mockMvc.perform(post("/api/projects/1/members")
                         .contentType("application/json")
-                        .content("{}"))
-                .andExpect(status().isBadRequest());
+                        .content("""
+                                {
+                                  "userId": 2,
+                                  "role": "EDITOR"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/projects/1/members/2/accept"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(patch("/api/projects/1/members/2")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "role": "VIEWER"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(delete("/api/projects/1/members/2"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("유효한 Bearer token이면 ProjectMember API에 접근할 수 있다")
+    void projectMemberApisWithValidBearerToken() throws Exception {
+        AuthenticatedPrincipal principal = new AuthenticatedPrincipal(
+                100L,
+                "USER",
+                1L,
+                null,
+                "USER"
+        );
+        ProjectMemberManageResponse response = new ProjectMemberManageResponse(
+                1L,
+                2L,
+                "member",
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.INVITED,
+                LocalDateTime.of(2026, 7, 9, 10, 0),
+                null
+        );
+
+        given(accessTokenAuthenticationService.authenticate("project-member-token"))
+                .willReturn(principal);
+        given(projectMemberService.inviteMember(
+                org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.any(ProjectMemberInviteRequest.class),
+                org.mockito.ArgumentMatchers.eq(principal)
+        )).willReturn(response);
+        given(projectMemberService.acceptInvitation(1L, 2L, principal))
+                .willReturn(response);
+        given(projectMemberService.updateMemberRole(
+                org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.eq(2L),
+                org.mockito.ArgumentMatchers.any(ProjectMemberRoleUpdateRequest.class),
+                org.mockito.ArgumentMatchers.eq(principal)
+        )).willReturn(response);
+        given(projectMemberService.removeMember(1L, 2L, principal))
+                .willReturn(response);
+
+        mockMvc.perform(post("/api/projects/1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer project-member-token")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "userId": 2,
+                                  "role": "EDITOR"
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/projects/1/members/2/accept")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer project-member-token"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/projects/1/members/2")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer project-member-token")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "role": "VIEWER"
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/projects/1/members/2")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer project-member-token"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("이번 범위에서 제외한 ProjectFile API는 permitAll을 유지한다")
+    void excludedProjectFileApiPermitAll() throws Exception {
+        given(projectFileService.getFileTree(1L))
+                .willReturn(List.<ProjectFileTreeResponse>of());
+
+        mockMvc.perform(get("/api/projects/1/files/tree"))
+                .andExpect(status().isOk());
     }
 }

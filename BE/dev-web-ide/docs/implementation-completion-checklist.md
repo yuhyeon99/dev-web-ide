@@ -161,13 +161,23 @@
 - [x] 실행 중 WorkspaceSession 삭제 차단 구현
 - [x] 실제 저장소 삭제 없이 프로젝트 상태만 변경하는 정책 반영
 - [x] 프로젝트 멤버 초대 API 구현
+- [x] 프로젝트 멤버 초대 API Security principal 기반 전환
 - [x] 프로젝트 멤버 초대 수락 API 구현
+- [x] 프로젝트 멤버 초대 수락 API Security principal 기반 전환
 - [x] 프로젝트 멤버 권한 변경 API 구현
+- [x] 프로젝트 멤버 권한 변경 API Security principal 기반 전환
 - [x] 프로젝트 멤버 제거 API 구현
+- [x] 프로젝트 멤버 제거 API Security principal 기반 전환
 - [x] OWNER 기반 임시 권한 검증 구현
+- [x] ProjectMember API `X-User-Id` 기반 요청자 식별 제거
 - [x] 중복 멤버 초대 방지 구현
 - [x] OWNER 권한 변경/제거 금지 구현
 - [x] 초대 수락 시 INVITED -> ACTIVE 전환 구현
+- [x] 프로젝트 멤버 초대 OWNER 권한 검증 구현
+- [x] 프로젝트 멤버 초대 수락 대상자 본인 검증 구현
+- [x] 프로젝트 멤버 권한 변경 OWNER 권한 검증 구현
+- [x] 프로젝트 멤버 제거 OWNER 권한 검증 구현
+- [x] ProjectMember API GUEST principal 차단 구현
 - [x] 초대 대상 사용자 본인 검증 구현
 - [x] 초대 수락 시 joinedAt 기록 구현
 - [x] `ProjectServiceTest` 구현
@@ -304,7 +314,7 @@
 - [x] `GET /api/workspace-sessions/{workspaceSessionId}/terminal/logs`
 - [x] `POST /api/workspace-sessions/{workspaceSessionId}/stop`
 - [x] 주요 API 컨트롤러 테스트 구현
-- [~] ProjectMember/File/Run/Workspace/Terminal API는 인증 연동 전 임시로 header/request param/body의 userId, guestSessionId 사용
+- [~] ProjectFile/Run/Workspace/Terminal API는 인증 연동 전 임시로 header/request param/body의 userId, guestSessionId 사용
 - [~] 전역 예외 응답 포맷/ControllerAdvice는 확인되지 않음
 
 ## DTO 및 검증
@@ -337,7 +347,7 @@
 ### Service 테스트
 
 - [x] ProjectService 테스트: Project 기본 API와 수정/삭제/open principal 기반 전환 포함
-- [x] ProjectMemberService 테스트
+- [x] ProjectMemberService 테스트: Security principal 기반 전환 포함
 - [x] ProjectFileService 테스트
 - [x] LocalProjectFileStorageService 테스트
 - [x] ProjectRunService 테스트
@@ -354,7 +364,7 @@
 
 - [x] RuntimeController 테스트
 - [x] ProjectController 테스트: Project 기본 API와 수정/삭제/open Security principal 기반 전환
-- [x] ProjectMemberController 테스트
+- [x] ProjectMemberController 테스트: Security principal 기반 전환 포함
 - [x] ProjectFileController 테스트: 파일 트리 조회, 파일 생성, 파일 내용 조회, 파일 저장, 파일 이름 변경, 파일/디렉터리 삭제
 - [x] ProjectRunController 테스트
 - [x] TerminalLogController 테스트
@@ -382,7 +392,6 @@
 ## 현재 미완료 또는 추가 구현 필요 항목
 
 - [ ] 실제 OAuth provider 검증 연동
-- [ ] ProjectMember API Security principal 기반 전환
 - [ ] ProjectFile API Security principal 기반 전환
 - [ ] ProjectRun / WorkspaceSessionStop / TerminalLog API Security principal 기반 전환
 - [ ] 프로젝트 복구 API

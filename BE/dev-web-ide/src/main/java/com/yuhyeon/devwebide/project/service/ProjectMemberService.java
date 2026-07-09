@@ -1,5 +1,6 @@
 package com.yuhyeon.devwebide.project.service;
 
+import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.project.domain.*;
 import com.yuhyeon.devwebide.project.dto.ProjectMemberInviteRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectMemberManageResponse;
@@ -22,14 +23,16 @@ public class ProjectMemberService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
+    private final ProjectAuthorizationService projectAuthorizationService;
 
     @Transactional
     public ProjectMemberManageResponse inviteMember(
             Long projectId,
-            Long requesterUserId,
-            ProjectMemberInviteRequest request
+            ProjectMemberInviteRequest request,
+            AuthenticatedPrincipal principal
     ) {
         Project project = getActiveProject(projectId);
+        Long requesterUserId = projectAuthorizationService.requireUserPrincipal(principal);
         User requester = getUser(requesterUserId);
 
         validateOwnerRequester(projectId, requester.getId());
@@ -61,10 +64,11 @@ public class ProjectMemberService {
     public ProjectMemberManageResponse updateMemberRole(
             Long projectId,
             Long memberId,
-            Long requesterUserId,
-            ProjectMemberRoleUpdateRequest request
+            ProjectMemberRoleUpdateRequest request,
+            AuthenticatedPrincipal principal
     ) {
         getActiveProject(projectId);
+        Long requesterUserId = projectAuthorizationService.requireUserPrincipal(principal);
         User requester = getUser(requesterUserId);
 
         validateOwnerRequester(projectId, requester.getId());
@@ -85,9 +89,10 @@ public class ProjectMemberService {
     public ProjectMemberManageResponse removeMember(
             Long projectId,
             Long memberId,
-            Long requesterUserId
+            AuthenticatedPrincipal principal
     ) {
         getActiveProject(projectId);
+        Long requesterUserId = projectAuthorizationService.requireUserPrincipal(principal);
         User requester = getUser(requesterUserId);
 
         validateOwnerRequester(projectId, requester.getId());
@@ -107,9 +112,10 @@ public class ProjectMemberService {
     public ProjectMemberManageResponse acceptInvitation(
             Long projectId,
             Long memberId,
-            Long requesterUserId
+            AuthenticatedPrincipal principal
     ) {
         getActiveProject(projectId);
+        Long requesterUserId = projectAuthorizationService.requireUserPrincipal(principal);
         User requester = getUser(requesterUserId);
 
         ProjectMember projectMember = projectMemberRepository

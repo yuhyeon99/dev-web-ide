@@ -1,5 +1,6 @@
 package com.yuhyeon.devwebide.project.service;
 
+import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.project.domain.*;
 import com.yuhyeon.devwebide.project.dto.ProjectMemberInviteRequest;
 import com.yuhyeon.devwebide.project.dto.ProjectMemberManageResponse;
@@ -27,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
-@Import(ProjectMemberService.class)
+@Import({ProjectMemberService.class, ProjectAuthorizationService.class})
 class ProjectMemberServiceTest {
 
     @Autowired
@@ -57,8 +58,8 @@ class ProjectMemberServiceTest {
 
         ProjectMemberManageResponse response = projectMemberService.inviteMember(
                 testProject.project().getId(),
-                testProject.owner().getId(),
-                request
+                request,
+                userPrincipal(testProject.owner().getId())
         );
 
         ProjectMember projectMember = projectMemberRepository.findById(response.projectMemberId())
@@ -90,8 +91,8 @@ class ProjectMemberServiceTest {
 
         assertThatThrownBy(() -> projectMemberService.inviteMember(
                 999999L,
-                requester.getId(),
-                request
+                request,
+                userPrincipal(requester.getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -107,8 +108,8 @@ class ProjectMemberServiceTest {
 
         assertThatThrownBy(() -> projectMemberService.inviteMember(
                 testProject.project().getId(),
-                testProject.owner().getId(),
-                request
+                request,
+                userPrincipal(testProject.owner().getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -131,8 +132,25 @@ class ProjectMemberServiceTest {
 
         assertThatThrownBy(() -> projectMemberService.inviteMember(
                 testProject.project().getId(),
-                requester.getId(),
-                request
+                request,
+                userPrincipal(requester.getId())
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("GUEST principal은 멤버를 초대할 수 없다")
+    void inviteMemberByGuestPrincipal() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User invitedUser = saveUser("invited");
+        ProjectMemberInviteRequest request = new ProjectMemberInviteRequest(
+                invitedUser.getId(),
+                ProjectMemberRole.EDITOR
+        );
+
+        assertThatThrownBy(() -> projectMemberService.inviteMember(
+                testProject.project().getId(),
+                request,
+                guestPrincipal()
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -147,8 +165,8 @@ class ProjectMemberServiceTest {
 
         assertThatThrownBy(() -> projectMemberService.inviteMember(
                 testProject.project().getId(),
-                testProject.owner().getId(),
-                request
+                request,
+                userPrincipal(testProject.owner().getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -164,8 +182,8 @@ class ProjectMemberServiceTest {
 
         assertThatThrownBy(() -> projectMemberService.inviteMember(
                 testProject.project().getId(),
-                testProject.owner().getId(),
-                request
+                request,
+                userPrincipal(testProject.owner().getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -187,8 +205,8 @@ class ProjectMemberServiceTest {
 
         assertThatThrownBy(() -> projectMemberService.inviteMember(
                 testProject.project().getId(),
-                testProject.owner().getId(),
-                request
+                request,
+                userPrincipal(testProject.owner().getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -210,8 +228,8 @@ class ProjectMemberServiceTest {
 
         assertThatThrownBy(() -> projectMemberService.inviteMember(
                 testProject.project().getId(),
-                testProject.owner().getId(),
-                request
+                request,
+                userPrincipal(testProject.owner().getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -233,8 +251,8 @@ class ProjectMemberServiceTest {
 
         assertThatThrownBy(() -> projectMemberService.inviteMember(
                 testProject.project().getId(),
-                testProject.owner().getId(),
-                request
+                request,
+                userPrincipal(testProject.owner().getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -255,8 +273,8 @@ class ProjectMemberServiceTest {
         ProjectMemberManageResponse response = projectMemberService.updateMemberRole(
                 testProject.project().getId(),
                 member.getId(),
-                testProject.owner().getId(),
-                request
+                request,
+                userPrincipal(testProject.owner().getId())
         );
 
         assertThat(projectMemberRepository.findById(member.getId()).orElseThrow().getRole())
@@ -276,8 +294,59 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.updateMemberRole(
                 testProject.project().getId(),
                 testProject.ownerMember().getId(),
-                testProject.owner().getId(),
-                request
+                request,
+                userPrincipal(testProject.owner().getId())
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("OWNER가 아닌 요청자는 프로젝트 멤버 권한을 변경할 수 없다")
+    void updateMemberRoleByNonOwnerRequester() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User requester = saveUser("requester");
+        saveProjectMember(
+                testProject.project(),
+                requester,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.ACTIVE
+        );
+        User memberUser = saveUser("member");
+        ProjectMember member = saveProjectMember(
+                testProject.project(),
+                memberUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.ACTIVE
+        );
+        ProjectMemberRoleUpdateRequest request =
+                new ProjectMemberRoleUpdateRequest(ProjectMemberRole.VIEWER);
+
+        assertThatThrownBy(() -> projectMemberService.updateMemberRole(
+                testProject.project().getId(),
+                member.getId(),
+                request,
+                userPrincipal(requester.getId())
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("GUEST principal은 프로젝트 멤버 권한을 변경할 수 없다")
+    void updateMemberRoleByGuestPrincipal() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User memberUser = saveUser("member");
+        ProjectMember member = saveProjectMember(
+                testProject.project(),
+                memberUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.ACTIVE
+        );
+        ProjectMemberRoleUpdateRequest request =
+                new ProjectMemberRoleUpdateRequest(ProjectMemberRole.VIEWER);
+
+        assertThatThrownBy(() -> projectMemberService.updateMemberRole(
+                testProject.project().getId(),
+                member.getId(),
+                request,
+                guestPrincipal()
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -298,8 +367,8 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.updateMemberRole(
                 testProject.project().getId(),
                 member.getId(),
-                testProject.owner().getId(),
-                request
+                request,
+                userPrincipal(testProject.owner().getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -318,7 +387,7 @@ class ProjectMemberServiceTest {
         ProjectMemberManageResponse response = projectMemberService.removeMember(
                 testProject.project().getId(),
                 member.getId(),
-                testProject.owner().getId()
+                userPrincipal(testProject.owner().getId())
         );
 
         assertThat(projectMemberRepository.findById(member.getId()).orElseThrow().getStatus())
@@ -335,7 +404,52 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.removeMember(
                 testProject.project().getId(),
                 testProject.ownerMember().getId(),
-                testProject.owner().getId()
+                userPrincipal(testProject.owner().getId())
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("OWNER가 아닌 요청자는 프로젝트 멤버를 제거할 수 없다")
+    void removeMemberByNonOwnerRequester() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User requester = saveUser("requester");
+        saveProjectMember(
+                testProject.project(),
+                requester,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.ACTIVE
+        );
+        User memberUser = saveUser("member");
+        ProjectMember member = saveProjectMember(
+                testProject.project(),
+                memberUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.ACTIVE
+        );
+
+        assertThatThrownBy(() -> projectMemberService.removeMember(
+                testProject.project().getId(),
+                member.getId(),
+                userPrincipal(requester.getId())
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("GUEST principal은 프로젝트 멤버를 제거할 수 없다")
+    void removeMemberByGuestPrincipal() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User memberUser = saveUser("member");
+        ProjectMember member = saveProjectMember(
+                testProject.project(),
+                memberUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.ACTIVE
+        );
+
+        assertThatThrownBy(() -> projectMemberService.removeMember(
+                testProject.project().getId(),
+                member.getId(),
+                guestPrincipal()
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -354,7 +468,7 @@ class ProjectMemberServiceTest {
         ProjectMemberManageResponse response = projectMemberService.acceptInvitation(
                 testProject.project().getId(),
                 invitedMember.getId(),
-                invitedUser.getId()
+                userPrincipal(invitedUser.getId())
         );
 
         ProjectMember acceptedMember = projectMemberRepository.findById(invitedMember.getId())
@@ -378,7 +492,7 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.acceptInvitation(
                 999999L,
                 1L,
-                invitedUser.getId()
+                userPrincipal(invitedUser.getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -397,7 +511,7 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.acceptInvitation(
                 testProject.project().getId(),
                 invitedMember.getId(),
-                invitedUser.getId()
+                userPrincipal(invitedUser.getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -416,7 +530,7 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.acceptInvitation(
                 testProject.project().getId(),
                 invitedMember.getId(),
-                999999L
+                userPrincipal(999999L)
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -429,7 +543,7 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.acceptInvitation(
                 testProject.project().getId(),
                 999999L,
-                invitedUser.getId()
+                userPrincipal(invitedUser.getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -449,7 +563,7 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.acceptInvitation(
                 testProject.project().getId(),
                 invitedMember.getId(),
-                invitedUser.getId()
+                userPrincipal(invitedUser.getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -469,7 +583,26 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.acceptInvitation(
                 testProject.project().getId(),
                 invitedMember.getId(),
-                otherUser.getId()
+                userPrincipal(otherUser.getId())
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("GUEST principal은 프로젝트 멤버 초대를 수락할 수 없다")
+    void acceptInvitationByGuestPrincipal() {
+        TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
+        User invitedUser = saveUser("invited");
+        ProjectMember invitedMember = saveProjectMember(
+                testProject.project(),
+                invitedUser,
+                ProjectMemberRole.EDITOR,
+                ProjectMemberStatus.INVITED
+        );
+
+        assertThatThrownBy(() -> projectMemberService.acceptInvitation(
+                testProject.project().getId(),
+                invitedMember.getId(),
+                guestPrincipal()
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -488,7 +621,7 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.acceptInvitation(
                 testProject.project().getId(),
                 member.getId(),
-                memberUser.getId()
+                userPrincipal(memberUser.getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -507,7 +640,7 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.acceptInvitation(
                 testProject.project().getId(),
                 member.getId(),
-                memberUser.getId()
+                userPrincipal(memberUser.getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -519,7 +652,7 @@ class ProjectMemberServiceTest {
         assertThatThrownBy(() -> projectMemberService.acceptInvitation(
                 testProject.project().getId(),
                 testProject.ownerMember().getId(),
-                testProject.owner().getId()
+                userPrincipal(testProject.owner().getId())
         )).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -584,6 +717,26 @@ class ProjectMemberServiceTest {
                 .language(RuntimeLanguage.NODE)
                 .status(RuntimeStatus.ACTIVE)
                 .build();
+    }
+
+    private AuthenticatedPrincipal userPrincipal(Long userId) {
+        return new AuthenticatedPrincipal(
+                100L,
+                "USER",
+                userId,
+                null,
+                "USER"
+        );
+    }
+
+    private AuthenticatedPrincipal guestPrincipal() {
+        return new AuthenticatedPrincipal(
+                100L,
+                "GUEST",
+                null,
+                1L,
+                null
+        );
     }
 
     private record TestProject(

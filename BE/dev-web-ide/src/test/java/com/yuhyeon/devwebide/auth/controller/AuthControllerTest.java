@@ -1,6 +1,7 @@
 package com.yuhyeon.devwebide.auth.controller;
 
 import com.yuhyeon.devwebide.auth.dto.AuthLogoutResponse;
+import com.yuhyeon.devwebide.auth.dto.AuthTokenRefreshResponse;
 import com.yuhyeon.devwebide.auth.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
@@ -79,5 +80,44 @@ class AuthControllerTest {
 
         then(authService).should()
                 .logout(null);
+    }
+
+    @Test
+    @DisplayName("토큰 재발급 API 요청에 성공한다")
+    void refresh() throws Exception {
+        String refreshToken = "refresh-token";
+        LocalDateTime accessTokenExpiresAt = LocalDateTime.of(2026, 7, 9, 10, 30);
+        AuthTokenRefreshResponse response = AuthTokenRefreshResponse.of(
+                "access-token",
+                1800L,
+                accessTokenExpiresAt
+        );
+
+        given(authService.refreshAccessToken(refreshToken))
+                .willReturn(response);
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .cookie(new Cookie("refreshToken", refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(1800L))
+                .andExpect(jsonPath("$.accessTokenExpiresAt").exists());
+
+        then(authService).should()
+                .refreshAccessToken(refreshToken);
+    }
+
+    @Test
+    @DisplayName("토큰 재발급 시 Refresh Token Cookie가 없으면 Service 예외 흐름으로 연결된다")
+    void refreshWithoutRefreshTokenCookie() {
+        given(authService.refreshAccessToken(null))
+                .willThrow(new IllegalArgumentException("Refresh Token이 필요합니다."));
+
+        assertThatThrownBy(() -> mockMvc.perform(post("/api/auth/refresh")))
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+
+        then(authService).should()
+                .refreshAccessToken(null);
     }
 }

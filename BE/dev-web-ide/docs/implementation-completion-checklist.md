@@ -46,7 +46,13 @@
 - [x] refresh token hash 기반 AuthSession 조회 구현
 - [x] AuthSession revoke 처리 구현
 - [x] refresh token cookie 제거 구현
-- [~] 실제 OAuth 로그인 플로우, 토큰 발급 API는 미연동
+- [x] 토큰 재발급 API 구현
+- [x] TokenService 구현
+- [x] JWT Access Token 발급 구현
+- [x] 토큰 재발급 시 refresh token hash 기반 AuthSession 검증 구현
+- [x] 토큰 재발급 시 user session ACTIVE 검증 구현
+- [x] 토큰 재발급 시 guest session 만료 검증 구현
+- [~] 실제 OAuth 로그인 플로우는 미연동
 - [~] Spring Security 기반 인증 객체 주입은 미구현
 
 ### 런타임 도메인
@@ -248,6 +254,7 @@
 
 - [x] `POST /api/guest-sessions`
 - [x] `POST /api/auth/logout`
+- [x] `POST /api/auth/refresh`
 - [x] `GET /api/runtimes`
 - [x] `POST /api/projects`
 - [x] `GET /api/projects/my`
@@ -309,7 +316,8 @@
 - [x] WorkspaceSessionStopService 테스트
 - [x] TerminalLogService 테스트
 - [x] GuestSessionService 테스트
-- [x] AuthService 테스트
+- [x] TokenService 테스트
+- [x] AuthService 테스트: 로그아웃, 토큰 재발급 포함
 
 ### Controller 테스트
 
@@ -321,7 +329,7 @@
 - [x] TerminalLogController 테스트
 - [x] WorkspaceSessionStopController 테스트
 - [x] GuestSessionController 테스트
-- [x] AuthController 테스트
+- [x] AuthController 테스트: 로그아웃, 토큰 재발급 포함
 
 ### `ProjectRunServiceTest.java` 세부 확인
 
@@ -339,7 +347,7 @@
 
 ## 현재 미완료 또는 추가 구현 필요 항목
 
-- [ ] 실제 OAuth 로그인/회원가입/토큰 발급 API
+- [ ] 실제 OAuth 로그인/회원가입 API
 - [ ] Spring Security 기반 인증/인가와 userId 주입
 - [ ] 프로젝트 복구 API
 - [ ] 컨테이너 상태 STARTING -> RUNNING 전환 처리

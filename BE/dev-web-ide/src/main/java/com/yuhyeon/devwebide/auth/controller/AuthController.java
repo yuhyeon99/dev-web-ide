@@ -1,6 +1,7 @@
 package com.yuhyeon.devwebide.auth.controller;
 
 import com.yuhyeon.devwebide.auth.dto.AuthLogoutResponse;
+import com.yuhyeon.devwebide.auth.dto.AuthTokenRefreshResponse;
 import com.yuhyeon.devwebide.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -35,5 +36,14 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, deleteRefreshTokenCookie.toString())
                 .body(response);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthTokenRefreshResponse> refresh(
+            @CookieValue(name = REFRESH_TOKEN_COOKIE_NAME, required = false) String refreshToken
+    ) {
+        AuthTokenRefreshResponse response = authService.refreshAccessToken(refreshToken);
+
+        return ResponseEntity.ok(response);
     }
 }

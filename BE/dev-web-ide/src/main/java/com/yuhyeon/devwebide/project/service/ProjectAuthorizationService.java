@@ -47,6 +47,24 @@ public class ProjectAuthorizationService {
         throw new IllegalArgumentException("프로젝트를 조회할 권한이 없습니다.");
     }
 
+    public void requireProjectOwner(Project project, Long userId) {
+        if (project == null) {
+            throw new IllegalArgumentException("프로젝트가 필요합니다.");
+        }
+
+        if (userId == null) {
+            throw new IllegalArgumentException("사용자 ID가 필요합니다.");
+        }
+
+        if (!isOwner(project, userId)) {
+            throw new IllegalArgumentException("프로젝트 OWNER만 수행할 수 있습니다.");
+        }
+    }
+
+    public void requireCanOpenProject(Project project, Long userId) {
+        requireCanViewProject(project, userId);
+    }
+
     public boolean isOwner(Project project, Long userId) {
         return project.getOwnerUser() != null
                 && project.getOwnerUser().getId().equals(userId);

@@ -424,8 +424,11 @@ public class ProjectService {
 
     public ProjectDetailResponse updateProject(
             Long projectId,
-            ProjectUpdateRequest request
+            ProjectUpdateRequest request,
+            AuthenticatedPrincipal principal
     ) {
+        Long userId = projectAuthorizationService.requireUserPrincipal(principal);
+
         Project project = projectRepository.findByIdAndStatus(
                         projectId,
                         ProjectStatus.ACTIVE
@@ -433,6 +436,8 @@ public class ProjectService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "존재하지 않거나 삭제된 프로젝트입니다. projectId=" + projectId
                 ));
+
+        projectAuthorizationService.requireProjectOwner(project, userId);
 
         project.rename(request.name());
         project.updateDescription(request.description());
@@ -456,11 +461,18 @@ public class ProjectService {
         );
     }
 
-    public ProjectDeleteResponse deleteProject(Long projectId) {
+    public ProjectDeleteResponse deleteProject(
+            Long projectId,
+            AuthenticatedPrincipal principal
+    ) {
+        Long userId = projectAuthorizationService.requireUserPrincipal(principal);
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "프로젝트를 찾을 수 없습니다."
                 ));
+
+        projectAuthorizationService.requireProjectOwner(project, userId);
 
         if (project.getStatus() == ProjectStatus.DELETED) {
             throw new IllegalArgumentException("이미 삭제된 프로젝트입니다.");
@@ -500,10 +512,9 @@ public class ProjectService {
     @Transactional
     public ProjectOpenResponse openProject(
             Long projectId,
-            Long userId,
-            Long guestSessionId
+            AuthenticatedPrincipal principal
     ) {
-        validateOpenRequester(userId, guestSessionId);
+        Long userId = projectAuthorizationService.requireUserPrincipal(principal);
 
         Project project = projectRepository
                 .findByIdAndStatus(projectId, ProjectStatus.ACTIVE)
@@ -511,49 +522,25 @@ public class ProjectService {
                         "프로젝트를 찾을 수 없습니다."
                 ));
 
-        User user = null;
-        GuestSession guestSession = null;
+        projectAuthorizationService.requireCanOpenProject(project, userId);
 
-        if (userId != null) {
-            user = userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "사용자를 찾을 수 없습니다."
-                    ));
-        }
-
-        if (guestSessionId != null) {
-            guestSession = guestSessionRepository.findById(guestSessionId)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "게스트 세션을 찾을 수 없습니다."
-                    ));
-        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "사용자를 찾을 수 없습니다."
+                ));
 
         LocalDateTime openedAt = LocalDateTime.now();
 
         ProjectAccessLog accessLog = ProjectAccessLog.builder()
                 .project(project)
                 .user(user)
-                .guestSession(guestSession)
+                .guestSession(null)
                 .accessType(ProjectAccessType.OPEN)
                 .build();
 
         projectAccessLogRepository.save(accessLog);
 
         return ProjectOpenResponse.from(project, openedAt);
-    }
-
-    private void validateOpenRequester(
-            Long userId,
-            Long guestSessionId
-    ) {
-        boolean hasUserId = userId != null;
-        boolean hasGuestSessionId = guestSessionId != null;
-
-        if (hasUserId == hasGuestSessionId) {
-            throw new IllegalArgumentException(
-                    "회원 사용자 또는 게스트 세션 중 하나만 지정해야 합니다."
-            );
-        }
     }
 
     /**

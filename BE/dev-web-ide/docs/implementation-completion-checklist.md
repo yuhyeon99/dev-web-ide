@@ -145,11 +145,18 @@
 - [x] 프로젝트 상세에 런타임/설정/활성 멤버 포함
 - [x] 프로젝트 열기 구현
 - [x] 프로젝트 열기 시 접근 로그 저장
+- [x] 프로젝트 열기 API Security principal 기반 전환
+- [x] 프로젝트 열기 owner/ACTIVE member 권한 검증 구현
+- [x] 프로젝트 열기 접근 로그 principal userId 기록 구현
 - [x] 프로젝트 수정 API 구현
 - [x] 프로젝트 이름 수정 구현
 - [x] 프로젝트 설명 수정 구현
 - [x] 프로젝트 수정 시 ACTIVE 프로젝트 검증
+- [x] 프로젝트 수정 API Security principal 기반 전환
+- [x] 프로젝트 수정 OWNER 권한 검증 구현
 - [x] 프로젝트 삭제 API 구현
+- [x] 프로젝트 삭제 API Security principal 기반 전환
+- [x] 프로젝트 삭제 OWNER 권한 검증 구현
 - [x] 프로젝트 soft delete 구현
 - [x] 실행 중 WorkspaceSession 삭제 차단 구현
 - [x] 실제 저장소 삭제 없이 프로젝트 상태만 변경하는 정책 반영
@@ -329,7 +336,7 @@
 
 ### Service 테스트
 
-- [x] ProjectService 테스트: Project 기본 API principal 기반 전환 포함
+- [x] ProjectService 테스트: Project 기본 API와 수정/삭제/open principal 기반 전환 포함
 - [x] ProjectMemberService 테스트
 - [x] ProjectFileService 테스트
 - [x] LocalProjectFileStorageService 테스트
@@ -346,7 +353,7 @@
 ### Controller 테스트
 
 - [x] RuntimeController 테스트
-- [x] ProjectController 테스트: Project 기본 API Security principal 기반 전환, 수정, 삭제, 열기
+- [x] ProjectController 테스트: Project 기본 API와 수정/삭제/open Security principal 기반 전환
 - [x] ProjectMemberController 테스트
 - [x] ProjectFileController 테스트: 파일 트리 조회, 파일 생성, 파일 내용 조회, 파일 저장, 파일 이름 변경, 파일/디렉터리 삭제
 - [x] ProjectRunController 테스트

@@ -90,33 +90,29 @@ public class ProjectController {
      * 프로젝트 열기
      *
      * 프로젝트를 열고 접근 기록을 저장합니다.
-     * 인증 연동 전까지는 userId 또는 guestSessionId를 RequestParam으로 받습니다.
-     *
-     * 회원 사용자는 userId를 전달하고,
-     * 게스트 사용자는 guestSessionId를 전달합니다.
-     *
      * @param projectId 열 프로젝트 ID
-     * @param userId 회원 사용자 ID
-     * @param guestSessionId 게스트 세션 ID
+     * @param principal 인증 사용자 정보
      * @return 프로젝트 열기 응답
      */
     @PatchMapping("/{projectId}")
     public ResponseEntity<ProjectDetailResponse> updateProject(
             @PathVariable Long projectId,
-            @Valid @RequestBody ProjectUpdateRequest request
+            @Valid @RequestBody ProjectUpdateRequest request,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         ProjectDetailResponse response =
-                projectService.updateProject(projectId, request);
+                projectService.updateProject(projectId, request, principal);
 
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{projectId}")
     public ResponseEntity<ProjectDeleteResponse> deleteProject(
-            @PathVariable Long projectId
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         ProjectDeleteResponse response =
-                projectService.deleteProject(projectId);
+                projectService.deleteProject(projectId, principal);
 
         return ResponseEntity.ok(response);
     }
@@ -124,13 +120,11 @@ public class ProjectController {
     @PostMapping("/{projectId}/open")
     public ResponseEntity<ProjectOpenResponse> openProject(
             @PathVariable Long projectId,
-            @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) Long guestSessionId
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         ProjectOpenResponse response = projectService.openProject(
                 projectId,
-                userId,
-                guestSessionId
+                principal
         );
 
         return ResponseEntity.ok(response);

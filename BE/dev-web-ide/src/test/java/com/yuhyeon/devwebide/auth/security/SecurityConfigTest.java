@@ -9,6 +9,7 @@ import com.yuhyeon.devwebide.project.domain.ProjectStatus;
 import com.yuhyeon.devwebide.project.domain.ProjectType;
 import com.yuhyeon.devwebide.project.domain.ProjectVisibility;
 import com.yuhyeon.devwebide.project.dto.ProjectCreateResponse;
+import com.yuhyeon.devwebide.project.dto.ProjectDeleteResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectDetailResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectMemberResponse;
 import com.yuhyeon.devwebide.project.dto.ProjectOpenResponse;
@@ -38,7 +39,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -151,6 +154,22 @@ class SecurityConfigTest {
 
         mockMvc.perform(get("/api/projects/1"))
                 .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(patch("/api/projects/1")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "name": "updated",
+                                  "description": "description"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(delete("/api/projects/1"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/projects/1/open"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -230,6 +249,57 @@ class SecurityConfigTest {
                         LocalDateTime.of(2026, 7, 9, 10, 0),
                         LocalDateTime.of(2026, 7, 9, 10, 0)
                 ));
+        given(projectService.updateProject(
+                org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(principal)
+        )).willReturn(new ProjectDetailResponse(
+                1L,
+                "updated",
+                "description",
+                ProjectType.PERSONAL,
+                ProjectVisibility.PRIVATE,
+                ProjectStatus.ACTIVE,
+                "/projects/1",
+                new RuntimeResponse(
+                        1L,
+                        "node-20",
+                        "Node.js 20",
+                        "20",
+                        "node:20",
+                        RuntimeLanguage.NODE
+                ),
+                new ProjectSettingsResponse(
+                        true,
+                        false,
+                        false,
+                        true
+                ),
+                List.of(),
+                LocalDateTime.of(2026, 7, 9, 10, 0),
+                LocalDateTime.of(2026, 7, 9, 10, 0)
+        ));
+        given(projectService.deleteProject(1L, principal))
+                .willReturn(new ProjectDeleteResponse(
+                        1L,
+                        ProjectStatus.DELETED,
+                        true,
+                        LocalDateTime.of(2026, 7, 9, 10, 0)
+                ));
+        given(projectService.openProject(1L, principal))
+                .willReturn(new ProjectOpenResponse(
+                        1L,
+                        "project",
+                        "description",
+                        ProjectType.PERSONAL,
+                        ProjectVisibility.PRIVATE,
+                        ProjectStatus.ACTIVE,
+                        1L,
+                        "node-20",
+                        "Node.js 20",
+                        RuntimeLanguage.NODE,
+                        LocalDateTime.of(2026, 7, 9, 10, 0)
+                ));
 
         mockMvc.perform(post("/api/projects")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer project-access-token")
@@ -253,27 +323,33 @@ class SecurityConfigTest {
         mockMvc.perform(get("/api/projects/1")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer project-access-token"))
                 .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/projects/1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer project-access-token")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "name": "updated",
+                                  "description": "description"
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/projects/1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer project-access-token"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/projects/1/open")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer project-access-token"))
+                .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("이번 범위에서 제외한 Project open API는 permitAll을 유지한다")
-    void excludedProjectOpenApiPermitAll() throws Exception {
-        given(projectService.openProject(1L, null, null))
-                .willReturn(new ProjectOpenResponse(
-                        1L,
-                        "project",
-                        "description",
-                        ProjectType.PERSONAL,
-                        ProjectVisibility.PRIVATE,
-                        ProjectStatus.ACTIVE,
-                        1L,
-                        "node-20",
-                        "Node.js 20",
-                        RuntimeLanguage.NODE,
-                        LocalDateTime.of(2026, 7, 9, 10, 0)
-                ));
-
-        mockMvc.perform(post("/api/projects/1/open"))
-                .andExpect(status().isOk());
+    @DisplayName("이번 범위에서 제외한 ProjectMember API는 permitAll을 유지한다")
+    void excludedProjectMemberApiPermitAll() throws Exception {
+        mockMvc.perform(post("/api/projects/1/members")
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 }

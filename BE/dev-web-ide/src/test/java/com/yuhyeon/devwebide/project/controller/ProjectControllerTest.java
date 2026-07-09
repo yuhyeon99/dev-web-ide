@@ -459,8 +459,8 @@ class ProjectControllerTest {
     @DisplayName("회원 사용자는 프로젝트를 열 수 있다")
     void openProjectByUser() throws Exception {
         // given
+        AuthenticatedPrincipal principal = userPrincipal();
         Long projectId = 1L;
-        Long userId = 10L;
         LocalDateTime openedAt = LocalDateTime.of(2026, 1, 1, 10, 30);
 
         ProjectOpenResponse response = new ProjectOpenResponse(
@@ -477,12 +477,12 @@ class ProjectControllerTest {
                 openedAt
         );
 
-        when(projectService.openProject(projectId, userId, null))
+        when(projectService.openProject(projectId, principal))
                 .thenReturn(response);
 
         // when & then
         mockMvc.perform(post("/api/projects/{projectId}/open", projectId)
-                        .param("userId", String.valueOf(userId)))
+                        .with(authentication(authenticationToken(principal))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.projectId").value(projectId))
                 .andExpect(jsonPath("$.name").value("테스트 프로젝트"))
@@ -496,56 +496,22 @@ class ProjectControllerTest {
                 .andExpect(jsonPath("$.runtimeLanguage").value("JAVA"))
                 .andExpect(jsonPath("$.openedAt").exists());
 
-        verify(projectService).openProject(projectId, userId, null);
+        verify(projectService).openProject(projectId, principal);
     }
 
     @Test
-    @DisplayName("게스트 사용자는 프로젝트를 열 수 있다")
-    void openProjectByGuestSession() throws Exception {
-        // given
-        Long projectId = 1L;
-        Long guestSessionId = 20L;
-        LocalDateTime openedAt = LocalDateTime.of(2026, 1, 1, 10, 30);
+    @DisplayName("프로젝트 열기 API는 인증이 없으면 401을 반환한다")
+    void openProjectWithoutAuthentication() throws Exception {
+        mockMvc.perform(post("/api/projects/{projectId}/open", 1L))
+                .andExpect(status().isUnauthorized());
 
-        ProjectOpenResponse response = new ProjectOpenResponse(
-                projectId,
-                "게스트 프로젝트",
-                "게스트 프로젝트 설명",
-                ProjectType.GUEST,
-                ProjectVisibility.PRIVATE,
-                ProjectStatus.ACTIVE,
-                1L,
-                "nodejs",
-                "Node.js",
-                RuntimeLanguage.JAVA,
-                openedAt
-        );
-
-        when(projectService.openProject(projectId, null, guestSessionId))
-                .thenReturn(response);
-
-        // when & then
-        mockMvc.perform(post("/api/projects/{projectId}/open", projectId)
-                        .param("guestSessionId", String.valueOf(guestSessionId)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.projectId").value(projectId))
-                .andExpect(jsonPath("$.name").value("게스트 프로젝트"))
-                .andExpect(jsonPath("$.description").value("게스트 프로젝트 설명"))
-                .andExpect(jsonPath("$.projectType").value("GUEST"))
-                .andExpect(jsonPath("$.visibility").value("PRIVATE"))
-                .andExpect(jsonPath("$.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.runtimeId").value(1L))
-                .andExpect(jsonPath("$.runtimeName").value("nodejs"))
-                .andExpect(jsonPath("$.runtimeDisplayName").value("Node.js"))
-                .andExpect(jsonPath("$.runtimeLanguage").value("JAVA"))
-                .andExpect(jsonPath("$.openedAt").exists());
-
-        verify(projectService).openProject(projectId, null, guestSessionId);
+        verifyNoInteractions(projectService);
     }
 
     @Test
     @DisplayName("프로젝트 수정 API 요청에 성공한다")
     void updateProject() throws Exception {
+        AuthenticatedPrincipal principal = userPrincipal();
         Long projectId = 1L;
         ProjectUpdateRequest request = new ProjectUpdateRequest(
                 "updated-project",
@@ -593,10 +559,12 @@ class ProjectControllerTest {
 
         given(projectService.updateProject(
                 eq(projectId),
-                any(ProjectUpdateRequest.class)
+                any(ProjectUpdateRequest.class),
+                eq(principal)
         )).willReturn(response);
 
         mockMvc.perform(patch("/api/projects/{projectId}", projectId)
+                        .with(authentication(authenticationToken(principal)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -618,18 +586,36 @@ class ProjectControllerTest {
 
         then(projectService)
                 .should()
-                .updateProject(eq(projectId), any(ProjectUpdateRequest.class));
+                .updateProject(eq(projectId), any(ProjectUpdateRequest.class), eq(principal));
+    }
+
+    @Test
+    @DisplayName("프로젝트 수정 API는 인증이 없으면 401을 반환한다")
+    void updateProjectWithoutAuthentication() throws Exception {
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                "updated-project",
+                "updated description"
+        );
+
+        mockMvc.perform(patch("/api/projects/{projectId}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(projectService);
     }
 
     @Test
     @DisplayName("프로젝트 수정 요청에서 이름이 비어 있으면 400 Bad Request를 반환한다")
     void updateProjectWithBlankName() throws Exception {
+        AuthenticatedPrincipal principal = userPrincipal();
         ProjectUpdateRequest request = new ProjectUpdateRequest(
                 "",
                 "updated description"
         );
 
         mockMvc.perform(patch("/api/projects/{projectId}", 1L)
+                        .with(authentication(authenticationToken(principal)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -640,12 +626,14 @@ class ProjectControllerTest {
     @Test
     @DisplayName("프로젝트 수정 요청에서 이름이 200자를 초과하면 400 Bad Request를 반환한다")
     void updateProjectWithTooLongName() throws Exception {
+        AuthenticatedPrincipal principal = userPrincipal();
         ProjectUpdateRequest request = new ProjectUpdateRequest(
                 "a".repeat(201),
                 "updated description"
         );
 
         mockMvc.perform(patch("/api/projects/{projectId}", 1L)
+                        .with(authentication(authenticationToken(principal)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -656,12 +644,14 @@ class ProjectControllerTest {
     @Test
     @DisplayName("프로젝트 수정 요청에서 설명이 500자를 초과하면 400 Bad Request를 반환한다")
     void updateProjectWithTooLongDescription() throws Exception {
+        AuthenticatedPrincipal principal = userPrincipal();
         ProjectUpdateRequest request = new ProjectUpdateRequest(
                 "updated-project",
                 "a".repeat(501)
         );
 
         mockMvc.perform(patch("/api/projects/{projectId}", 1L)
+                        .with(authentication(authenticationToken(principal)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -672,6 +662,7 @@ class ProjectControllerTest {
     @Test
     @DisplayName("프로젝트 삭제 API 요청에 성공한다")
     void deleteProject() throws Exception {
+        AuthenticatedPrincipal principal = userPrincipal();
         Long projectId = 1L;
         ProjectDeleteResponse response = new ProjectDeleteResponse(
                 projectId,
@@ -680,10 +671,11 @@ class ProjectControllerTest {
                 LocalDateTime.of(2026, 7, 8, 10, 30)
         );
 
-        given(projectService.deleteProject(projectId))
+        given(projectService.deleteProject(projectId, principal))
                 .willReturn(response);
 
-        mockMvc.perform(delete("/api/projects/{projectId}", projectId))
+        mockMvc.perform(delete("/api/projects/{projectId}", projectId)
+                        .with(authentication(authenticationToken(principal))))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.projectId").value(projectId))
@@ -693,7 +685,16 @@ class ProjectControllerTest {
 
         then(projectService)
                 .should()
-                .deleteProject(projectId);
+                .deleteProject(projectId, principal);
+    }
+
+    @Test
+    @DisplayName("프로젝트 삭제 API는 인증이 없으면 401을 반환한다")
+    void deleteProjectWithoutAuthentication() throws Exception {
+        mockMvc.perform(delete("/api/projects/{projectId}", 1L))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(projectService);
     }
 
     private AuthenticatedPrincipal userPrincipal() {

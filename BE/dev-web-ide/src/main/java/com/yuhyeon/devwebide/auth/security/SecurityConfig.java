@@ -51,6 +51,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/projects").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/projects/my").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/projects/*").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/projects/*").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/projects/*").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/projects/*/open").authenticated()
                         .anyRequest().permitAll()
                 )
                 .addFilterBefore(

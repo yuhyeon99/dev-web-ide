@@ -750,8 +750,8 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("회원 사용자는 프로젝트를 열 수 있다")
-    void openProjectByUser() {
+    @DisplayName("owner는 프로젝트를 열 수 있다")
+    void openProjectByOwner() {
         // given
         User user = userRepository.save(createUser());
         Runtime runtime = runtimeRepository.save(createRuntime());
@@ -760,8 +760,7 @@ class ProjectServiceTest {
         // when
         ProjectOpenResponse response = projectService.openProject(
                 project.getId(),
-                user.getId(),
-                null
+                userPrincipal(user)
         );
 
         // then
@@ -784,18 +783,30 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("게스트 사용자는 프로젝트를 열 수 있다")
-    void openProjectByGuestSession() {
+    @DisplayName("ACTIVE 멤버는 프로젝트를 열 수 있다")
+    void openProjectByActiveMember() {
         // given
-        GuestSession guestSession = guestSessionRepository.save(createGuestSession());
+        User owner = userRepository.save(createUser());
+        User member = userRepository.save(createUser(
+                "open-member@test.com",
+                "open-member"
+        ));
         Runtime runtime = runtimeRepository.save(createRuntime());
-        Project project = projectRepository.save(createGuestProject(guestSession, runtime));
+        Project project = projectRepository.save(createTeamProject(owner, runtime));
+        projectMemberRepository.save(ProjectMember.builder()
+                .project(project)
+                .user(member)
+                .role(ProjectMemberRole.EDITOR)
+                .status(ProjectMemberStatus.ACTIVE)
+                .invitedByUser(owner)
+                .invitedAt(LocalDateTime.now().minusDays(1))
+                .joinedAt(LocalDateTime.now())
+                .build());
 
         // when
         ProjectOpenResponse response = projectService.openProject(
                 project.getId(),
-                null,
-                guestSession.getId()
+                userPrincipal(member)
         );
 
         // then
@@ -805,16 +816,48 @@ class ProjectServiceTest {
         assertThat(response.openedAt()).isNotNull();
 
         List<ProjectAccessLog> accessLogs =
-                projectAccessLogRepository.findByGuestSessionIdAndAccessTypeOrderByAccessedAtDesc(
-                        guestSession.getId(),
+                projectAccessLogRepository.findByUserIdAndAccessTypeOrderByAccessedAtDesc(
+                        member.getId(),
                         ProjectAccessType.OPEN
                 );
 
         assertThat(accessLogs).hasSize(1);
         assertThat(accessLogs.get(0).getProject().getId()).isEqualTo(project.getId());
-        assertThat(accessLogs.get(0).getUser()).isNull();
-        assertThat(accessLogs.get(0).getGuestSession().getId()).isEqualTo(guestSession.getId());
+        assertThat(accessLogs.get(0).getUser().getId()).isEqualTo(member.getId());
+        assertThat(accessLogs.get(0).getGuestSession()).isNull();
         assertThat(accessLogs.get(0).getAccessType()).isEqualTo(ProjectAccessType.OPEN);
+    }
+
+    @Test
+    @DisplayName("권한 없는 사용자는 프로젝트를 열 수 없다")
+    void openProjectWithoutPermission() {
+        User owner = userRepository.save(createUser());
+        User otherUser = userRepository.save(createUser(
+                "open-other@test.com",
+                "open-other"
+        ));
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(owner, runtime));
+
+        assertThatThrownBy(() -> projectService.openProject(
+                project.getId(),
+                userPrincipal(otherUser)
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("프로젝트를 조회할 권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("GUEST principal이면 프로젝트를 열 수 없다")
+    void openProjectWithGuestPrincipal() {
+        GuestSession guestSession = guestSessionRepository.save(createGuestSession());
+
+        assertThatThrownBy(() -> projectService.openProject(
+                1L,
+                guestPrincipal(guestSession)
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("회원 인증이 필요합니다.");
     }
 
     @Test
@@ -827,8 +870,7 @@ class ProjectServiceTest {
         // when & then
         assertThatThrownBy(() -> projectService.openProject(
                 notFoundProjectId,
-                user.getId(),
-                null
+                userPrincipal(user)
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("프로젝트를 찾을 수 없습니다.");
@@ -845,88 +887,10 @@ class ProjectServiceTest {
         // when & then
         assertThatThrownBy(() -> projectService.openProject(
                 deletedProject.getId(),
-                user.getId(),
-                null
+                userPrincipal(user)
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("프로젝트를 찾을 수 없습니다.");
-    }
-
-    @Test
-    @DisplayName("userId와 guestSessionId가 둘 다 없으면 예외가 발생한다")
-    void openProjectWithoutRequester() {
-        // given
-        User user = userRepository.save(createUser());
-        Runtime runtime = runtimeRepository.save(createRuntime());
-        Project project = projectRepository.save(createUserProject(user, runtime));
-
-        // when & then
-        assertThatThrownBy(() -> projectService.openProject(
-                project.getId(),
-                null,
-                null
-        ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("회원 사용자 또는 게스트 세션 중 하나만 지정해야 합니다.");
-    }
-
-    @Test
-    @DisplayName("userId와 guestSessionId가 둘 다 있으면 예외가 발생한다")
-    void openProjectWithUserAndGuestSession() {
-        // given
-        User user = userRepository.save(createUser());
-        GuestSession guestSession = guestSessionRepository.save(createGuestSession());
-        Runtime runtime = runtimeRepository.save(createRuntime());
-        Project project = projectRepository.save(createUserProject(user, runtime));
-
-        // when & then
-        assertThatThrownBy(() -> projectService.openProject(
-                project.getId(),
-                user.getId(),
-                guestSession.getId()
-        ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("회원 사용자 또는 게스트 세션 중 하나만 지정해야 합니다.");
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 회원 사용자가 프로젝트를 열면 예외가 발생한다")
-    void openProjectWithNotFoundUser() {
-        // given
-        User user = userRepository.save(createUser());
-        Runtime runtime = runtimeRepository.save(createRuntime());
-        Project project = projectRepository.save(createUserProject(user, runtime));
-
-        Long notFoundUserId = 999999L;
-
-        // when & then
-        assertThatThrownBy(() -> projectService.openProject(
-                project.getId(),
-                notFoundUserId,
-                null
-        ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("사용자를 찾을 수 없습니다.");
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 게스트 세션으로 프로젝트를 열면 예외가 발생한다")
-    void openProjectWithNotFoundGuestSession() {
-        // given
-        GuestSession guestSession = guestSessionRepository.save(createGuestSession());
-        Runtime runtime = runtimeRepository.save(createRuntime());
-        Project project = projectRepository.save(createGuestProject(guestSession, runtime));
-
-        Long notFoundGuestSessionId = 999999L;
-
-        // when & then
-        assertThatThrownBy(() -> projectService.openProject(
-                project.getId(),
-                null,
-                notFoundGuestSessionId
-        ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("게스트 세션을 찾을 수 없습니다.");
     }
 
     @Test
@@ -968,7 +932,7 @@ class ProjectServiceTest {
         );
 
         ProjectDetailResponse response =
-                projectService.updateProject(project.getId(), request);
+                projectService.updateProject(project.getId(), request, userPrincipal(owner));
 
         Project updatedProject = projectRepository.findById(project.getId())
                 .orElseThrow();
@@ -997,6 +961,48 @@ class ProjectServiceTest {
     }
 
     @Test
+    @DisplayName("OWNER가 아니면 프로젝트를 수정할 수 없다")
+    void updateProjectByNonOwner() {
+        User owner = userRepository.save(createUser());
+        User otherUser = userRepository.save(createUser(
+                "update-other@test.com",
+                "update-other"
+        ));
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(owner, runtime));
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                "updated-project",
+                "updated description"
+        );
+
+        assertThatThrownBy(() -> projectService.updateProject(
+                project.getId(),
+                request,
+                userPrincipal(otherUser)
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("프로젝트 OWNER만 수행할 수 있습니다.");
+    }
+
+    @Test
+    @DisplayName("GUEST principal이면 프로젝트를 수정할 수 없다")
+    void updateProjectWithGuestPrincipal() {
+        GuestSession guestSession = guestSessionRepository.save(createGuestSession());
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                "updated-project",
+                "updated description"
+        );
+
+        assertThatThrownBy(() -> projectService.updateProject(
+                1L,
+                request,
+                guestPrincipal(guestSession)
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("회원 인증이 필요합니다.");
+    }
+
+    @Test
     @DisplayName("존재하지 않는 프로젝트는 수정할 수 없다")
     void updateProjectNotFound() {
         ProjectUpdateRequest request = new ProjectUpdateRequest(
@@ -1004,7 +1010,13 @@ class ProjectServiceTest {
                 "updated description"
         );
 
-        assertThatThrownBy(() -> projectService.updateProject(999999L, request))
+        User user = userRepository.save(createUser());
+
+        assertThatThrownBy(() -> projectService.updateProject(
+                999999L,
+                request,
+                userPrincipal(user)
+        ))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -1019,7 +1031,11 @@ class ProjectServiceTest {
                 "updated description"
         );
 
-        assertThatThrownBy(() -> projectService.updateProject(deletedProject.getId(), request))
+        assertThatThrownBy(() -> projectService.updateProject(
+                deletedProject.getId(),
+                request,
+                userPrincipal(user)
+        ))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -1030,7 +1046,10 @@ class ProjectServiceTest {
         Runtime runtime = runtimeRepository.save(createRuntime());
         Project project = projectRepository.save(createUserProject(user, runtime));
 
-        ProjectDeleteResponse response = projectService.deleteProject(project.getId());
+        ProjectDeleteResponse response = projectService.deleteProject(
+                project.getId(),
+                userPrincipal(user)
+        );
 
         Project deletedProject = projectRepository.findById(project.getId())
                 .orElseThrow();
@@ -1043,9 +1062,46 @@ class ProjectServiceTest {
     }
 
     @Test
+    @DisplayName("OWNER가 아니면 프로젝트를 삭제할 수 없다")
+    void deleteProjectByNonOwner() {
+        User owner = userRepository.save(createUser());
+        User otherUser = userRepository.save(createUser(
+                "delete-other@test.com",
+                "delete-other"
+        ));
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createUserProject(owner, runtime));
+
+        assertThatThrownBy(() -> projectService.deleteProject(
+                project.getId(),
+                userPrincipal(otherUser)
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("프로젝트 OWNER만 수행할 수 있습니다.");
+    }
+
+    @Test
+    @DisplayName("GUEST principal이면 프로젝트를 삭제할 수 없다")
+    void deleteProjectWithGuestPrincipal() {
+        GuestSession guestSession = guestSessionRepository.save(createGuestSession());
+
+        assertThatThrownBy(() -> projectService.deleteProject(
+                1L,
+                guestPrincipal(guestSession)
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("회원 인증이 필요합니다.");
+    }
+
+    @Test
     @DisplayName("존재하지 않는 프로젝트는 삭제할 수 없다")
     void deleteProjectNotFound() {
-        assertThatThrownBy(() -> projectService.deleteProject(999999L))
+        User user = userRepository.save(createUser());
+
+        assertThatThrownBy(() -> projectService.deleteProject(
+                999999L,
+                userPrincipal(user)
+        ))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -1056,7 +1112,10 @@ class ProjectServiceTest {
         Runtime runtime = runtimeRepository.save(createRuntime());
         Project deletedProject = projectRepository.save(createDeletedUserProject(user, runtime));
 
-        assertThatThrownBy(() -> projectService.deleteProject(deletedProject.getId()))
+        assertThatThrownBy(() -> projectService.deleteProject(
+                deletedProject.getId(),
+                userPrincipal(user)
+        ))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -1074,7 +1133,10 @@ class ProjectServiceTest {
                 WorkspaceSessionStatus.STARTING
         ));
 
-        assertThatThrownBy(() -> projectService.deleteProject(project.getId()))
+        assertThatThrownBy(() -> projectService.deleteProject(
+                project.getId(),
+                userPrincipal(user)
+        ))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThat(projectRepository.findById(project.getId()).orElseThrow().getStatus())
@@ -1095,7 +1157,10 @@ class ProjectServiceTest {
                 WorkspaceSessionStatus.RUNNING
         ));
 
-        assertThatThrownBy(() -> projectService.deleteProject(project.getId()))
+        assertThatThrownBy(() -> projectService.deleteProject(
+                project.getId(),
+                userPrincipal(user)
+        ))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThat(projectRepository.findById(project.getId()).orElseThrow().getStatus())
@@ -1116,7 +1181,10 @@ class ProjectServiceTest {
                 WorkspaceSessionStatus.STOPPED
         ));
 
-        ProjectDeleteResponse response = projectService.deleteProject(project.getId());
+        ProjectDeleteResponse response = projectService.deleteProject(
+                project.getId(),
+                userPrincipal(user)
+        );
 
         assertThat(response.status()).isEqualTo(ProjectStatus.DELETED);
         assertThat(response.deleted()).isTrue();
@@ -1136,7 +1204,10 @@ class ProjectServiceTest {
                 WorkspaceSessionStatus.FAILED
         ));
 
-        ProjectDeleteResponse response = projectService.deleteProject(project.getId());
+        ProjectDeleteResponse response = projectService.deleteProject(
+                project.getId(),
+                userPrincipal(user)
+        );
 
         assertThat(response.status()).isEqualTo(ProjectStatus.DELETED);
         assertThat(response.deleted()).isTrue();

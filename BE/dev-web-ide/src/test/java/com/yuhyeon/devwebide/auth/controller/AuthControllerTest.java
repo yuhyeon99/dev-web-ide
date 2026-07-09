@@ -4,6 +4,7 @@ import com.yuhyeon.devwebide.auth.dto.AuthLogoutResponse;
 import com.yuhyeon.devwebide.auth.dto.AuthTokenRefreshResponse;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginResponse;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginResult;
+import com.yuhyeon.devwebide.auth.security.AccessTokenAuthenticationService;
 import com.yuhyeon.devwebide.auth.service.AuthService;
 import com.yuhyeon.devwebide.auth.service.OAuthLoginService;
 import com.yuhyeon.devwebide.user.domain.UserRole;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -32,6 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
 
     @Autowired
@@ -42,6 +45,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private OAuthLoginService oAuthLoginService;
+
+    @MockitoBean
+    private AccessTokenAuthenticationService accessTokenAuthenticationService;
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;

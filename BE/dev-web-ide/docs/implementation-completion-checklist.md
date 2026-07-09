@@ -60,11 +60,15 @@
 - [x] refreshToken hash 저장 구현
 - [x] refreshToken Cookie 발급 구현
 - [x] 로그인 성공 시 Access Token 발급 구현
+- [x] Spring Security 기반 JWT 인증 필터 구현
+- [x] SecurityContext principal 주입 구현
+- [x] AuthSession active 재검증 필터 적용 구현
+- [x] `GET /api/users/me` SecurityContext 기반 전환 구현
 - [x] 토큰 재발급 시 refresh token hash 기반 AuthSession 검증 구현
 - [x] 토큰 재발급 시 user session ACTIVE 검증 구현
 - [x] 토큰 재발급 시 guest session 만료 검증 구현
 - [~] 실제 OAuth provider 검증 연동은 미구현
-- [~] Spring Security 기반 인증 객체 주입은 미구현
+- [~] Project 계열 API의 Spring Security 기반 인가 전환은 미구현
 
 ### 런타임 도메인
 
@@ -331,8 +335,9 @@
 - [x] GuestSessionService 테스트
 - [x] TokenService 테스트: Access Token 발급/검증, refresh token 생성 포함
 - [x] OAuthLoginService 테스트
+- [x] AccessTokenAuthenticationService 테스트
 - [x] AuthService 테스트: 로그아웃, 토큰 재발급 포함
-- [x] UserService 테스트
+- [x] UserService 테스트: Security principal 기반 현재 사용자 조회 포함
 
 ### Controller 테스트
 
@@ -345,7 +350,9 @@
 - [x] WorkspaceSessionStopController 테스트
 - [x] GuestSessionController 테스트
 - [x] AuthController 테스트: Mock OAuth 로그인, 로그아웃, 토큰 재발급 포함
-- [x] UserController 테스트
+- [x] UserController 테스트: Security 인증 기반 현재 사용자 조회 포함
+- [x] JwtAuthenticationFilter 테스트
+- [x] SecurityConfig 테스트
 
 ### `ProjectRunServiceTest.java` 세부 확인
 
@@ -364,7 +371,7 @@
 ## 현재 미완료 또는 추가 구현 필요 항목
 
 - [ ] 실제 OAuth provider 검증 연동
-- [ ] Spring Security 기반 인증/인가와 userId 주입
+- [ ] Project 계열 API의 Spring Security 기반 인가 전환
 - [ ] 프로젝트 복구 API
 - [ ] 컨테이너 상태 STARTING -> RUNNING 전환 처리
 - [ ] 실제 Docker/ECS/Fargate 실행 연동

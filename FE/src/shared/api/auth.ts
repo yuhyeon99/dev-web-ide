@@ -8,6 +8,7 @@ const TOKEN_EXPIRATION_SKEW_MS = 30 * 1000;
 
 type CompleteGoogleOAuthSignupParams = {
   nickname: string;
+  signupToken: string;
   termsAgreed: boolean;
   privacyAgreed: boolean;
 };
@@ -29,6 +30,7 @@ export type PendingOAuthSignup = {
   provider: 'google';
   email: string;
   name: string;
+  signupToken: string;
 };
 
 type UserMeResponse = {
@@ -126,7 +128,8 @@ export const getPendingOAuthSignup = () => {
     if (
       parsedSignup.provider !== 'google' ||
       typeof parsedSignup.email !== 'string' ||
-      typeof parsedSignup.name !== 'string'
+      typeof parsedSignup.name !== 'string' ||
+      typeof parsedSignup.signupToken !== 'string'
     ) {
       return null;
     }
@@ -145,6 +148,7 @@ export const clearPendingOAuthSignup = () => {
 
 export const completeGoogleOAuthSignup = async ({
   nickname,
+  signupToken,
   termsAgreed,
   privacyAgreed,
 }: CompleteGoogleOAuthSignupParams) => {
@@ -157,6 +161,7 @@ export const completeGoogleOAuthSignup = async ({
     },
     body: JSON.stringify({
       nickname,
+      signupToken,
       termsAgreed,
       privacyAgreed,
     }),
@@ -236,6 +241,7 @@ export const consumeOAuthRedirect = () => {
         provider: 'google',
         email: searchParams.get('email') ?? '',
         name: searchParams.get('name') ?? '',
+        signupToken: searchParams.get('signupToken') ?? '',
       } satisfies PendingOAuthSignup),
     );
     dispatchAuthSessionChanged();
@@ -304,6 +310,7 @@ const replaceOAuthRedirectParams = (nextPath?: string) => {
     'reason',
     'provider',
     'name',
+    'signupToken',
     'accessToken',
     'tokenType',
     'expiresIn',

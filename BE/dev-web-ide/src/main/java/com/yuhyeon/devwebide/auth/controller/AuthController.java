@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URLDecoder;
@@ -111,7 +112,13 @@ public class AuthController {
                 );
 
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .header(HttpHeaders.LOCATION, googleOAuthService.buildFrontendSignupRedirectUri(userInfo))
+                        .header(
+                                HttpHeaders.LOCATION,
+                                googleOAuthService.buildFrontendSignupRedirectUri(
+                                        userInfo,
+                                        pendingUserCookie.getValue()
+                                )
+                        )
                         .header(HttpHeaders.SET_COOKIE, pendingUserCookie.toString())
                         .header(HttpHeaders.SET_COOKIE, deleteStateCookie.toString())
                         .build();
@@ -145,12 +152,20 @@ public class AuthController {
             @CookieValue(name = GOOGLE_OAUTH_PENDING_USER_COOKIE_NAME, required = false) String pendingUserCookie,
             HttpServletRequest servletRequest
     ) {
-        if (pendingUserCookie == null || pendingUserCookie.isBlank()) {
-            throw new IllegalArgumentException("Google OAuth 가입 정보가 만료되었습니다.");
+        String pendingUserToken = resolvePendingGoogleUserToken(
+                pendingUserCookie,
+                request.signupToken()
+        );
+
+        if (pendingUserToken == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Google OAuth 가입 정보가 만료되었습니다."
+            );
         }
 
         OAuthLoginResult result = googleOAuthService.loginWithUserInfo(
-                decodeGoogleUserInfoCookie(pendingUserCookie),
+                decodeGoogleUserInfoCookie(pendingUserToken),
                 request.toSignupRequest(),
                 extractClientIp(servletRequest),
                 servletRequest.getHeader(HttpHeaders.USER_AGENT)
@@ -302,6 +317,21 @@ public class AuthController {
                 URLDecoder.decode(parts[1], StandardCharsets.UTF_8),
                 URLDecoder.decode(parts[2], StandardCharsets.UTF_8)
         );
+    }
+
+    private String resolvePendingGoogleUserToken(
+            String pendingUserCookie,
+            String signupToken
+    ) {
+        if (pendingUserCookie != null && !pendingUserCookie.isBlank()) {
+            return pendingUserCookie;
+        }
+
+        if (signupToken != null && !signupToken.isBlank()) {
+            return signupToken;
+        }
+
+        return null;
     }
 
     private String resolveCookieValue(String value) {

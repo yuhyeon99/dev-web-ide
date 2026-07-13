@@ -11,7 +11,9 @@ public record GoogleOAuthSignupCompletionRequest(
         boolean termsAgreed,
 
         @AssertTrue(message = "개인정보 처리방침 동의는 필수입니다.")
-        boolean privacyAgreed
+        boolean privacyAgreed,
+
+        String signupToken
 ) {
 
     public GoogleOAuthSignupRequest toSignupRequest() {

@@ -56,11 +56,13 @@ class GoogleOAuthServiceTest {
         setFrontendRedirectUri();
 
         String redirectUri = googleOAuthService.buildFrontendSignupRedirectUri(
-                new GoogleOAuthUserInfo("google-user-id", "user@test.com", "김유현")
+                new GoogleOAuthUserInfo("google-user-id", "user@test.com", "김유현"),
+                "encoded-pending-user"
         );
 
         assertThat(redirectUri)
                 .contains("name=%EA%B9%80%EC%9C%A0%ED%98%84")
+                .contains("signupToken=encoded-pending-user")
                 .doesNotContain("김유현");
     }
 

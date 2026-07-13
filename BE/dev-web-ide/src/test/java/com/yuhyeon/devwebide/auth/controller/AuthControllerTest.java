@@ -285,7 +285,7 @@ class AuthControllerTest {
                 .willReturn(false);
         given(googleOAuthService.encodeCookieValue("google-user-id|user%40test.com|user"))
                 .willReturn("encoded-pending-user");
-        given(googleOAuthService.buildFrontendSignupRedirectUri(userInfo))
+        given(googleOAuthService.buildFrontendSignupRedirectUri(userInfo, "encoded-pending-user"))
                 .willReturn("https://d1qcnjd8lnakb.cloudfront.net?oauth=signup_required");
 
         mockMvc.perform(get("/api/auth/oauth/google/callback")
@@ -306,6 +306,67 @@ class AuthControllerTest {
                                     && cookie.contains("SameSite=None"))
                             .anyMatch(cookie -> cookie.contains("googleOAuthState="));
                 });
+    }
+
+    @Test
+    @DisplayName("Google OAuth 가입 완료 시 쿠키가 없으면 요청 본문의 signup token을 사용한다")
+    void completeGoogleOAuthSignupWithRequestToken() throws Exception {
+        GoogleOAuthUserInfo userInfo = new GoogleOAuthUserInfo(
+                "google-user-id",
+                "user@test.com",
+                "user"
+        );
+        OAuthLoginResponse response = new OAuthLoginResponse(
+                "access-token",
+                "Bearer",
+                1800L,
+                LocalDateTime.of(2026, 7, 9, 10, 30),
+                1L,
+                "user@test.com",
+                "nickname",
+                UserRole.USER,
+                UserStatus.ACTIVE,
+                true
+        );
+        OAuthLoginResult result = new OAuthLoginResult(
+                response,
+                "refresh-token",
+                1_209_600L
+        );
+
+        given(googleOAuthService.decodeCookieValue("encoded-pending-user"))
+                .willReturn("google-user-id|user%40test.com|user");
+        given(googleOAuthService.loginWithUserInfo(
+                any(GoogleOAuthUserInfo.class),
+                any(),
+                eq("127.0.0.1"),
+                eq("Chrome")
+        )).willReturn(result);
+
+        mockMvc.perform(post("/api/auth/oauth/google/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.USER_AGENT, "Chrome")
+                        .content("""
+                                {
+                                  "nickname": "nickname",
+                                  "termsAgreed": true,
+                                  "privacyAgreed": true,
+                                  "signupToken": "encoded-pending-user"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("access-token"))
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("refreshToken=refresh-token")
+                ));
+
+        ArgumentCaptor<GoogleOAuthUserInfo> userInfoCaptor =
+                ArgumentCaptor.forClass(GoogleOAuthUserInfo.class);
+        then(googleOAuthService).should()
+                .loginWithUserInfo(userInfoCaptor.capture(), any(), eq("127.0.0.1"), eq("Chrome"));
+        assertThat(userInfoCaptor.getValue().subject()).isEqualTo("google-user-id");
+        assertThat(userInfoCaptor.getValue().email()).isEqualTo("user@test.com");
     }
 
     @Test

@@ -154,6 +154,7 @@ export const AuthModal = ({
       if (pendingSignup) {
         await completeGoogleOAuthSignup({
           nickname: nickname.trim(),
+          signupToken: pendingSignup.signupToken,
           termsAgreed: agreedToTerms,
           privacyAgreed: agreedToPrivacy,
         });

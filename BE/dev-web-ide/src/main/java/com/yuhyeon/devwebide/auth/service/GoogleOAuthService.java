@@ -171,12 +171,16 @@ public class GoogleOAuthService {
                 .toUriString();
     }
 
-    public String buildFrontendSignupRedirectUri(GoogleOAuthUserInfo userInfo) {
+    public String buildFrontendSignupRedirectUri(
+            GoogleOAuthUserInfo userInfo,
+            String signupToken
+    ) {
         return UriComponentsBuilder.fromUriString(frontendRedirectUri)
                 .queryParam("oauth", "signup_required")
                 .queryParam("provider", "google")
                 .queryParam("email", userInfo.email())
                 .queryParam("name", resolveNickname(null, userInfo))
+                .queryParam("signupToken", signupToken)
                 .build()
                 .encode(StandardCharsets.UTF_8)
                 .toUriString();

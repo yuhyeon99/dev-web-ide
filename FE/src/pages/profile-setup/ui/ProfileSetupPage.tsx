@@ -41,6 +41,7 @@ export const ProfileSetupPage = () => {
         await completeGoogleOAuthSignup({
           nickname: nickname.trim(),
           privacyAgreed: agreedToPrivacy,
+          signupToken: pendingSignup.signupToken,
           termsAgreed: agreedToTerms,
         });
       } else if (authSession) {

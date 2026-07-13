@@ -470,9 +470,22 @@
 - [x] Redis 실시간 동기화 코드 기반 추가
   - 설정 키: `app.redis.enabled`
   - Redis channel: `dev-web-ide:project-events`
+  - Redis channel: `dev-web-ide:crdt-updates`
+  - Redis channel: `dev-web-ide:chat-messages`
   - WebSocket endpoint: `/ws`
   - Project topic: `/topic/projects/{projectId}/events`
+  - CRDT topic: `/topic/projects/{projectId}/files/{fileId}/crdt`
+  - Team chat topic: `/topic/projects/{projectId}/chat`
   - 로컬 Redis compose: `docker-compose.redis.yml`
+- [x] CRDT 기반 실시간 편집 MVP 구현
+  - FE Monaco Editor에 Yjs 문서 바인딩 적용
+  - 편집 변경분을 WebSocket/STOMP로 발행
+  - BE에서 Redis Pub/Sub으로 CRDT update fan-out 처리
+  - 같은 프로젝트/파일을 연 클라이언트 간 실시간 반영
+- [x] 팀 워크스페이스 WebSocket 채팅 MVP 구현
+  - 팀 프로젝트 워크스페이스에 Team Chat 패널 추가
+  - `/app/projects/{projectId}/chat` 발행
+  - Redis Pub/Sub 기반 다중 ECS task fan-out 처리
 
 ### 부분 완료
 
@@ -490,7 +503,8 @@
   - ECS service security group에서 RDS 접근 가능
   - RDS security group에 넓은 inbound 규칙이 남아 있어 운영 전 축소 필요
 - [~] Redis 연결
-  - 코드와 로컬 Redis compose 추가 완료
+  - 프로젝트 이벤트, CRDT 편집 업데이트, 팀 채팅 메시지 코드 추가 완료
+  - 로컬 Redis compose 추가 완료
   - 로컬 Redis `PING` 응답 확인
   - 운영 ElastiCache Redis 생성 및 ECS task env 반영 필요
 

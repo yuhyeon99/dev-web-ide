@@ -1,9 +1,26 @@
 import { apiRequest } from './client';
+import { getStoredAuthSession } from './auth';
 import type { GuestSessionCreateResponse } from './types';
+import type { ProjectType } from './types';
 
 const GUEST_SESSION_STORAGE_KEY = 'dev-web-ide.guest-session';
+const TOKEN_EXPIRATION_SKEW_MS = 30 * 1000;
 
 export type StoredGuestSession = GuestSessionCreateResponse;
+export type ProjectApiSession = {
+  accessToken: string;
+  guestSessionId: number | null;
+  userId: number | null;
+};
+
+const isExpired = (expiresAt: string) => {
+  const expiresAtMs = new Date(expiresAt).getTime();
+
+  return (
+    !Number.isFinite(expiresAtMs) ||
+    expiresAtMs <= Date.now() + TOKEN_EXPIRATION_SKEW_MS
+  );
+};
 
 const isStoredGuestSession = (value: unknown): value is StoredGuestSession => {
   if (!value || typeof value !== 'object') {
@@ -33,7 +50,10 @@ export const getStoredGuestSession = () => {
       return null;
     }
 
-    if (new Date(parsedSession.expiresAt).getTime() <= Date.now()) {
+    if (
+      isExpired(parsedSession.accessTokenExpiresAt) ||
+      isExpired(parsedSession.expiresAt)
+    ) {
       window.localStorage.removeItem(GUEST_SESSION_STORAGE_KEY);
       return null;
     }
@@ -73,4 +93,26 @@ export const ensureGuestSession = async () => {
   }
 
   return createGuestSession();
+};
+
+export const resolveProjectApiSession = async (
+  projectType?: ProjectType,
+): Promise<ProjectApiSession> => {
+  const authSession = getStoredAuthSession();
+
+  if (authSession && projectType !== 'GUEST') {
+    return {
+      accessToken: authSession.accessToken,
+      guestSessionId: null,
+      userId: authSession.userId,
+    };
+  }
+
+  const guestSession = await ensureGuestSession();
+
+  return {
+    accessToken: guestSession.accessToken,
+    guestSessionId: guestSession.guestSessionId,
+    userId: null,
+  };
 };

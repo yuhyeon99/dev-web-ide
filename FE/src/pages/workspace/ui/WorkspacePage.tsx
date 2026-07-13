@@ -9,7 +9,7 @@ import {
   getProjectFileTree,
   saveProjectFiles,
 } from '@/shared/api/projects';
-import { ensureGuestSession } from '@/shared/api/session';
+import { resolveProjectApiSession } from '@/shared/api/session';
 import type {
   ProjectFileContentResponse,
   ProjectFileTreeResponse,
@@ -134,19 +134,19 @@ export const WorkspacePage = () => {
   const [fileDrafts, setFileDrafts] = useState<Record<string, FileDraft>>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const projectsQuery = useQuery({
-    queryKey: ['guest-projects'],
+    queryKey: ['workspace-projects'],
     queryFn: async () => {
-      const guestSession = await ensureGuestSession();
+      const projectSession = await resolveProjectApiSession();
 
-      return getMyProjects(guestSession.accessToken);
+      return getMyProjects(projectSession.accessToken);
     },
   });
   const projectDetailQuery = useQuery({
     queryKey: ['project-detail', projectId],
     queryFn: async () => {
-      const guestSession = await ensureGuestSession();
+      const projectSession = await resolveProjectApiSession();
 
-      return getProjectDetail(guestSession.accessToken, projectId);
+      return getProjectDetail(projectSession.accessToken, projectId);
     },
     enabled: Number.isFinite(projectId) && projectId > 0,
   });
@@ -222,15 +222,15 @@ export const WorkspacePage = () => {
   );
   const saveFilesMutation = useMutation({
     mutationFn: async () => {
-      const guestSession = await ensureGuestSession();
+      const projectSession = await resolveProjectApiSession();
 
       await saveProjectFiles(projectId, {
         files: dirtyDrafts.map((draft) => ({
           content: draft.content,
           projectFileId: draft.fileId,
         })),
-        guestSessionId: guestSession.guestSessionId,
-        userId: null,
+        guestSessionId: projectSession.guestSessionId,
+        userId: projectSession.userId,
       });
 
       return dirtyDrafts;

@@ -31,6 +31,7 @@ type CreateTemporaryProjectModalProps = {
   isOpen: boolean;
   onClose: () => void;
   createError?: string | null;
+  initialPreviewMode?: ProjectCreationPreviewMode;
   isCreating?: boolean;
   isRuntimeLoading?: boolean;
   onCreateProject: (values: ProjectCreateFormValues) => Promise<void> | void;
@@ -87,6 +88,7 @@ const roleCapabilityMap: Record<ProjectRole, string> = {
 
 export const CreateTemporaryProjectModal = ({
   createError,
+  initialPreviewMode = 'guest',
   isOpen,
   isCreating = false,
   isRuntimeLoading = false,
@@ -95,7 +97,7 @@ export const CreateTemporaryProjectModal = ({
   runtimeOptions,
 }: CreateTemporaryProjectModalProps) => {
   const [previewMode, setPreviewMode] =
-    useState<ProjectCreationPreviewMode>('guest');
+    useState<ProjectCreationPreviewMode>(initialPreviewMode);
   const [projectTitle, setProjectTitle] = useState('');
   const [projectType, setProjectType] = useState<ProjectType>('personal');
   const [selectedRuntime, setSelectedRuntime] = useState('');
@@ -103,13 +105,13 @@ export const CreateTemporaryProjectModal = ({
   const [selectedMembers, setSelectedMembers] = useState<SelectedMember[]>([]);
 
   const resetModalState = useCallback(() => {
-    setPreviewMode('guest');
+    setPreviewMode(initialPreviewMode);
     setProjectTitle('');
     setProjectType('personal');
     setSelectedRuntime('');
     setMemberSearchQuery('');
     setSelectedMembers([]);
-  }, []);
+  }, [initialPreviewMode]);
 
   const handleClose = () => {
     resetModalState();

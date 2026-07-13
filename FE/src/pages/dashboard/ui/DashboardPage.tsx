@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 
@@ -11,8 +11,9 @@ import {
   getProjectFileTree,
   openProject,
 } from '@/shared/api/projects';
+import { getStoredAuthSession, subscribeAuthSession } from '@/shared/api/auth';
 import { getRuntimes } from '@/shared/api/runtimes';
-import { ensureGuestSession } from '@/shared/api/session';
+import { resolveProjectApiSession } from '@/shared/api/session';
 import type {
   ProjectSummaryResponse,
   RuntimeResponse,
@@ -199,7 +200,8 @@ const mapProjectCard = (project: ProjectSummaryResponse) => {
 };
 
 export const DashboardPage = () => {
-  const isGuest = true;
+  const [authSession, setAuthSession] = useState(() => getStoredAuthSession());
+  const isGuest = !authSession;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [
@@ -210,31 +212,44 @@ export const DashboardPage = () => {
     null,
   );
 
+  useEffect(() => {
+    return subscribeAuthSession(() => {
+      setAuthSession(getStoredAuthSession());
+    });
+  }, []);
+
   const runtimesQuery = useQuery({
     queryKey: ['runtimes'],
     queryFn: getRuntimes,
   });
-  const guestProjectsQuery = useQuery({
-    queryKey: ['guest-projects'],
+  const projectsQuery = useQuery({
+    queryKey: ['projects', authSession?.userId ?? 'guest'],
     queryFn: async () => {
-      const guestSession = await ensureGuestSession();
+      const projectSession = await resolveProjectApiSession();
 
-      return getMyProjects(guestSession.accessToken);
+      return getMyProjects(projectSession.accessToken);
     },
   });
   const createProjectMutation = useMutation({
     mutationFn: async (values: ProjectCreateFormValues) => {
-      const guestSession = await ensureGuestSession();
-      const project = await createProject(guestSession.accessToken, {
+      const projectSession = await resolveProjectApiSession(values.projectType);
+      const projectType = projectSession.userId
+        ? values.projectType === 'GUEST'
+          ? 'PERSONAL'
+          : values.projectType
+        : 'GUEST';
+      const project = await createProject(projectSession.accessToken, {
         name: values.name,
-        description: '게스트 임시 프로젝트입니다.',
+        description: projectSession.userId
+          ? '회원 프로젝트입니다.'
+          : '게스트 임시 프로젝트입니다.',
         runtimeId: values.runtimeId,
-        projectType: values.projectType,
-        visibility: values.projectType === 'TEAM' ? 'TEAM' : 'PRIVATE',
+        projectType,
+        visibility: projectType === 'TEAM' ? 'TEAM' : 'PRIVATE',
         memberUserIds: [],
       });
 
-      return { accessToken: guestSession.accessToken, project };
+      return { accessToken: projectSession.accessToken, project };
     },
     onSuccess: async ({ accessToken, project }) => {
       const fileTree = await getProjectFileTree(project.id);
@@ -248,7 +263,7 @@ export const DashboardPage = () => {
         });
       }
 
-      await queryClient.invalidateQueries({ queryKey: ['guest-projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await openProject(accessToken, project.id);
       navigate(`/workspace?projectId=${project.id}`);
     },
@@ -266,7 +281,16 @@ export const DashboardPage = () => {
       meta: getRuntimeMeta(runtime),
     })) ?? [];
   const guestProjects =
-    guestProjectsQuery.data?.map(mapProjectCard) ?? guestRecentProjects;
+    projectsQuery.data?.map(mapProjectCard) ?? guestRecentProjects;
+  const memberProjects =
+    projectsQuery.data?.map((project) => ({
+      id: project.id,
+      name: project.name,
+      description:
+        project.description ?? `${project.runtimeDisplayName} 프로젝트`,
+      meta: formatProjectUpdatedAt(project.updatedAt),
+      accent: project.runtimeDisplayName,
+    })) ?? [];
 
   const handleCreateProject = async (values: ProjectCreateFormValues) => {
     setCreateProjectError(null);
@@ -274,9 +298,9 @@ export const DashboardPage = () => {
   };
 
   const handleProjectOpen = async (projectId: number) => {
-    const guestSession = await ensureGuestSession();
+    const projectSession = await resolveProjectApiSession();
 
-    await openProject(guestSession.accessToken, projectId);
+    await openProject(projectSession.accessToken, projectId);
     navigate(`/workspace?projectId=${projectId}`);
   };
 
@@ -318,7 +342,13 @@ export const DashboardPage = () => {
                 projects={memberRecentProjects}
                 emptyMessage="최근 프로젝트가 없습니다."
               />
-              <MyProjectsSection projects={myProjects} />
+              <MyProjectsSection
+                onCreateProject={() => setCreateTemporaryProjectModalOpen(true)}
+                onProjectOpen={handleProjectOpen}
+                projects={
+                  memberProjects.length > 0 ? memberProjects : myProjects
+                }
+              />
             </div>
             <SharedProjectsSection projects={sharedProjects} />
           </div>
@@ -326,7 +356,9 @@ export const DashboardPage = () => {
       </div>
 
       <CreateTemporaryProjectModal
+        key={isGuest ? 'guest-project-modal' : 'member-project-modal'}
         createError={createProjectError}
+        initialPreviewMode={isGuest ? 'guest' : 'member'}
         isOpen={isCreateTemporaryProjectModalOpen}
         isCreating={createProjectMutation.isPending}
         isRuntimeLoading={runtimesQuery.isLoading}

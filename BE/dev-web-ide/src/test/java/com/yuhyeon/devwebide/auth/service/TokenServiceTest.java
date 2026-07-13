@@ -55,7 +55,7 @@ class TokenServiceTest {
     @DisplayName("Access Token을 생성한다")
     void createAccessToken() {
         AuthSession authSession = createUserAuthSession();
-        LocalDateTime issuedAt = LocalDateTime.of(2026, 7, 10, 10, 0);
+        LocalDateTime issuedAt = validIssuedAt();
 
         String accessToken = tokenService.createAccessToken(authSession, issuedAt);
 
@@ -66,7 +66,7 @@ class TokenServiceTest {
     @DisplayName("회원 세션 Access Token을 생성한다")
     void createUserSessionAccessToken() {
         AuthSession authSession = createUserAuthSession();
-        LocalDateTime issuedAt = LocalDateTime.of(2026, 7, 10, 10, 0);
+        LocalDateTime issuedAt = validIssuedAt();
 
         String accessToken = tokenService.createAccessToken(authSession, issuedAt);
         Claims claims = parseClaims(accessToken);
@@ -88,7 +88,7 @@ class TokenServiceTest {
     @DisplayName("게스트 세션 Access Token을 생성한다")
     void createGuestSessionAccessToken() {
         AuthSession authSession = createGuestAuthSession();
-        LocalDateTime issuedAt = LocalDateTime.of(2026, 7, 10, 10, 0);
+        LocalDateTime issuedAt = validIssuedAt();
 
         String accessToken = tokenService.createAccessToken(authSession, issuedAt);
         Claims claims = parseClaims(accessToken);
@@ -102,7 +102,7 @@ class TokenServiceTest {
     @Test
     @DisplayName("Access Token 만료 시간은 30분 기준이다")
     void calculateAccessTokenExpiresAt() {
-        LocalDateTime issuedAt = LocalDateTime.of(2026, 7, 10, 10, 0);
+        LocalDateTime issuedAt = validIssuedAt();
 
         LocalDateTime expiresAt = tokenService.calculateAccessTokenExpiresAt(issuedAt);
 
@@ -135,7 +135,7 @@ class TokenServiceTest {
     @Test
     @DisplayName("Refresh Token 만료 시간은 14일 기준이다")
     void calculateRefreshTokenExpiresAt() {
-        LocalDateTime issuedAt = LocalDateTime.of(2026, 7, 10, 10, 0);
+        LocalDateTime issuedAt = validIssuedAt();
 
         LocalDateTime expiresAt = tokenService.calculateRefreshTokenExpiresAt(issuedAt);
 
@@ -153,7 +153,7 @@ class TokenServiceTest {
     void validateUserAccessToken() {
         String accessToken = tokenService.createAccessToken(
                 createUserAuthSession(),
-                LocalDateTime.of(2026, 7, 10, 10, 0)
+                validIssuedAt()
         );
 
         AuthenticatedPrincipal principal = tokenService.validateAccessToken(accessToken);
@@ -170,7 +170,7 @@ class TokenServiceTest {
     void validateGuestAccessToken() {
         String accessToken = tokenService.createAccessToken(
                 createGuestAuthSession(),
-                LocalDateTime.of(2026, 7, 10, 10, 0)
+                validIssuedAt()
         );
 
         AuthenticatedPrincipal principal = tokenService.validateAccessToken(accessToken);
@@ -191,8 +191,8 @@ class TokenServiceTest {
                 .claim("sessionType", "USER")
                 .claim("userId", 1L)
                 .claim("role", "USER")
-                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
-                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .issuedAt(toDate(validIssuedAt()))
+                .expiration(toDate(validExpiresAt()))
                 .compact();
 
         assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
@@ -226,8 +226,8 @@ class TokenServiceTest {
                 .claim("sessionId", 100L)
                 .claim("userId", 1L)
                 .claim("role", "USER")
-                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
-                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .issuedAt(toDate(validIssuedAt()))
+                .expiration(toDate(validExpiresAt()))
                 .compact();
 
         assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
@@ -244,8 +244,8 @@ class TokenServiceTest {
                 .claim("sessionType", "INVALID")
                 .claim("userId", 1L)
                 .claim("role", "USER")
-                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
-                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .issuedAt(toDate(validIssuedAt()))
+                .expiration(toDate(validExpiresAt()))
                 .compact();
 
         assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
@@ -261,8 +261,8 @@ class TokenServiceTest {
                 .claim("sessionId", 100L)
                 .claim("sessionType", "USER")
                 .claim("role", "USER")
-                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
-                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .issuedAt(toDate(validIssuedAt()))
+                .expiration(toDate(validExpiresAt()))
                 .compact();
 
         assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
@@ -277,8 +277,8 @@ class TokenServiceTest {
                 .subject("guest:10")
                 .claim("sessionId", 200L)
                 .claim("sessionType", "GUEST")
-                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
-                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .issuedAt(toDate(validIssuedAt()))
+                .expiration(toDate(validExpiresAt()))
                 .compact();
 
         assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
@@ -295,8 +295,8 @@ class TokenServiceTest {
                 .claim("sessionType", "USER")
                 .claim("userId", 1L)
                 .claim("role", "USER")
-                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
-                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .issuedAt(toDate(validIssuedAt()))
+                .expiration(toDate(validExpiresAt()))
                 .compact();
 
         assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
@@ -312,8 +312,8 @@ class TokenServiceTest {
                 .claim("sessionId", 200L)
                 .claim("sessionType", "GUEST")
                 .claim("guestSessionId", 10L)
-                .issuedAt(toDate(LocalDateTime.of(2026, 7, 10, 10, 0)))
-                .expiration(toDate(LocalDateTime.of(2026, 7, 10, 10, 30)))
+                .issuedAt(toDate(validIssuedAt()))
+                .expiration(toDate(validExpiresAt()))
                 .compact();
 
         assertThatThrownBy(() -> tokenService.validateAccessToken(accessToken))
@@ -329,6 +329,14 @@ class TokenServiceTest {
                 .build()
                 .parseSignedClaims(accessToken)
                 .getPayload();
+    }
+
+    private LocalDateTime validIssuedAt() {
+        return LocalDateTime.now().minusMinutes(1).withNano(0);
+    }
+
+    private LocalDateTime validExpiresAt() {
+        return LocalDateTime.now().plusMinutes(29).withNano(0);
     }
 
     private io.jsonwebtoken.JwtBuilder createToken(String secret) {

@@ -9,6 +9,7 @@ import {
   createProjectFile,
   getMyProjects,
   getProjectFileTree,
+  getSharedProjects,
   openProject,
 } from '@/shared/api/projects';
 import { getStoredAuthSession, subscribeAuthSession } from '@/shared/api/auth';
@@ -128,6 +129,12 @@ export const DashboardPage = () => {
       return getMyProjects(projectSession.accessToken);
     },
   });
+  const sharedProjectsQuery = useQuery({
+    queryKey: ['shared-projects', authSession?.userId],
+    queryFn: () =>
+      authSession ? getSharedProjects(authSession.accessToken) : [],
+    enabled: Boolean(authSession),
+  });
   const createProjectMutation = useMutation({
     mutationFn: async (values: ProjectCreateFormValues) => {
       const projectSession = await resolveProjectApiSession(values.projectType);
@@ -163,6 +170,7 @@ export const DashboardPage = () => {
       }
 
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['shared-projects'] });
       await openProject(accessToken, project.id);
       navigate(`/workspace?projectId=${project.id}`);
     },
@@ -188,6 +196,15 @@ export const DashboardPage = () => {
         project.description ?? `${project.runtimeDisplayName} 프로젝트`,
       meta: formatProjectUpdatedAt(project.updatedAt),
       accent: project.runtimeDisplayName,
+    })) ?? [];
+  const sharedProjects =
+    sharedProjectsQuery.data?.map((project) => ({
+      id: project.id,
+      name: project.name,
+      description:
+        project.description ?? `${project.runtimeDisplayName} 팀 프로젝트`,
+      owner: '초대받은 프로젝트',
+      permission: project.projectType === 'TEAM' ? 'Editor' : 'Member',
     })) ?? [];
 
   const handleCreateProject = async (values: ProjectCreateFormValues) => {
@@ -249,7 +266,10 @@ export const DashboardPage = () => {
                 projects={memberProjects}
               />
             </div>
-            <SharedProjectsSection projects={[]} />
+            <SharedProjectsSection
+              onProjectOpen={handleProjectOpen}
+              projects={sharedProjects}
+            />
           </div>
         )}
       </div>

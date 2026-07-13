@@ -68,6 +68,11 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             ProjectMemberStatus status
     );
 
+    List<ProjectMember> findByUserIdAndStatusInOrderByInvitedAtDescJoinedAtDescIdDesc(
+            Long userId,
+            List<ProjectMemberStatus> statuses
+    );
+
     /**
      * 프로젝트의 특정 권한과 상태를 가진 멤버 목록 조회
      *
@@ -88,5 +93,11 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             Long projectId,
             ProjectMemberRole role,
             ProjectMemberStatus status
+    );
+
+    boolean existsByProjectIdAndUserIdAndStatusIn(
+            Long projectId,
+            Long userId,
+            List<ProjectMemberStatus> statuses
     );
 }

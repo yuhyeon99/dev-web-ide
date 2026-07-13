@@ -1,4 +1,7 @@
+/* eslint-disable no-unused-vars */
+
 type SharedProject = {
+  id: number;
   name: string;
   owner: string;
   permission: string;
@@ -6,10 +9,14 @@ type SharedProject = {
 };
 
 type SharedProjectsSectionProps = {
+  onProjectOpen?: {
+    (projectId: number): void;
+  };
   projects: SharedProject[];
 };
 
 export const SharedProjectsSection = ({
+  onProjectOpen,
   projects,
 }: SharedProjectsSectionProps) => {
   return (
@@ -31,14 +38,18 @@ export const SharedProjectsSection = ({
         {projects.length > 0 ? (
           projects.map((project) => (
             <article
-              key={`${project.name}-${project.owner}`}
+              key={project.id}
               className="rounded-3xl border border-[#313131] bg-[#1e1e1e] p-5"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-base font-semibold text-[#f3f3f3]">
+                  <button
+                    type="button"
+                    onClick={() => onProjectOpen?.(project.id)}
+                    className="text-left text-base font-semibold text-[#f3f3f3] transition hover:text-[#4fc1ff]"
+                  >
                     {project.name}
-                  </h3>
+                  </button>
                   <p className="mt-1 text-sm text-[#858585]">{project.owner}</p>
                 </div>
                 <span className="rounded-full border border-[#3c3c3c] bg-[#252526] px-3 py-1 text-xs font-semibold text-[#d4d4d4]">

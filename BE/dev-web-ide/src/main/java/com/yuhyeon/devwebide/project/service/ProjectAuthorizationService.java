@@ -9,10 +9,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProjectAuthorizationService {
+
+    private static final List<ProjectMemberStatus> VIEWABLE_MEMBER_STATUSES =
+            List.of(ProjectMemberStatus.ACTIVE, ProjectMemberStatus.INVITED);
 
     private final ProjectMemberRepository projectMemberRepository;
 
@@ -57,7 +62,7 @@ public class ProjectAuthorizationService {
             throw new IllegalArgumentException("사용자 ID가 필요합니다.");
         }
 
-        if (isOwner(project, userId) || isActiveMember(project.getId(), userId)) {
+        if (isOwner(project, userId) || isViewableMember(project.getId(), userId)) {
             return;
         }
 
@@ -116,5 +121,13 @@ public class ProjectAuthorizationService {
                         ProjectMemberStatus.ACTIVE
                 )
                 .isPresent();
+    }
+
+    public boolean isViewableMember(Long projectId, Long userId) {
+        return projectMemberRepository.existsByProjectIdAndUserIdAndStatusIn(
+                projectId,
+                userId,
+                VIEWABLE_MEMBER_STATUSES
+        );
     }
 }

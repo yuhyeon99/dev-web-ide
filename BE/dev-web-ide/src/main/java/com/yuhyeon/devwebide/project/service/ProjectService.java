@@ -32,6 +32,9 @@ import java.util.UUID;
 @Transactional // 메서드 실행을 하나의 DB 트랜잭션으로 묶어줌
 public class ProjectService {
 
+    private static final List<ProjectMemberStatus> SHARED_PROJECT_STATUSES =
+            List.of(ProjectMemberStatus.ACTIVE, ProjectMemberStatus.INVITED);
+
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectSettingsRepository projectSettingsRepository;
@@ -399,6 +402,25 @@ public class ProjectService {
                 );
 
         return projects.stream()
+                .map(ProjectSummaryResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProjectSummaryResponse> getSharedProjects(AuthenticatedPrincipal principal) {
+        Long userId = projectAuthorizationService.requireUserPrincipal(principal);
+        validateOwnerUserId(userId);
+
+        return projectMemberRepository
+                .findByUserIdAndStatusInOrderByInvitedAtDescJoinedAtDescIdDesc(
+                        userId,
+                        SHARED_PROJECT_STATUSES
+                )
+                .stream()
+                .map(ProjectMember::getProject)
+                .filter(project -> project.getStatus() == ProjectStatus.ACTIVE)
+                .filter(project -> project.getOwnerUser() == null
+                        || !project.getOwnerUser().getId().equals(userId))
                 .map(ProjectSummaryResponse::from)
                 .toList();
     }

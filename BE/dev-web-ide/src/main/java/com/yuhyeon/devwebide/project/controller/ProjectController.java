@@ -66,6 +66,16 @@ public class ProjectController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/shared")
+    public ResponseEntity<List<ProjectSummaryResponse>> getSharedProjects(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal
+    ) {
+        List<ProjectSummaryResponse> response =
+                projectService.getSharedProjects(principal);
+
+        return ResponseEntity.ok(response);
+    }
+
     /**
      * 프로젝트 상세 조회
      *

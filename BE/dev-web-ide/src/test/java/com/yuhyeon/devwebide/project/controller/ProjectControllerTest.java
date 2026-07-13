@@ -368,6 +368,40 @@ class ProjectControllerTest {
     }
 
     @Test
+    @DisplayName("공유 프로젝트 목록 조회 API 요청에 성공한다")
+    void getSharedProjects() throws Exception {
+        AuthenticatedPrincipal principal = userPrincipal();
+        LocalDateTime now = LocalDateTime.of(2026, 1, 1, 10, 0);
+        ProjectSummaryResponse sharedProject = new ProjectSummaryResponse(
+                3L,
+                "shared-team-project",
+                "공유받은 팀 프로젝트입니다.",
+                ProjectType.TEAM,
+                ProjectVisibility.TEAM,
+                ProjectStatus.ACTIVE,
+                1L,
+                "node-20",
+                "Node.js 20",
+                RuntimeLanguage.NODE,
+                now,
+                now
+        );
+
+        when(projectService.getSharedProjects(principal))
+                .thenReturn(List.of(sharedProject));
+
+        mockMvc.perform(get("/api/projects/shared")
+                        .with(authentication(authenticationToken(principal))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(3L))
+                .andExpect(jsonPath("$[0].name").value("shared-team-project"))
+                .andExpect(jsonPath("$[0].projectType").value("TEAM"));
+
+        verify(projectService).getSharedProjects(principal);
+    }
+
+    @Test
     @DisplayName("프로젝트 상세 조회")
     void getProjectDetail() throws Exception {
         AuthenticatedPrincipal principal = userPrincipal();

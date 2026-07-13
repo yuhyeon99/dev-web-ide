@@ -19,6 +19,12 @@ export const getMyProjects = (accessToken: string) => {
   });
 };
 
+export const getSharedProjects = (accessToken: string) => {
+  return apiRequest<ProjectSummaryResponse[]>('/api/projects/shared', {
+    accessToken,
+  });
+};
+
 export const createProject = (
   accessToken: string,
   request: ProjectCreateRequest,

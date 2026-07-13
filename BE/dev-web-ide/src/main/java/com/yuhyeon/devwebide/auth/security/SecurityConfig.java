@@ -67,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/users/me/profile").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/projects").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/projects/my").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/projects/shared").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/projects/*").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/projects/*").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/projects/*").authenticated()

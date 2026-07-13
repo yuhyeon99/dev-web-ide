@@ -471,6 +471,38 @@ class ProjectServiceTest {
         assertThat(result.get(0).id()).isEqualTo(guestProject.getId());
     }
 
+    @Test
+    @DisplayName("초대받은 팀 프로젝트 목록을 조회한다")
+    void getSharedProjects() {
+        User owner = userRepository.save(createUser(
+                "shared-owner@test.com",
+                "공유소유자"
+        ));
+        User invitedMember = userRepository.save(createUser(
+                "shared-member@test.com",
+                "초대멤버"
+        ));
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project sharedProject = projectRepository.save(createTeamProject(owner, runtime));
+
+        projectMemberRepository.save(ProjectMember.builder()
+                .project(sharedProject)
+                .user(invitedMember)
+                .role(ProjectMemberRole.EDITOR)
+                .status(ProjectMemberStatus.INVITED)
+                .invitedByUser(owner)
+                .invitedAt(LocalDateTime.now())
+                .joinedAt(null)
+                .build());
+
+        List<ProjectSummaryResponse> result =
+                projectService.getSharedProjects(userPrincipal(invitedMember));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(sharedProject.getId());
+        assertThat(result.get(0).projectType()).isEqualTo(ProjectType.TEAM);
+    }
+
     /**
      * 테스트용 사용자 저장
      *
@@ -676,7 +708,38 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("owner 또는 ACTIVE 멤버가 아니면 프로젝트 상세 조회 예외가 발생한다")
+    @DisplayName("INVITED 멤버는 프로젝트 상세를 조회할 수 있다")
+    void getProjectDetailByInvitedMember() {
+        User owner = userRepository.save(createUser(
+                "owner-invited-detail@test.com",
+                "프로젝트소유자"
+        ));
+        User member = userRepository.save(createUser(
+                "invited-member-detail@test.com",
+                "초대멤버"
+        ));
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createTeamProject(owner, runtime));
+
+        projectSettingsRepository.save(createProjectSettings(project));
+        projectMemberRepository.save(ProjectMember.builder()
+                .project(project)
+                .user(member)
+                .role(ProjectMemberRole.EDITOR)
+                .status(ProjectMemberStatus.INVITED)
+                .invitedByUser(owner)
+                .invitedAt(LocalDateTime.now())
+                .joinedAt(null)
+                .build());
+
+        ProjectDetailResponse response =
+                projectService.getProjectDetail(project.getId(), userPrincipal(member));
+
+        assertThat(response.id()).isEqualTo(project.getId());
+    }
+
+    @Test
+    @DisplayName("owner 또는 멤버가 아니면 프로젝트 상세 조회 예외가 발생한다")
     void getProjectDetailWithoutPermission() {
         User owner = userRepository.save(createUser(
                 "owner-no-permission@test.com",
@@ -854,6 +917,35 @@ class ProjectServiceTest {
         assertThat(accessLogs.get(0).getUser().getId()).isEqualTo(member.getId());
         assertThat(accessLogs.get(0).getGuestSession()).isNull();
         assertThat(accessLogs.get(0).getAccessType()).isEqualTo(ProjectAccessType.OPEN);
+    }
+
+    @Test
+    @DisplayName("INVITED 멤버는 프로젝트를 열 수 있다")
+    void openProjectByInvitedMember() {
+        User owner = userRepository.save(createUser());
+        User member = userRepository.save(createUser(
+                "open-invited-member@test.com",
+                "open-invited-member"
+        ));
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createTeamProject(owner, runtime));
+
+        projectMemberRepository.save(ProjectMember.builder()
+                .project(project)
+                .user(member)
+                .role(ProjectMemberRole.EDITOR)
+                .status(ProjectMemberStatus.INVITED)
+                .invitedByUser(owner)
+                .invitedAt(LocalDateTime.now())
+                .joinedAt(null)
+                .build());
+
+        ProjectOpenResponse response = projectService.openProject(
+                project.getId(),
+                userPrincipal(member)
+        );
+
+        assertThat(response.projectId()).isEqualTo(project.getId());
     }
 
     @Test

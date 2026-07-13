@@ -216,8 +216,8 @@ public class AuthController {
         return ResponseCookie
                 .from(REFRESH_TOKEN_COOKIE_NAME, result.refreshToken())
                 .httpOnly(true)
-                .secure(isSecureRequest(servletRequest))
-                .sameSite(resolveCrossSiteSameSite(servletRequest))
+                .secure(true)
+                .sameSite("None")
                 .path("/")
                 .maxAge(Duration.ofSeconds(result.refreshTokenExpiresInSeconds()))
                 .build();
@@ -248,8 +248,8 @@ public class AuthController {
         return ResponseCookie
                 .from(name, value)
                 .httpOnly(true)
-                .secure(isSecureRequest(servletRequest))
-                .sameSite(resolveCrossSiteSameSite(servletRequest))
+                .secure(true)
+                .sameSite("None")
                 .path("/")
                 .maxAge(maxAge)
                 .build();
@@ -262,8 +262,8 @@ public class AuthController {
         return ResponseCookie
                 .from(name, "")
                 .httpOnly(true)
-                .secure(isSecureRequest(servletRequest))
-                .sameSite(resolveCrossSiteSameSite(servletRequest))
+                .secure(true)
+                .sameSite("None")
                 .path("/")
                 .maxAge(0)
                 .build();
@@ -280,10 +280,6 @@ public class AuthController {
         return servletRequest.isSecure()
                 || "https".equalsIgnoreCase(forwardedProto)
                 || "https".equalsIgnoreCase(cloudFrontForwardedProto);
-    }
-
-    private String resolveCrossSiteSameSite(HttpServletRequest servletRequest) {
-        return isSecureRequest(servletRequest) ? "None" : "Lax";
     }
 
     private String encodeGoogleUserInfoCookie(GoogleOAuthUserInfo userInfo) {

@@ -122,6 +122,14 @@ class AuthControllerTest {
                 .andExpect(header().string(
                         HttpHeaders.SET_COOKIE,
                         org.hamcrest.Matchers.containsString("Max-Age=1209600")
+                ))
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("Secure")
+                ))
+                .andExpect(header().string(
+                        HttpHeaders.SET_COOKIE,
+                        org.hamcrest.Matchers.containsString("SameSite=None")
                 ));
 
         ArgumentCaptor<com.yuhyeon.devwebide.auth.dto.OAuthLoginRequest> requestCaptor =
@@ -254,7 +262,9 @@ class AuthControllerTest {
                 ))
                 .andExpect(mvcResult -> {
                     assertThat(mvcResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
-                            .anyMatch(cookie -> cookie.contains("refreshToken=refresh-token"))
+                            .anyMatch(cookie -> cookie.contains("refreshToken=refresh-token")
+                                    && cookie.contains("Secure")
+                                    && cookie.contains("SameSite=None"))
                             .anyMatch(cookie -> cookie.contains("googleOAuthState="))
                             .anyMatch(cookie -> cookie.contains("googleOAuthPendingUser="));
                 });
@@ -291,7 +301,9 @@ class AuthControllerTest {
                 ))
                 .andExpect(mvcResult -> {
                     assertThat(mvcResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
-                            .anyMatch(cookie -> cookie.contains("googleOAuthPendingUser=encoded-pending-user"))
+                            .anyMatch(cookie -> cookie.contains("googleOAuthPendingUser=encoded-pending-user")
+                                    && cookie.contains("Secure")
+                                    && cookie.contains("SameSite=None"))
                             .anyMatch(cookie -> cookie.contains("googleOAuthState="));
                 });
     }

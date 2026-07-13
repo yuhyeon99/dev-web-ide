@@ -239,8 +239,8 @@
 - [x] 경로 탈출 방지 검증 구현
 - [x] 필수 파라미터 및 버전 번호 검증 구현
 - [x] `LocalProjectFileStorageServiceTest` 구현
-- [~] 실제 EFS 연동은 로컬 파일 시스템 구현으로 대체됨
-- [~] 설정 키가 `application.properties`의 `app.project.storage-root`와 구현의 `app.storage.project-root`로 서로 달라 확인 필요
+- [x] 운영 ECS에서 `/app/storage`를 EFS Access Point로 mount
+- [x] `app.storage.project-root` 설정 키 추가로 파일 저장 경로 설정 불일치 해소
 
 ### 프로젝트 실행 서비스
 
@@ -423,7 +423,7 @@
 - [x] ECS Fargate 기반 백엔드 서비스 배포
   - Cluster: `dev-web-ide-prod-cluster`
   - Service: `dev-web-ide-be-prod-service`
-  - Task Definition: `dev-web-ide-be-prod-task:2`
+  - Task Definition: `dev-web-ide-be-prod-task:4`
   - Desired tasks: `1`
   - Running tasks: `1`
 - [x] ALB 기반 백엔드 HTTP 진입점 구성
@@ -444,6 +444,13 @@
   - 허용 Origin: `https://d1qcnjd8lnakb.cloudfront.net`
   - 허용 Origin: `http://dev-web-ide-fe-prod-apne2.s3-website-ap-southeast-2.amazonaws.com`
   - CloudFront API endpoint 기준 preflight 응답 확인
+- [x] EFS 연결 및 파일 저장 영속성 확인
+  - File system: `fs-06bac21d4761a0ad7`
+  - Access Point: `fsap-032b7a3e38c1af59e`
+  - EFS security group: `sg-02c0c5275b6812b82`
+  - ECS mount path: `/app/storage`
+  - ECS task definition: `dev-web-ide-be-prod-task:4`
+  - 임시 프로젝트 파일 저장 후 ECS task 재배포 뒤 동일 파일 내용 재조회 성공
 
 ### 부분 완료
 
@@ -466,9 +473,6 @@
   - `SPRING_DATASOURCE_PASSWORD`
   - `APP_JWT_SECRET`
   - AWS Secrets Manager 또는 SSM Parameter Store 사용 필요
-- [ ] EFS 연결
-  - 현재 `APP_PROJECT_STORAGE_ROOT=/app/storage`
-  - 컨테이너 재시작 시 안정적인 파일 보존을 위해 EFS mount 필요
 - [ ] Redis 연결
   - 세션 상태, 활성 사용자 수, WebSocket Pub/Sub, idle timer 보조 용도
   - ElastiCache Redis 또는 호환 Redis 구성 필요

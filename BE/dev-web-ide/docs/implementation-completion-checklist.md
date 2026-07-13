@@ -404,6 +404,89 @@
 - [ ] 전역 예외 응답 표준화
 - [ ] 운영 DB 마이그레이션 도구 적용 여부 확인
 
+## 인프라 배포 진행 상태
+
+기준일: 2026-07-13
+
+### 완료
+
+- [x] RDS MySQL 생성 및 백엔드 연결 확인
+  - DB 이름: `dev_web_ide`
+  - 엔드포인트: `database-1.cif2g02ggeeo.us-east-1.rds.amazonaws.com:3306`
+  - Spring Boot 컨테이너에서 RDS 연결 및 JPA 초기화 확인
+- [x] 백엔드 Docker 이미지 빌드 설정 추가
+  - `Dockerfile`, `.dockerignore` 추가
+  - Java 25 런타임 기반 Spring Boot jar 실행 이미지 구성
+- [x] ECR repository 생성 및 이미지 push
+  - Repository: `dev-web-ide-be`
+  - Image URI: `725478842252.dkr.ecr.us-east-1.amazonaws.com/dev-web-ide-be:latest`
+- [x] ECS Fargate 기반 백엔드 서비스 배포
+  - Cluster: `dev-web-ide-prod-cluster`
+  - Service: `dev-web-ide-be-prod-service`
+  - Task Definition: `dev-web-ide-be-prod-task:2`
+  - Desired tasks: `1`
+  - Running tasks: `1`
+- [x] ALB 기반 백엔드 HTTP 진입점 구성
+  - ALB: `dev-web-ide-be-prod-alb`
+  - Target Group: `dev-web-ide-be-prod-tg`
+  - Health check path: `/api/health`
+- [x] API용 CloudFront 배포
+  - Distribution: `E1QTFPLGD97O3L`
+  - HTTPS API base URL: `https://d15mkrht7zfcoy.cloudfront.net`
+  - Origin: `dev-web-ide-be-prod-alb-293005819.us-east-1.elb.amazonaws.com`
+  - Cache policy: `Managed-CachingDisabled`
+- [x] 헬스 체크 API 구현 및 배포 확인
+  - Endpoint: `GET /api/health`
+  - `https://d15mkrht7zfcoy.cloudfront.net/api/health` 응답 `200 OK` 확인
+- [x] BE CORS 설정 추가 및 운영 배포 반영
+  - 설정 키: `app.cors.allowed-origins`
+  - 운영 환경변수: `APP_CORS_ALLOWED_ORIGINS`
+  - 허용 Origin: `https://d1qcnjd8lnakb.cloudfront.net`
+  - 허용 Origin: `http://dev-web-ide-fe-prod-apne2.s3-website-ap-southeast-2.amazonaws.com`
+  - CloudFront API endpoint 기준 preflight 응답 확인
+
+### 부분 완료
+
+- [~] FE API base URL 설정
+  - FE production env: `VITE_API_BASE_URL=https://d15mkrht7zfcoy.cloudfront.net`
+  - 아직 실제 FE API 호출 코드는 mock/publishing 상태에서 순차 연동 필요
+- [~] HTTPS API endpoint 적용
+  - 도메인 없이 API용 CloudFront를 ALB 앞에 두어 HTTPS endpoint 확보
+  - FE/BE 모두 CloudFront HTTPS endpoint를 사용하므로 현재 단계에서 ALB 자체 HTTPS listener는 필수 아님
+- [~] DB/JWT secret 운영 주입
+  - 현재 ECS Task Definition 환경변수로 주입됨
+  - 동작은 확인됐으나 Secrets Manager 또는 SSM Parameter Store 이전 필요
+- [~] RDS 보안 그룹
+  - ECS service security group에서 RDS 접근 가능
+  - RDS security group에 넓은 inbound 규칙이 남아 있어 운영 전 축소 필요
+
+### 미완료
+
+- [ ] Secret 관리 전환
+  - `SPRING_DATASOURCE_PASSWORD`
+  - `APP_JWT_SECRET`
+  - AWS Secrets Manager 또는 SSM Parameter Store 사용 필요
+- [ ] EFS 연결
+  - 현재 `APP_PROJECT_STORAGE_ROOT=/app/storage`
+  - 컨테이너 재시작 시 안정적인 파일 보존을 위해 EFS mount 필요
+- [ ] Redis 연결
+  - 세션 상태, 활성 사용자 수, WebSocket Pub/Sub, idle timer 보조 용도
+  - ElastiCache Redis 또는 호환 Redis 구성 필요
+- [ ] CI/CD 자동 배포
+  - 현재 Docker build, ECR push, ECS update는 수동 CLI 작업
+  - GitHub Actions 등으로 build/push/deploy 자동화 필요
+
+### 선택 또는 운영 고도화
+
+- [ ] API 커스텀 도메인 연결
+  - 예: `api.<domain>`
+  - 현재는 `https://d15mkrht7zfcoy.cloudfront.net`로 HTTPS API 호출 가능하므로 필수 아님
+  - 서비스 주소를 고정/브랜딩하거나 CloudFront distribution 교체 영향을 줄이고 싶을 때 진행
+- [ ] ALB HTTPS listener 구성
+  - 현재 외부 클라이언트는 CloudFront HTTPS로 접근하고, CloudFront -> ALB 구간만 HTTP
+  - 내부 origin 구간까지 암호화하거나 ALB 직접 접근을 HTTPS로 제한하고 싶을 때 진행
+  - 도메인 확보 후 ACM 인증서 발급, ALB `443` listener 연결, `80 -> 443` redirect 구성 필요
+
 ## 확인 필요 사항
 
 - [ ] `application.properties`는 `app.project.storage-root=./storage`를 사용하지만 `LocalProjectFileStorageService`는 `app.storage.project-root`를 읽고 있음

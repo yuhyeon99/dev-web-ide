@@ -3,15 +3,18 @@ import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
 import {
   clearPendingOAuthSignup,
   completeGoogleOAuthSignup,
-  getPendingOAuthSignup,
   startGoogleOAuth,
+  updateAuthenticatedProfile,
   type PendingOAuthSignup,
+  type StoredAuthSession,
 } from '@/shared/api/auth';
 
 type AuthStep = 'oauth' | 'profile';
 
 type AuthModalProps = {
   isOpen: boolean;
+  pendingSignup: PendingOAuthSignup | null;
+  profileSetupSession: StoredAuthSession | null;
   onClose: () => void;
 };
 
@@ -36,24 +39,28 @@ const inputClassName =
 const checkboxClassName =
   'mt-0.5 h-4 w-4 shrink-0 rounded border-[#3c3c3c] bg-[#1f1f1f] accent-[#007acc]';
 
-export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
+export const AuthModal = ({
+  isOpen,
+  pendingSignup,
+  profileSetupSession,
+  onClose,
+}: AuthModalProps) => {
   const [step, setStep] = useState<AuthStep>(() =>
-    getPendingOAuthSignup() ? 'profile' : 'oauth',
+    pendingSignup || profileSetupSession ? 'profile' : 'oauth',
   );
   const [selectedProviderId, setSelectedProviderId] =
     useState<OAuthProviderId | null>(() =>
-      getPendingOAuthSignup() ? 'google' : null,
+      pendingSignup || profileSetupSession ? 'google' : null,
     );
   const [nickname, setNickname] = useState(
-    () => getPendingOAuthSignup()?.name ?? '',
+    () => pendingSignup?.name ?? profileSetupSession?.nickname ?? '',
   );
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [pendingSignup, setPendingSignup] = useState<PendingOAuthSignup | null>(
-    () => getPendingOAuthSignup(),
-  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSignupCompletion = Boolean(pendingSignup);
+  const isProfileSetup = Boolean(profileSetupSession) && !pendingSignup;
 
   const resetModalState = () => {
     setStep('oauth');
@@ -62,7 +69,6 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     setAgreedToTerms(false);
     setAgreedToPrivacy(false);
     setAuthError(null);
-    setPendingSignup(null);
     setIsSubmitting(false);
   };
 
@@ -86,7 +92,6 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         setAgreedToTerms(false);
         setAgreedToPrivacy(false);
         setAuthError(null);
-        setPendingSignup(null);
         setIsSubmitting(false);
         onClose();
       }
@@ -110,7 +115,8 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     (provider) => provider.id === selectedProviderId,
   );
   const isProfileComplete =
-    nickname.trim().length > 0 && agreedToTerms && agreedToPrivacy;
+    nickname.trim().length > 0 &&
+    (!isSignupCompletion || (agreedToTerms && agreedToPrivacy));
 
   const handleProviderSelect = (providerId: OAuthProviderId) => {
     setAuthError(null);
@@ -119,6 +125,12 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   };
 
   const handleBack = () => {
+    if (isProfileSetup) {
+      resetModalState();
+      onClose();
+      return;
+    }
+
     clearPendingOAuthSignup();
     resetModalState();
   };
@@ -129,7 +141,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     if (
       !isProfileComplete ||
       selectedProviderId !== 'google' ||
-      !pendingSignup ||
+      (!pendingSignup && !profileSetupSession) ||
       isSubmitting
     ) {
       return;
@@ -139,15 +151,19 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     setAuthError(null);
 
     try {
-      await completeGoogleOAuthSignup({
-        nickname: nickname.trim(),
-        termsAgreed: agreedToTerms,
-        privacyAgreed: agreedToPrivacy,
-      });
+      if (pendingSignup) {
+        await completeGoogleOAuthSignup({
+          nickname: nickname.trim(),
+          termsAgreed: agreedToTerms,
+          privacyAgreed: agreedToPrivacy,
+        });
+      } else if (profileSetupSession) {
+        await updateAuthenticatedProfile(profileSetupSession, nickname.trim());
+      }
       resetModalState();
       onClose();
     } catch {
-      setAuthError('회원가입을 완료하지 못했습니다. 잠시 후 다시 시도하세요.');
+      setAuthError('프로필을 저장하지 못했습니다. 잠시 후 다시 시도하세요.');
       setIsSubmitting(false);
     }
   };
@@ -178,7 +194,9 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
             >
               {isOAuthStep
                 ? '소셜 계정으로 로그인하거나 회원가입하세요'
-                : '추가 정보를 입력하고 가입을 완료하세요'}
+                : isSignupCompletion
+                  ? '추가 정보를 입력하고 가입을 완료하세요'
+                  : '서비스에서 사용할 닉네임을 설정하세요'}
             </h2>
           </div>
 
@@ -311,7 +329,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                         {selectedProvider?.label} 계정 인증 완료
                       </p>
                       <p className="mt-1 text-xs leading-5 text-[#858585]">
-                        {pendingSignup?.email}
+                        {pendingSignup?.email ?? profileSetupSession?.email}
                       </p>
                     </div>
                   </div>
@@ -320,11 +338,14 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                 <form className="mt-6" onSubmit={handleProfileSubmit}>
                   <div>
                     <h3 className="text-base font-semibold text-[#f3f3f3]">
-                      서비스에서 사용할 프로필을 설정하세요
+                      {isSignupCompletion
+                        ? '서비스에서 사용할 프로필을 설정하세요'
+                        : '닉네임을 설정하세요'}
                     </h3>
                     <p className="mt-1 text-sm leading-6 text-[#9da1a6]">
-                      비밀번호 없이 닉네임과 약관 동의만으로 가입을 마무리하는
-                      구조입니다.
+                      {isSignupCompletion
+                        ? '비밀번호 없이 닉네임과 약관 동의만으로 가입을 마무리하는 구조입니다.'
+                        : '헤더와 워크스페이스에서 표시할 이름입니다.'}
                     </p>
                   </div>
 
@@ -342,36 +363,38 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                     />
                   </label>
 
-                  <div className="mt-5 space-y-3 rounded-xl border border-[#313131] bg-[#161616] p-4">
-                    <label className="flex items-start gap-3 text-sm leading-6 text-[#9da1a6]">
-                      <input
-                        type="checkbox"
-                        checked={agreedToTerms}
-                        onChange={(event) =>
-                          setAgreedToTerms(event.target.checked)
-                        }
-                        className={checkboxClassName}
-                      />
-                      <span>
-                        이용약관에 동의합니다.
-                        <span className="ml-2 text-[#4fc1ff]">(필수)</span>
-                      </span>
-                    </label>
-                    <label className="flex items-start gap-3 text-sm leading-6 text-[#9da1a6]">
-                      <input
-                        type="checkbox"
-                        checked={agreedToPrivacy}
-                        onChange={(event) =>
-                          setAgreedToPrivacy(event.target.checked)
-                        }
-                        className={checkboxClassName}
-                      />
-                      <span>
-                        개인정보 처리방침에 동의합니다.
-                        <span className="ml-2 text-[#4fc1ff]">(필수)</span>
-                      </span>
-                    </label>
-                  </div>
+                  {isSignupCompletion ? (
+                    <div className="mt-5 space-y-3 rounded-xl border border-[#313131] bg-[#161616] p-4">
+                      <label className="flex items-start gap-3 text-sm leading-6 text-[#9da1a6]">
+                        <input
+                          type="checkbox"
+                          checked={agreedToTerms}
+                          onChange={(event) =>
+                            setAgreedToTerms(event.target.checked)
+                          }
+                          className={checkboxClassName}
+                        />
+                        <span>
+                          이용약관에 동의합니다.
+                          <span className="ml-2 text-[#4fc1ff]">(필수)</span>
+                        </span>
+                      </label>
+                      <label className="flex items-start gap-3 text-sm leading-6 text-[#9da1a6]">
+                        <input
+                          type="checkbox"
+                          checked={agreedToPrivacy}
+                          onChange={(event) =>
+                            setAgreedToPrivacy(event.target.checked)
+                          }
+                          className={checkboxClassName}
+                        />
+                        <span>
+                          개인정보 처리방침에 동의합니다.
+                          <span className="ml-2 text-[#4fc1ff]">(필수)</span>
+                        </span>
+                      </label>
+                    </div>
+                  ) : null}
 
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                     <button
@@ -379,7 +402,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                       onClick={handleBack}
                       className="inline-flex w-full items-center justify-center rounded-md border border-[#3c3c3c] bg-[#252526] px-4 py-3 text-sm font-medium text-[#d4d4d4] transition hover:bg-[#2a2d2e] focus-visible:ring-2 focus-visible:ring-[#007acc]/50 focus-visible:outline-none"
                     >
-                      이전
+                      {isProfileSetup ? '닫기' : '이전'}
                     </button>
                     <button
                       type="submit"
@@ -390,7 +413,11 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                           : 'cursor-not-allowed border border-[#3c3c3c] bg-[#2a2a2a] text-[#6b7280]'
                       }`}
                     >
-                      {isSubmitting ? '가입 처리 중' : '가입 완료'}
+                      {isSubmitting
+                        ? '저장 중'
+                        : isSignupCompletion
+                          ? '가입 완료'
+                          : '저장'}
                     </button>
                   </div>
 
@@ -402,8 +429,9 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
 
                   <div className="mt-5 rounded-xl border border-[#313131] bg-[#111111] px-4 py-3">
                     <p className="text-xs font-medium text-[#6a9955]">
-                      가입이 완료되면 로그인 토큰을 저장하고 대시보드로
-                      돌아갑니다.
+                      {isSignupCompletion
+                        ? '가입이 완료되면 로그인 토큰을 저장하고 대시보드로 돌아갑니다.'
+                        : '저장 후 다음 로그인부터 이 단계를 건너뜁니다.'}
                     </p>
                   </div>
                 </form>

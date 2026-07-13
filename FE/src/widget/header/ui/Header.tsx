@@ -1,15 +1,71 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import logo from '@/assets/images/logo.svg';
 import { AuthModal } from '@/features/auth';
 import { OpenProjectsModal } from '@/features/open-projects';
-import { getPendingOAuthSignup } from '@/shared/api/auth';
+import {
+  clearAuthSession,
+  getPendingOAuthSignup,
+  getStoredAuthSession,
+  isProfileSetupRequired,
+  subscribeAuthSession,
+} from '@/shared/api/auth';
 
 export const Header = () => {
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(() =>
-    Boolean(getPendingOAuthSignup()),
+  const [authSession, setAuthSession] = useState(() => getStoredAuthSession());
+  const [pendingSignup, setPendingSignup] = useState(() =>
+    getPendingOAuthSignup(),
+  );
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(
+    () =>
+      Boolean(getPendingOAuthSignup()) ||
+      isProfileSetupRequired(getStoredAuthSession()),
   );
   const [isOpenProjectsModalOpen, setOpenProjectsModalOpen] = useState(false);
+  const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileSetupSession =
+    authSession && isProfileSetupRequired(authSession) ? authSession : null;
+  const authModalKey = `${pendingSignup?.email ?? 'none'}:${profileSetupSession?.userId ?? authSession?.userId ?? 'none'}`;
+  const profileInitial = useMemo(() => {
+    if (!authSession?.nickname) {
+      return '';
+    }
+
+    return authSession.nickname.trim().charAt(0).toUpperCase();
+  }, [authSession]);
+
+  useEffect(() => {
+    return subscribeAuthSession(() => {
+      const nextSession = getStoredAuthSession();
+      const nextPendingSignup = getPendingOAuthSignup();
+
+      setAuthSession(nextSession);
+      setPendingSignup(nextPendingSignup);
+
+      if (nextPendingSignup || isProfileSetupRequired(nextSession)) {
+        setIsAuthModalOpen(true);
+      }
+    });
+  }, []);
+
+  const handleProfileButtonClick = () => {
+    if (!authSession) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    if (isProfileSetupRequired(authSession)) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    setProfileMenuOpen((isOpen) => !isOpen);
+  };
+
+  const handleLogout = () => {
+    clearAuthSession();
+    setProfileMenuOpen(false);
+  };
 
   return (
     <header className="relative flex h-11 w-full bg-[#333333] pl-3 text-sm text-[#cccccc] select-none">
@@ -64,33 +120,71 @@ export const Header = () => {
       <div className="user-profile absolute right-3 flex h-full items-center">
         <button
           type="button"
-          onClick={() => setIsAuthModalOpen(true)}
+          onClick={handleProfileButtonClick}
           aria-haspopup="dialog"
-          aria-expanded={isAuthModalOpen}
-          aria-label="인증 팝업 열기"
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-[#555555] text-xs text-white transition hover:bg-[#6a6a6a] focus-visible:ring-2 focus-visible:ring-[#007acc]/70 focus-visible:outline-none"
+          aria-expanded={authSession ? isProfileMenuOpen : isAuthModalOpen}
+          aria-label={authSession ? '프로필 메뉴 열기' : '인증 팝업 열기'}
+          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white transition focus-visible:ring-2 focus-visible:ring-[#007acc]/70 focus-visible:outline-none ${
+            authSession
+              ? 'bg-[#0e639c] hover:bg-[#1177bb]'
+              : 'bg-[#555555] hover:bg-[#6a6a6a]'
+          }`}
         >
-          {/* 인증 전 */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="h-5 w-5"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15 7.5a3 3 0 11-6 0 3 3 0 016 0ZM4.5 19.5a7.5 7.5 0 0115 0"
-            />
-            <path strokeLinecap="round" d="M4.3 20.5h15.4" />
-          </svg>
-          {/* TODO: 인증 후: 회원 이미지 */}
+          {authSession ? (
+            profileInitial
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="h-5 w-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 7.5a3 3 0 11-6 0 3 3 0 016 0ZM4.5 19.5a7.5 7.5 0 0115 0"
+              />
+              <path strokeLinecap="round" d="M4.3 20.5h15.4" />
+            </svg>
+          )}
         </button>
+        {authSession && isProfileMenuOpen ? (
+          <div className="absolute top-full right-0 z-50 mt-1 w-56 border border-[#3c3c3c] bg-[#252526] py-2 shadow-lg">
+            <div className="border-b border-[#3c3c3c] px-3 pb-2">
+              <p className="truncate text-sm font-semibold text-[#f3f3f3]">
+                {authSession.nickname}
+              </p>
+              <p className="mt-1 truncate text-xs text-[#858585]">
+                {authSession.email}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAuthModalOpen(true);
+                setProfileMenuOpen(false);
+              }}
+              className="mt-1 w-full px-3 py-1.5 text-left text-sm text-[#cccccc] hover:bg-[#04395e] hover:text-white"
+            >
+              닉네임 설정
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full px-3 py-1.5 text-left text-sm text-[#cccccc] hover:bg-[#04395e] hover:text-white"
+            >
+              로그아웃
+            </button>
+          </div>
+        ) : null}
       </div>
       <AuthModal
+        key={authModalKey}
         isOpen={isAuthModalOpen}
+        pendingSignup={pendingSignup}
+        profileSetupSession={profileSetupSession ?? authSession}
         onClose={() => setIsAuthModalOpen(false)}
       />
       <OpenProjectsModal

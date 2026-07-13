@@ -2,6 +2,8 @@ import { API_BASE_URL } from '@/shared/config/api';
 
 const AUTH_SESSION_STORAGE_KEY = 'dev-web-ide.auth-session';
 const OAUTH_SIGNUP_STORAGE_KEY = 'dev-web-ide.oauth-signup';
+const AUTH_SESSION_CHANGED_EVENT = 'dev-web-ide:auth-session-changed';
+const PROFILE_SETUP_COMPLETED_KEY_PREFIX = 'dev-web-ide.profile-completed.';
 
 type CompleteGoogleOAuthSignupParams = {
   nickname: string;
@@ -26,6 +28,14 @@ export type PendingOAuthSignup = {
   provider: 'google';
   email: string;
   name: string;
+};
+
+type UserMeResponse = {
+  userId: number;
+  email: string;
+  nickname: string;
+  role: string;
+  status: string;
 };
 
 const isStoredAuthSession = (value: unknown): value is StoredAuthSession => {
@@ -84,10 +94,22 @@ export const saveAuthSession = (session: StoredAuthSession) => {
     AUTH_SESSION_STORAGE_KEY,
     JSON.stringify(session),
   );
+  dispatchAuthSessionChanged();
 };
 
 export const clearAuthSession = () => {
   window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+  dispatchAuthSessionChanged();
+};
+
+export const subscribeAuthSession = (listener: () => void) => {
+  window.addEventListener(AUTH_SESSION_CHANGED_EVENT, listener);
+  window.addEventListener('storage', listener);
+
+  return () => {
+    window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, listener);
+    window.removeEventListener('storage', listener);
+  };
 };
 
 export const getPendingOAuthSignup = () => {
@@ -117,6 +139,7 @@ export const getPendingOAuthSignup = () => {
 
 export const clearPendingOAuthSignup = () => {
   window.localStorage.removeItem(OAUTH_SIGNUP_STORAGE_KEY);
+  dispatchAuthSessionChanged();
 };
 
 export const completeGoogleOAuthSignup = async ({
@@ -147,9 +170,55 @@ export const completeGoogleOAuthSignup = async ({
   const session = (await response.json()) as StoredAuthSession;
 
   saveAuthSession(session);
+  markProfileSetupComplete(session.userId);
   clearPendingOAuthSignup();
 
   return session;
+};
+
+export const updateAuthenticatedProfile = async (
+  session: StoredAuthSession,
+  nickname: string,
+) => {
+  const response = await fetch(`${API_BASE_URL}/api/users/me/profile`, {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `${session.tokenType} ${session.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      nickname,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`프로필 수정에 실패했습니다. status=${response.status}`);
+  }
+
+  const profile = (await response.json()) as UserMeResponse;
+  const updatedSession: StoredAuthSession = {
+    ...session,
+    email: profile.email,
+    nickname: profile.nickname,
+    role: profile.role,
+    status: profile.status,
+  };
+
+  markProfileSetupComplete(updatedSession.userId);
+  saveAuthSession(updatedSession);
+
+  return updatedSession;
+};
+
+export const isProfileSetupRequired = (session: StoredAuthSession | null) => {
+  if (!session) {
+    return false;
+  }
+
+  return !window.localStorage.getItem(
+    getProfileSetupCompletedKey(session.userId),
+  );
 };
 
 export const consumeOAuthRedirect = () => {
@@ -168,6 +237,7 @@ export const consumeOAuthRedirect = () => {
         name: searchParams.get('name') ?? '',
       } satisfies PendingOAuthSignup),
     );
+    dispatchAuthSessionChanged();
     removeOAuthRedirectParams();
     return null;
   }
@@ -248,4 +318,15 @@ const removeOAuthRedirectParams = () => {
     '',
     `${url.pathname}${url.search}${url.hash}`,
   );
+};
+
+const getProfileSetupCompletedKey = (userId: number) =>
+  `${PROFILE_SETUP_COMPLETED_KEY_PREFIX}${userId}`;
+
+const markProfileSetupComplete = (userId: number) => {
+  window.localStorage.setItem(getProfileSetupCompletedKey(userId), 'true');
+};
+
+const dispatchAuthSessionChanged = () => {
+  window.dispatchEvent(new CustomEvent(AUTH_SESSION_CHANGED_EVENT));
 };

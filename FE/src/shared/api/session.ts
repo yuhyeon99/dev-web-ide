@@ -19,12 +19,18 @@ type StoredProjectSessionOwner = {
 };
 
 const isExpired = (expiresAt: string) => {
-  const expiresAtMs = new Date(expiresAt).getTime();
+  const expiresAtMs = parseApiDateTime(expiresAt);
 
   return (
     !Number.isFinite(expiresAtMs) ||
     expiresAtMs <= Date.now() + TOKEN_EXPIRATION_SKEW_MS
   );
+};
+
+const parseApiDateTime = (dateTime: string) => {
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(dateTime);
+
+  return Date.parse(hasTimezone ? dateTime : `${dateTime}Z`);
 };
 
 const isStoredGuestSession = (value: unknown): value is StoredGuestSession => {

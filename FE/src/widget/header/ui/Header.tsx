@@ -43,11 +43,6 @@ export const Header = () => {
     setProfileMenuOpen(false);
   };
 
-  const navigateToProfileSetup = () => {
-    window.history.pushState(null, '', '/profile/setup');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  };
-
   return (
     <header className="relative flex h-11 w-full bg-[#333333] pl-3 text-sm text-[#cccccc] select-none">
       <div className="logo flex items-center">
@@ -145,7 +140,7 @@ export const Header = () => {
               type="button"
               onClick={() => {
                 setProfileMenuOpen(false);
-                navigateToProfileSetup();
+                window.location.assign('/profile/setup');
               }}
               className="mt-1 w-full px-3 py-1.5 text-left text-sm text-[#cccccc] hover:bg-[#04395e] hover:text-white"
             >

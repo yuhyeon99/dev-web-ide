@@ -4,6 +4,7 @@ const AUTH_SESSION_STORAGE_KEY = 'dev-web-ide.auth-session';
 const OAUTH_SIGNUP_STORAGE_KEY = 'dev-web-ide.oauth-signup';
 const AUTH_SESSION_CHANGED_EVENT = 'dev-web-ide:auth-session-changed';
 const PROFILE_SETUP_COMPLETED_KEY_PREFIX = 'dev-web-ide.profile-completed.';
+const TOKEN_EXPIRATION_SKEW_MS = 30 * 1000;
 
 type CompleteGoogleOAuthSignupParams = {
   nickname: string;
@@ -77,7 +78,7 @@ export const getStoredAuthSession = () => {
       return null;
     }
 
-    if (new Date(parsedSession.accessTokenExpiresAt).getTime() <= Date.now()) {
+    if (isExpired(parsedSession.accessTokenExpiresAt)) {
       window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
       return null;
     }
@@ -315,11 +316,14 @@ const replaceOAuthRedirectParams = (nextPath?: string) => {
     'newUser',
   ].forEach((key) => url.searchParams.delete(key));
 
-  window.history.replaceState(
-    null,
-    '',
-    `${nextPath ?? url.pathname}${url.search}${url.hash}`,
-  );
+  const nextUrl = `${nextPath ?? url.pathname}${url.search}${url.hash}`;
+
+  if (nextPath) {
+    window.location.replace(nextUrl);
+    return;
+  }
+
+  window.history.replaceState(null, '', nextUrl);
 };
 
 const getProfileSetupCompletedKey = (userId: number) =>
@@ -331,4 +335,19 @@ const markProfileSetupComplete = (userId: number) => {
 
 const dispatchAuthSessionChanged = () => {
   window.dispatchEvent(new CustomEvent(AUTH_SESSION_CHANGED_EVENT));
+};
+
+const isExpired = (expiresAt: string) => {
+  const expiresAtMs = parseApiDateTime(expiresAt);
+
+  return (
+    !Number.isFinite(expiresAtMs) ||
+    expiresAtMs <= Date.now() + TOKEN_EXPIRATION_SKEW_MS
+  );
+};
+
+const parseApiDateTime = (dateTime: string) => {
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(dateTime);
+
+  return Date.parse(hasTimezone ? dateTime : `${dateTime}Z`);
 };

@@ -1,4 +1,6 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
+
+import { startGoogleOAuth } from '@/shared/api/auth';
 
 type AuthStep = 'oauth' | 'profile';
 
@@ -47,6 +49,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   const [nickname, setNickname] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const resetModalState = () => {
     setStep('oauth');
@@ -54,6 +57,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     setNickname('');
     setAgreedToTerms(false);
     setAgreedToPrivacy(false);
+    setAuthError(null);
   };
 
   const handleClose = () => {
@@ -75,6 +79,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         setNickname('');
         setAgreedToTerms(false);
         setAgreedToPrivacy(false);
+        setAuthError(null);
         onClose();
       }
     };
@@ -100,12 +105,32 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     nickname.trim().length > 0 && agreedToTerms && agreedToPrivacy;
 
   const handleProviderSelect = (providerId: OAuthProviderId) => {
+    if (providerId !== 'google') {
+      setAuthError('현재 Google 로그인만 사용할 수 있습니다.');
+      return;
+    }
+
+    setAuthError(null);
     setSelectedProviderId(providerId);
     setStep('profile');
   };
 
   const handleBack = () => {
     resetModalState();
+  };
+
+  const handleProfileSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!isProfileComplete || selectedProviderId !== 'google') {
+      return;
+    }
+
+    startGoogleOAuth({
+      nickname: nickname.trim(),
+      termsAgreed: agreedToTerms,
+      privacyAgreed: agreedToPrivacy,
+    });
   };
 
   return (
@@ -211,12 +236,18 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                           </p>
                         </div>
                         <span className="text-sm text-[#6b7280] transition group-hover:text-[#d4d4d4]">
-                          시작
+                          {provider.id === 'google' ? '시작' : '준비중'}
                         </span>
                       </div>
                     </button>
                   ))}
                 </div>
+
+                {authError ? (
+                  <p className="mt-4 rounded-md border border-[#5a1d1d] bg-[#241313] px-3 py-2 text-sm text-[#ff9b9b]">
+                    {authError}
+                  </p>
+                ) : null}
 
                 <div className="mt-6 rounded-xl border border-[#313131] bg-[#161616] px-4 py-4">
                   <p className="text-[11px] font-semibold tracking-[0.18em] text-[#4fc1ff] uppercase">
@@ -268,7 +299,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                   </div>
                 </div>
 
-                <form className="mt-6">
+                <form className="mt-6" onSubmit={handleProfileSubmit}>
                   <div>
                     <h3 className="text-base font-semibold text-[#f3f3f3]">
                       서비스에서 사용할 프로필을 설정하세요
@@ -333,7 +364,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                       이전
                     </button>
                     <button
-                      type="button"
+                      type="submit"
                       disabled={!isProfileComplete}
                       className={`inline-flex w-full items-center justify-center rounded-md px-4 py-3 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#007acc]/70 focus-visible:outline-none ${
                         isProfileComplete
@@ -347,9 +378,8 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
 
                   <div className="mt-5 rounded-xl border border-[#313131] bg-[#111111] px-4 py-3">
                     <p className="text-xs font-medium text-[#6a9955]">
-                      퍼블리싱 전용 상태입니다. 실제 연동 시에는 OAuth 인증
-                      결과로 기존 회원/신규 회원을 분기한 뒤 신규 회원만 이
-                      단계로 전환하면 됩니다.
+                      Google 인증이 완료되면 로그인 토큰을 저장하고 대시보드로
+                      돌아옵니다.
                     </p>
                   </div>
                 </form>

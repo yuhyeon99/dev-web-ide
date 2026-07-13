@@ -2,10 +2,12 @@ package com.yuhyeon.devwebide.auth.controller;
 
 import com.yuhyeon.devwebide.auth.dto.AuthLogoutResponse;
 import com.yuhyeon.devwebide.auth.dto.AuthTokenRefreshResponse;
+import com.yuhyeon.devwebide.auth.dto.GoogleOAuthSignupRequest;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginResponse;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginResult;
 import com.yuhyeon.devwebide.auth.security.AccessTokenAuthenticationService;
 import com.yuhyeon.devwebide.auth.service.AuthService;
+import com.yuhyeon.devwebide.auth.service.GoogleOAuthService;
 import com.yuhyeon.devwebide.auth.service.OAuthLoginService;
 import com.yuhyeon.devwebide.user.domain.UserRole;
 import com.yuhyeon.devwebide.user.domain.UserStatus;
@@ -30,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -45,6 +48,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private OAuthLoginService oAuthLoginService;
+
+    @MockitoBean
+    private GoogleOAuthService googleOAuthService;
 
     @MockitoBean
     private AccessTokenAuthenticationService accessTokenAuthenticationService;
@@ -172,6 +178,86 @@ class AuthControllerTest {
 
         then(oAuthLoginService).should()
                 .login(any(), eq("203.0.113.10"), eq("Chrome"));
+    }
+
+    @Test
+    @DisplayName("Google OAuth 인증 시작 시 state와 가입 정보 쿠키를 저장하고 Google로 리다이렉트한다")
+    void startGoogleOAuth() throws Exception {
+        given(googleOAuthService.createState())
+                .willReturn("state-token");
+        given(googleOAuthService.encodeCookieValue("user|true|true"))
+                .willReturn("encoded-signup");
+        given(googleOAuthService.buildAuthorizationUri("state-token"))
+                .willReturn("https://accounts.google.com/o/oauth2/v2/auth?state=state-token");
+
+        mockMvc.perform(get("/api/auth/oauth/google/authorize")
+                        .param("nickname", "user")
+                        .param("termsAgreed", "true")
+                        .param("privacyAgreed", "true")
+                        .header("X-Forwarded-Proto", "https"))
+                .andExpect(status().isFound())
+                .andExpect(header().string(
+                        HttpHeaders.LOCATION,
+                        "https://accounts.google.com/o/oauth2/v2/auth?state=state-token"
+                ))
+                .andExpect(result -> {
+                    assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                            .anyMatch(cookie -> cookie.contains("googleOAuthState=state-token"))
+                            .anyMatch(cookie -> cookie.contains("googleOAuthSignup=encoded-signup"));
+                });
+    }
+
+    @Test
+    @DisplayName("Google OAuth 콜백 성공 시 로그인 결과를 FE로 리다이렉트하고 refresh token을 쿠키에 저장한다")
+    void handleGoogleOAuthCallback() throws Exception {
+        LocalDateTime accessTokenExpiresAt = LocalDateTime.of(2026, 7, 9, 10, 30);
+        OAuthLoginResponse response = new OAuthLoginResponse(
+                "access-token",
+                "Bearer",
+                1800L,
+                accessTokenExpiresAt,
+                1L,
+                "user@test.com",
+                "user",
+                UserRole.USER,
+                UserStatus.ACTIVE,
+                true
+        );
+        OAuthLoginResult result = new OAuthLoginResult(
+                response,
+                "refresh-token",
+                1_209_600L
+        );
+
+        given(googleOAuthService.decodeCookieValue("encoded-signup"))
+                .willReturn("user|true|true");
+        given(googleOAuthService.loginWithAuthorizationCode(
+                eq("google-code"),
+                eq(new GoogleOAuthSignupRequest("user", true, true)),
+                eq("127.0.0.1"),
+                eq("Chrome")
+        )).willReturn(result);
+        given(googleOAuthService.buildFrontendSuccessRedirectUri(result))
+                .willReturn("https://d1qcnjd8lnakb.cloudfront.net?oauth=success");
+
+        mockMvc.perform(get("/api/auth/oauth/google/callback")
+                        .param("code", "google-code")
+                        .param("state", "state-token")
+                        .cookie(new Cookie("googleOAuthState", "state-token"))
+                        .cookie(new Cookie("googleOAuthSignup", "encoded-signup"))
+                        .header(HttpHeaders.USER_AGENT, "Chrome")
+                        .header("X-Forwarded-Proto", "https"))
+                .andExpect(status().isFound())
+                .andExpect(header().string(
+                        HttpHeaders.LOCATION,
+                        "https://d1qcnjd8lnakb.cloudfront.net?oauth=success"
+                ))
+                .andExpect(mvcResult -> {
+                    assertThat(mvcResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                            .anyMatch(cookie -> cookie.contains("refreshToken=refresh-token"))
+                            .anyMatch(cookie -> cookie.contains("googleOAuthState="))
+                            .anyMatch(cookie -> cookie.contains("googleOAuthSignup="));
+                });
     }
 
     @Test

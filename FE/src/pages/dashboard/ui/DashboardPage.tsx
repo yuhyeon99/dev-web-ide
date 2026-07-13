@@ -144,7 +144,7 @@ export const DashboardPage = () => {
         runtimeId: values.runtimeId,
         projectType,
         visibility: projectType === 'TEAM' ? 'TEAM' : 'PRIVATE',
-        memberUserIds: [],
+        memberUserIds: values.memberUserIds,
       });
       saveProjectApiSession(project.id, projectSession);
 
@@ -256,6 +256,7 @@ export const DashboardPage = () => {
 
       <CreateTemporaryProjectModal
         key={isGuest ? 'guest-project-modal' : 'member-project-modal'}
+        accessToken={authSession?.accessToken}
         createError={createProjectError}
         initialPreviewMode={isGuest ? 'guest' : 'member'}
         isOpen={isCreateTemporaryProjectModalOpen}

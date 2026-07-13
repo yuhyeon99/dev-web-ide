@@ -44,6 +44,12 @@ export type ProjectCreateRequest = {
   memberUserIds: number[];
 };
 
+export type UserSearchResponse = {
+  userId: number;
+  email: string;
+  nickname: string;
+};
+
 export type ProjectSummaryResponse = {
   id: number;
   name: string;

@@ -7,7 +7,7 @@ export type ProjectRole = 'owner' | 'editor' | 'viewer';
 export type RuntimeId = 'nodejs' | 'python' | 'java' | 'cpp';
 
 export type InvitableMember = {
-  id: string;
+  id: number;
   name: string;
   email: string;
   team: string;
@@ -106,53 +106,8 @@ export const runtimeOptions = [
   badge: string;
 }>;
 
-export const invitableMembers: InvitableMember[] = [
-  {
-    id: 'mira-kim',
-    name: 'Mira Kim',
-    email: 'mira.kim@devide.team',
-    team: 'Frontend Chapter',
-    status: '최근 활동 3분 전',
-  },
-  {
-    id: 'jiyoon-lee',
-    name: 'Jiyoon Lee',
-    email: 'jiyoon.lee@devide.team',
-    team: 'Platform Team',
-    status: '현재 온라인',
-  },
-  {
-    id: 'taesung-choi',
-    name: 'Taesung Choi',
-    email: 'taesung.choi@devide.team',
-    team: 'Backend Guild',
-    status: '최근 활동 14분 전',
-  },
-  {
-    id: 'arin-park',
-    name: 'Arin Park',
-    email: 'arin.park@devide.team',
-    team: 'Design Systems',
-    status: '현재 온라인',
-  },
-  {
-    id: 'minho-jung',
-    name: 'Minho Jung',
-    email: 'minho.jung@devide.team',
-    team: 'Data Tools',
-    status: '최근 활동 1시간 전',
-  },
-  {
-    id: 'sora-han',
-    name: 'Sora Han',
-    email: 'sora.han@devide.team',
-    team: 'QA Automation',
-    status: '최근 활동 9분 전',
-  },
-];
-
 export const currentProjectOwner: SelectedMember = {
-  id: 'current-session-owner',
+  id: 0,
   name: '현재 세션 사용자',
   email: 'guest-session@webide.local',
   team: 'Current Session',

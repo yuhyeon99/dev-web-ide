@@ -1,17 +1,17 @@
 /* eslint-disable no-unused-vars */
 
 import { useCallback, useEffect, useState, type MouseEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 import {
-  invitableMembers,
   projectCreationPreviewModeOptions,
-  projectRoleOptions,
   projectTypeOptions,
   type ProjectCreationPreviewMode,
   type ProjectRole,
   type ProjectType,
   type SelectedMember,
 } from '../model/project-creation';
+import { searchUsers } from '@/shared/api/users';
 
 export type ProjectCreationRuntimeOption = {
   id: string;
@@ -22,12 +22,14 @@ export type ProjectCreationRuntimeOption = {
 };
 
 export type ProjectCreateFormValues = {
+  memberUserIds: number[];
   name: string;
   runtimeId: number;
   projectType: 'GUEST' | 'PERSONAL' | 'TEAM';
 };
 
 type CreateTemporaryProjectModalProps = {
+  accessToken?: string;
   isOpen: boolean;
   onClose: () => void;
   createError?: string | null;
@@ -80,13 +82,8 @@ const projectTypeMetaMap: Record<ProjectType, string> = {
   team: '멤버 초대',
 };
 
-const roleCapabilityMap: Record<ProjectRole, string> = {
-  owner: '설정/멤버 관리',
-  editor: '코드 편집/실행',
-  viewer: '읽기 전용',
-};
-
 export const CreateTemporaryProjectModal = ({
+  accessToken,
   createError,
   initialPreviewMode = 'guest',
   isOpen,
@@ -144,10 +141,6 @@ export const CreateTemporaryProjectModal = ({
     [isOpen, onClose, resetModalState],
   );
 
-  if (!isOpen) {
-    return null;
-  }
-
   const isGuestPreview = previewMode === 'guest';
   const previewModeLabel = isGuestPreview ? '게스트' : '회원';
   const effectiveProjectType: ProjectType = isGuestPreview
@@ -158,24 +151,49 @@ export const CreateTemporaryProjectModal = ({
     (runtimeOption) => runtimeOption.id === selectedRuntimeId,
   );
   const normalizedQuery = memberSearchQuery.trim().toLowerCase();
-  const searchableMembers = invitableMembers.filter((member) => {
-    if (
-      selectedMembers.some((selectedMember) => selectedMember.id === member.id)
-    ) {
-      return false;
-    }
-
-    if (!normalizedQuery) {
-      return true;
-    }
-
-    return (
-      member.name.toLowerCase().includes(normalizedQuery) ||
-      member.email.toLowerCase().includes(normalizedQuery) ||
-      member.team.toLowerCase().includes(normalizedQuery)
-    );
+  const showTeamSection = !isGuestPreview && effectiveProjectType === 'team';
+  const memberSearchQueryResult = useQuery({
+    queryKey: ['user-search', normalizedQuery],
+    queryFn: () => searchUsers(accessToken ?? '', normalizedQuery),
+    enabled:
+      isOpen &&
+      showTeamSection &&
+      Boolean(accessToken) &&
+      normalizedQuery.length >= 2,
   });
-  const visibleSearchResults = searchableMembers.slice(0, 5);
+  const visibleSearchResults = (memberSearchQueryResult.data ?? [])
+    .filter(
+      (member) =>
+        !selectedMembers.some(
+          (selectedMember) => selectedMember.id === member.userId,
+        ),
+    )
+    .map((member) => ({
+      id: member.userId,
+      name: member.nickname,
+      email: member.email,
+      team: '회원',
+      status: '초대 가능',
+    }));
+  const getSearchEmptyMessage = () => {
+    if (!accessToken) {
+      return '회원 로그인 후 팀원을 검색할 수 있습니다.';
+    }
+
+    if (normalizedQuery.length < 2) {
+      return '이름 또는 이메일을 2글자 이상 입력하세요.';
+    }
+
+    if (memberSearchQueryResult.isLoading) {
+      return '회원을 검색하는 중입니다.';
+    }
+
+    if (memberSearchQueryResult.isError) {
+      return '회원 검색에 실패했습니다.';
+    }
+
+    return '검색 결과 없음';
+  };
   const teamMemberCount =
     effectiveProjectType === 'team' ? selectedMembers.length + 1 : 1;
   const isCreateDisabled =
@@ -184,7 +202,10 @@ export const CreateTemporaryProjectModal = ({
     isCreating ||
     isRuntimeLoading;
   const projectTitleDisplay = projectTitle.trim() || '제목 없음';
-  const showTeamSection = !isGuestPreview && effectiveProjectType === 'team';
+
+  if (!isOpen) {
+    return null;
+  }
 
   const handleProjectTypeChange = (nextType: ProjectType) => {
     setProjectType(nextType);
@@ -195,8 +216,8 @@ export const CreateTemporaryProjectModal = ({
     }
   };
 
-  const handleAddMember = (memberId: string) => {
-    const memberToInvite = invitableMembers.find(
+  const handleAddMember = (memberId: number) => {
+    const memberToInvite = visibleSearchResults.find(
       (member) => member.id === memberId,
     );
 
@@ -211,17 +232,9 @@ export const CreateTemporaryProjectModal = ({
     setMemberSearchQuery('');
   };
 
-  const handleRemoveMember = (memberId: string) => {
+  const handleRemoveMember = (memberId: number) => {
     setSelectedMembers((previousMembers) =>
       previousMembers.filter((member) => member.id !== memberId),
-    );
-  };
-
-  const handleRoleChange = (memberId: string, role: ProjectRole) => {
-    setSelectedMembers((previousMembers) =>
-      previousMembers.map((member) =>
-        member.id === memberId ? { ...member, role } : member,
-      ),
     );
   };
 
@@ -231,6 +244,10 @@ export const CreateTemporaryProjectModal = ({
     }
 
     await onCreateProject({
+      memberUserIds:
+        effectiveProjectType === 'team'
+          ? selectedMembers.map((member) => member.id)
+          : [],
       name: projectTitle.trim(),
       runtimeId: Number(selectedRuntimeId),
       projectType: isGuestPreview
@@ -447,22 +464,8 @@ export const CreateTemporaryProjectModal = ({
                     </span>
                   </div>
 
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                    {projectRoleOptions.map((roleOption) => (
-                      <div
-                        key={roleOption.id}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-[#313131] bg-[#1e1e1e] px-3 py-2"
-                      >
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${roleToneClassNameMap[roleOption.id]}`}
-                        >
-                          {roleOption.label}
-                        </span>
-                        <p className="text-[11px] text-[#9da1a6]">
-                          {roleCapabilityMap[roleOption.id]}
-                        </p>
-                      </div>
-                    ))}
+                  <div className="mt-3 rounded-lg border border-[#313131] bg-[#1e1e1e] px-3 py-2 text-xs text-[#9da1a6]">
+                    초대된 팀원은 프로젝트 생성 시 Editor 권한으로 추가됩니다.
                   </div>
 
                   <div className="mt-3 grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
@@ -474,7 +477,7 @@ export const CreateTemporaryProjectModal = ({
                           setMemberSearchQuery(event.target.value)
                         }
                         className={inputClassName}
-                        placeholder="이름, 이메일, 팀명 검색"
+                        placeholder="닉네임 또는 이메일 검색"
                       />
 
                       <div className="rounded-xl border border-[#313131] bg-[#1e1e1e] p-2 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
@@ -512,7 +515,7 @@ export const CreateTemporaryProjectModal = ({
                           </div>
                         ) : (
                           <div className="rounded-lg border border-dashed border-[#3c3c3c] bg-[#1b1b1c] px-4 py-8 text-center text-sm text-[#858585]">
-                            검색 결과 없음
+                            {getSearchEmptyMessage()}
                           </div>
                         )}
                       </div>
@@ -537,28 +540,11 @@ export const CreateTemporaryProjectModal = ({
                                 </div>
 
                                 <div className="grid min-w-[13rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                                  <label className="min-w-0">
-                                    <span className="sr-only">권한 선택</span>
-                                    <select
-                                      value={member.role}
-                                      onChange={(event) =>
-                                        handleRoleChange(
-                                          member.id,
-                                          event.target.value as ProjectRole,
-                                        )
-                                      }
-                                      className="w-full rounded-md border border-[#3c3c3c] bg-[#1f1f1f] px-3 py-2 text-sm text-[#d4d4d4] focus:border-[#007acc] focus:ring-2 focus:ring-[#007acc]/25 focus:outline-none"
-                                    >
-                                      {projectRoleOptions.map((roleOption) => (
-                                        <option
-                                          key={roleOption.id}
-                                          value={roleOption.id}
-                                        >
-                                          {roleOption.label}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
+                                  <span
+                                    className={`inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-semibold ${roleToneClassNameMap.editor}`}
+                                  >
+                                    Editor
+                                  </span>
 
                                   <button
                                     type="button"

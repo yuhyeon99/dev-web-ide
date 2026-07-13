@@ -73,6 +73,7 @@ public class GoogleOAuthService {
                 .queryParam("access_type", "offline")
                 .queryParam("prompt", "select_account")
                 .build()
+                .encode(StandardCharsets.UTF_8)
                 .toUriString();
     }
 
@@ -157,6 +158,7 @@ public class GoogleOAuthService {
                 .queryParam("status", result.response().status())
                 .queryParam("newUser", result.response().newUser())
                 .build()
+                .encode(StandardCharsets.UTF_8)
                 .toUriString();
     }
 
@@ -165,6 +167,7 @@ public class GoogleOAuthService {
                 .queryParam("oauth", "error")
                 .queryParam("reason", reason)
                 .build()
+                .encode(StandardCharsets.UTF_8)
                 .toUriString();
     }
 
@@ -175,6 +178,7 @@ public class GoogleOAuthService {
                 .queryParam("email", userInfo.email())
                 .queryParam("name", resolveNickname(null, userInfo))
                 .build()
+                .encode(StandardCharsets.UTF_8)
                 .toUriString();
     }
 

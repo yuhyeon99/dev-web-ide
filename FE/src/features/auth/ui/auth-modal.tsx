@@ -1,6 +1,12 @@
 import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
 
-import { startGoogleOAuth } from '@/shared/api/auth';
+import {
+  clearPendingOAuthSignup,
+  completeGoogleOAuthSignup,
+  getPendingOAuthSignup,
+  startGoogleOAuth,
+  type PendingOAuthSignup,
+} from '@/shared/api/auth';
 
 type AuthStep = 'oauth' | 'profile';
 
@@ -11,22 +17,10 @@ type AuthModalProps = {
 
 const oauthProviders = [
   {
-    id: 'github',
-    badge: 'GH',
-    label: 'GitHub',
-    description: '저장소와 연동해 빠르게 시작',
-  },
-  {
     id: 'google',
     badge: 'G',
     label: 'Google',
     description: '기존 Google 계정으로 바로 이어서 사용',
-  },
-  {
-    id: 'kakao',
-    badge: 'K',
-    label: 'Kakao',
-    description: '간편 가입과 로그인 흐름에 적합',
   },
 ] as const;
 
@@ -43,13 +37,23 @@ const checkboxClassName =
   'mt-0.5 h-4 w-4 shrink-0 rounded border-[#3c3c3c] bg-[#1f1f1f] accent-[#007acc]';
 
 export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
-  const [step, setStep] = useState<AuthStep>('oauth');
+  const [step, setStep] = useState<AuthStep>(() =>
+    getPendingOAuthSignup() ? 'profile' : 'oauth',
+  );
   const [selectedProviderId, setSelectedProviderId] =
-    useState<OAuthProviderId | null>(null);
-  const [nickname, setNickname] = useState('');
+    useState<OAuthProviderId | null>(() =>
+      getPendingOAuthSignup() ? 'google' : null,
+    );
+  const [nickname, setNickname] = useState(
+    () => getPendingOAuthSignup()?.name ?? '',
+  );
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [pendingSignup, setPendingSignup] = useState<PendingOAuthSignup | null>(
+    () => getPendingOAuthSignup(),
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetModalState = () => {
     setStep('oauth');
@@ -58,6 +62,8 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     setAgreedToTerms(false);
     setAgreedToPrivacy(false);
     setAuthError(null);
+    setPendingSignup(null);
+    setIsSubmitting(false);
   };
 
   const handleClose = () => {
@@ -80,6 +86,8 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         setAgreedToTerms(false);
         setAgreedToPrivacy(false);
         setAuthError(null);
+        setPendingSignup(null);
+        setIsSubmitting(false);
         onClose();
       }
     };
@@ -105,32 +113,43 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     nickname.trim().length > 0 && agreedToTerms && agreedToPrivacy;
 
   const handleProviderSelect = (providerId: OAuthProviderId) => {
-    if (providerId !== 'google') {
-      setAuthError('현재 Google 로그인만 사용할 수 있습니다.');
-      return;
-    }
-
     setAuthError(null);
     setSelectedProviderId(providerId);
-    setStep('profile');
+    startGoogleOAuth();
   };
 
   const handleBack = () => {
+    clearPendingOAuthSignup();
     resetModalState();
   };
 
-  const handleProfileSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!isProfileComplete || selectedProviderId !== 'google') {
+    if (
+      !isProfileComplete ||
+      selectedProviderId !== 'google' ||
+      !pendingSignup ||
+      isSubmitting
+    ) {
       return;
     }
 
-    startGoogleOAuth({
-      nickname: nickname.trim(),
-      termsAgreed: agreedToTerms,
-      privacyAgreed: agreedToPrivacy,
-    });
+    setIsSubmitting(true);
+    setAuthError(null);
+
+    try {
+      await completeGoogleOAuthSignup({
+        nickname: nickname.trim(),
+        termsAgreed: agreedToTerms,
+        privacyAgreed: agreedToPrivacy,
+      });
+      resetModalState();
+      onClose();
+    } catch {
+      setAuthError('회원가입을 완료하지 못했습니다. 잠시 후 다시 시도하세요.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -236,7 +255,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                           </p>
                         </div>
                         <span className="text-sm text-[#6b7280] transition group-hover:text-[#d4d4d4]">
-                          {provider.id === 'google' ? '시작' : '준비중'}
+                          시작
                         </span>
                       </div>
                     </button>
@@ -292,8 +311,7 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                         {selectedProvider?.label} 계정 인증 완료
                       </p>
                       <p className="mt-1 text-xs leading-5 text-[#858585]">
-                        이 상태에서 신규 사용자라면 추가 정보 입력 후 회원가입이
-                        완료되는 흐름입니다.
+                        {pendingSignup?.email}
                       </p>
                     </div>
                   </div>
@@ -365,21 +383,27 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                     </button>
                     <button
                       type="submit"
-                      disabled={!isProfileComplete}
+                      disabled={!isProfileComplete || isSubmitting}
                       className={`inline-flex w-full items-center justify-center rounded-md px-4 py-3 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#007acc]/70 focus-visible:outline-none ${
-                        isProfileComplete
+                        isProfileComplete && !isSubmitting
                           ? 'border border-[#1177bb] bg-[#0e639c] text-white hover:bg-[#1177bb]'
                           : 'cursor-not-allowed border border-[#3c3c3c] bg-[#2a2a2a] text-[#6b7280]'
                       }`}
                     >
-                      가입 완료
+                      {isSubmitting ? '가입 처리 중' : '가입 완료'}
                     </button>
                   </div>
 
+                  {authError ? (
+                    <p className="mt-4 rounded-md border border-[#5a1d1d] bg-[#241313] px-3 py-2 text-sm text-[#ff9b9b]">
+                      {authError}
+                    </p>
+                  ) : null}
+
                   <div className="mt-5 rounded-xl border border-[#313131] bg-[#111111] px-4 py-3">
                     <p className="text-xs font-medium text-[#6a9955]">
-                      Google 인증이 완료되면 로그인 토큰을 저장하고 대시보드로
-                      돌아옵니다.
+                      가입이 완료되면 로그인 토큰을 저장하고 대시보드로
+                      돌아갑니다.
                     </p>
                   </div>
                 </form>

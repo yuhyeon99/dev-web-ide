@@ -1,8 +1,9 @@
 import { API_BASE_URL } from '@/shared/config/api';
 
 const AUTH_SESSION_STORAGE_KEY = 'dev-web-ide.auth-session';
+const OAUTH_SIGNUP_STORAGE_KEY = 'dev-web-ide.oauth-signup';
 
-type StartGoogleOAuthParams = {
+type CompleteGoogleOAuthSignupParams = {
   nickname: string;
   termsAgreed: boolean;
   privacyAgreed: boolean;
@@ -19,6 +20,12 @@ export type StoredAuthSession = {
   role: string;
   status: string;
   newUser: boolean;
+};
+
+export type PendingOAuthSignup = {
+  provider: 'google';
+  email: string;
+  name: string;
 };
 
 const isStoredAuthSession = (value: unknown): value is StoredAuthSession => {
@@ -42,20 +49,8 @@ const isStoredAuthSession = (value: unknown): value is StoredAuthSession => {
   );
 };
 
-export const startGoogleOAuth = ({
-  nickname,
-  termsAgreed,
-  privacyAgreed,
-}: StartGoogleOAuthParams) => {
-  const params = new URLSearchParams({
-    nickname,
-    termsAgreed: String(termsAgreed),
-    privacyAgreed: String(privacyAgreed),
-  });
-
-  window.location.assign(
-    `${API_BASE_URL}/api/auth/oauth/google/authorize?${params.toString()}`,
-  );
+export const startGoogleOAuth = () => {
+  window.location.assign(`${API_BASE_URL}/api/auth/oauth/google/authorize`);
 };
 
 export const getStoredAuthSession = () => {
@@ -95,6 +90,68 @@ export const clearAuthSession = () => {
   window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
 };
 
+export const getPendingOAuthSignup = () => {
+  const rawSignup = window.localStorage.getItem(OAUTH_SIGNUP_STORAGE_KEY);
+
+  if (!rawSignup) {
+    return null;
+  }
+
+  try {
+    const parsedSignup = JSON.parse(rawSignup) as Partial<PendingOAuthSignup>;
+
+    if (
+      parsedSignup.provider !== 'google' ||
+      typeof parsedSignup.email !== 'string' ||
+      typeof parsedSignup.name !== 'string'
+    ) {
+      return null;
+    }
+
+    return parsedSignup as PendingOAuthSignup;
+  } catch {
+    window.localStorage.removeItem(OAUTH_SIGNUP_STORAGE_KEY);
+    return null;
+  }
+};
+
+export const clearPendingOAuthSignup = () => {
+  window.localStorage.removeItem(OAUTH_SIGNUP_STORAGE_KEY);
+};
+
+export const completeGoogleOAuthSignup = async ({
+  nickname,
+  termsAgreed,
+  privacyAgreed,
+}: CompleteGoogleOAuthSignupParams) => {
+  const response = await fetch(`${API_BASE_URL}/api/auth/oauth/google/signup`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      nickname,
+      termsAgreed,
+      privacyAgreed,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Google 회원가입에 실패했습니다. status=${response.status}`,
+    );
+  }
+
+  const session = (await response.json()) as StoredAuthSession;
+
+  saveAuthSession(session);
+  clearPendingOAuthSignup();
+
+  return session;
+};
+
 export const consumeOAuthRedirect = () => {
   const searchParams = new URLSearchParams(window.location.search);
 
@@ -102,7 +159,21 @@ export const consumeOAuthRedirect = () => {
     return null;
   }
 
+  if (searchParams.get('oauth') === 'signup_required') {
+    window.localStorage.setItem(
+      OAUTH_SIGNUP_STORAGE_KEY,
+      JSON.stringify({
+        provider: 'google',
+        email: searchParams.get('email') ?? '',
+        name: searchParams.get('name') ?? '',
+      } satisfies PendingOAuthSignup),
+    );
+    removeOAuthRedirectParams();
+    return null;
+  }
+
   if (searchParams.get('oauth') !== 'success') {
+    clearPendingOAuthSignup();
     removeOAuthRedirectParams();
     return null;
   }
@@ -158,6 +229,8 @@ const removeOAuthRedirectParams = () => {
   [
     'oauth',
     'reason',
+    'provider',
+    'name',
     'accessToken',
     'tokenType',
     'expiresIn',

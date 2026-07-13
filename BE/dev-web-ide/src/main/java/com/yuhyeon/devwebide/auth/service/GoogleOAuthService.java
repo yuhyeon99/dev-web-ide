@@ -6,6 +6,7 @@ import com.yuhyeon.devwebide.auth.dto.GoogleOAuthUserInfo;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginRequest;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginResult;
 import com.yuhyeon.devwebide.user.domain.OAuthProvider;
+import com.yuhyeon.devwebide.user.repository.OAuthAccountRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -26,6 +27,7 @@ public class GoogleOAuthService {
     private static final String SCOPE = "openid email profile";
 
     private final OAuthLoginService oAuthLoginService;
+    private final OAuthAccountRepository oAuthAccountRepository;
     private final RestClient restClient = RestClient.create();
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -74,6 +76,57 @@ public class GoogleOAuthService {
                 .toUriString();
     }
 
+    public GoogleOAuthUserInfo fetchUserInfoWithAuthorizationCode(String code) {
+        if (code == null || code.isBlank()) {
+            throw new IllegalArgumentException("Google OAuth code가 필요합니다.");
+        }
+
+        GoogleTokenResponse tokenResponse = exchangeAuthorizationCode(code);
+
+        return fetchUserInfo(tokenResponse.accessToken());
+    }
+
+    public boolean isRegisteredGoogleUser(GoogleOAuthUserInfo userInfo) {
+        return oAuthAccountRepository
+                .findByProviderAndProviderUserId(OAuthProvider.GOOGLE, userInfo.subject())
+                .isPresent();
+    }
+
+    public OAuthLoginResult loginExistingGoogleUser(
+            GoogleOAuthUserInfo userInfo,
+            String clientIp,
+            String userAgent
+    ) {
+        return loginWithUserInfo(
+                userInfo,
+                new GoogleOAuthSignupRequest(
+                        resolveNickname(null, userInfo),
+                        true,
+                        true
+                ),
+                clientIp,
+                userAgent
+        );
+    }
+
+    public OAuthLoginResult loginWithUserInfo(
+            GoogleOAuthUserInfo userInfo,
+            GoogleOAuthSignupRequest signupRequest,
+            String clientIp,
+            String userAgent
+    ) {
+        OAuthLoginRequest loginRequest = new OAuthLoginRequest(
+                OAuthProvider.GOOGLE,
+                userInfo.subject(),
+                userInfo.email(),
+                resolveNickname(signupRequest, userInfo),
+                signupRequest.termsAgreed(),
+                signupRequest.privacyAgreed()
+        );
+
+        return oAuthLoginService.login(loginRequest, clientIp, userAgent);
+    }
+
     public OAuthLoginResult loginWithAuthorizationCode(
             String code,
             GoogleOAuthSignupRequest signupRequest,
@@ -86,16 +139,8 @@ public class GoogleOAuthService {
 
         GoogleTokenResponse tokenResponse = exchangeAuthorizationCode(code);
         GoogleOAuthUserInfo userInfo = fetchUserInfo(tokenResponse.accessToken());
-        OAuthLoginRequest loginRequest = new OAuthLoginRequest(
-                OAuthProvider.GOOGLE,
-                userInfo.subject(),
-                userInfo.email(),
-                resolveNickname(signupRequest, userInfo),
-                signupRequest.termsAgreed(),
-                signupRequest.privacyAgreed()
-        );
 
-        return oAuthLoginService.login(loginRequest, clientIp, userAgent);
+        return loginWithUserInfo(userInfo, signupRequest, clientIp, userAgent);
     }
 
     public String buildFrontendSuccessRedirectUri(OAuthLoginResult result) {
@@ -119,6 +164,16 @@ public class GoogleOAuthService {
         return UriComponentsBuilder.fromUriString(frontendRedirectUri)
                 .queryParam("oauth", "error")
                 .queryParam("reason", reason)
+                .build()
+                .toUriString();
+    }
+
+    public String buildFrontendSignupRedirectUri(GoogleOAuthUserInfo userInfo) {
+        return UriComponentsBuilder.fromUriString(frontendRedirectUri)
+                .queryParam("oauth", "signup_required")
+                .queryParam("provider", "google")
+                .queryParam("email", userInfo.email())
+                .queryParam("name", resolveNickname(null, userInfo))
                 .build()
                 .toUriString();
     }
@@ -178,7 +233,9 @@ public class GoogleOAuthService {
             GoogleOAuthSignupRequest signupRequest,
             GoogleOAuthUserInfo userInfo
     ) {
-        if (signupRequest.nickname() != null && !signupRequest.nickname().isBlank()) {
+        if (signupRequest != null
+                && signupRequest.nickname() != null
+                && !signupRequest.nickname().isBlank()) {
             return signupRequest.nickname();
         }
 

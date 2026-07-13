@@ -3,9 +3,12 @@ import { useState } from 'react';
 import logo from '@/assets/images/logo.svg';
 import { AuthModal } from '@/features/auth';
 import { OpenProjectsModal } from '@/features/open-projects';
+import { getPendingOAuthSignup } from '@/shared/api/auth';
 
 export const Header = () => {
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(() =>
+    Boolean(getPendingOAuthSignup()),
+  );
   const [isOpenProjectsModalOpen, setOpenProjectsModalOpen] = useState(false);
 
   return (

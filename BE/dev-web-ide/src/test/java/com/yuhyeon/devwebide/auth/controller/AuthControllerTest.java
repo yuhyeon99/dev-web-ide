@@ -2,7 +2,7 @@ package com.yuhyeon.devwebide.auth.controller;
 
 import com.yuhyeon.devwebide.auth.dto.AuthLogoutResponse;
 import com.yuhyeon.devwebide.auth.dto.AuthTokenRefreshResponse;
-import com.yuhyeon.devwebide.auth.dto.GoogleOAuthSignupRequest;
+import com.yuhyeon.devwebide.auth.dto.GoogleOAuthUserInfo;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginResponse;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginResult;
 import com.yuhyeon.devwebide.auth.security.AccessTokenAuthenticationService;
@@ -181,19 +181,14 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("Google OAuth 인증 시작 시 state와 가입 정보 쿠키를 저장하고 Google로 리다이렉트한다")
+    @DisplayName("Google OAuth 인증 시작 시 state 쿠키를 저장하고 Google로 리다이렉트한다")
     void startGoogleOAuth() throws Exception {
         given(googleOAuthService.createState())
                 .willReturn("state-token");
-        given(googleOAuthService.encodeCookieValue("user|true|true"))
-                .willReturn("encoded-signup");
         given(googleOAuthService.buildAuthorizationUri("state-token"))
                 .willReturn("https://accounts.google.com/o/oauth2/v2/auth?state=state-token");
 
         mockMvc.perform(get("/api/auth/oauth/google/authorize")
-                        .param("nickname", "user")
-                        .param("termsAgreed", "true")
-                        .param("privacyAgreed", "true")
                         .header("X-Forwarded-Proto", "https"))
                 .andExpect(status().isFound())
                 .andExpect(header().string(
@@ -203,7 +198,7 @@ class AuthControllerTest {
                 .andExpect(result -> {
                     assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
                             .anyMatch(cookie -> cookie.contains("googleOAuthState=state-token"))
-                            .anyMatch(cookie -> cookie.contains("googleOAuthSignup=encoded-signup"));
+                            .noneMatch(cookie -> cookie.contains("googleOAuthPendingUser="));
                 });
     }
 
@@ -228,12 +223,18 @@ class AuthControllerTest {
                 "refresh-token",
                 1_209_600L
         );
+        GoogleOAuthUserInfo userInfo = new GoogleOAuthUserInfo(
+                "google-user-id",
+                "user@test.com",
+                "user"
+        );
 
-        given(googleOAuthService.decodeCookieValue("encoded-signup"))
-                .willReturn("user|true|true");
-        given(googleOAuthService.loginWithAuthorizationCode(
-                eq("google-code"),
-                eq(new GoogleOAuthSignupRequest("user", true, true)),
+        given(googleOAuthService.fetchUserInfoWithAuthorizationCode("google-code"))
+                .willReturn(userInfo);
+        given(googleOAuthService.isRegisteredGoogleUser(userInfo))
+                .willReturn(true);
+        given(googleOAuthService.loginExistingGoogleUser(
+                eq(userInfo),
                 eq("127.0.0.1"),
                 eq("Chrome")
         )).willReturn(result);
@@ -244,7 +245,6 @@ class AuthControllerTest {
                         .param("code", "google-code")
                         .param("state", "state-token")
                         .cookie(new Cookie("googleOAuthState", "state-token"))
-                        .cookie(new Cookie("googleOAuthSignup", "encoded-signup"))
                         .header(HttpHeaders.USER_AGENT, "Chrome")
                         .header("X-Forwarded-Proto", "https"))
                 .andExpect(status().isFound())
@@ -256,7 +256,43 @@ class AuthControllerTest {
                     assertThat(mvcResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
                             .anyMatch(cookie -> cookie.contains("refreshToken=refresh-token"))
                             .anyMatch(cookie -> cookie.contains("googleOAuthState="))
-                            .anyMatch(cookie -> cookie.contains("googleOAuthSignup="));
+                            .anyMatch(cookie -> cookie.contains("googleOAuthPendingUser="));
+                });
+    }
+
+    @Test
+    @DisplayName("Google OAuth 신규 사용자 콜백 시 가입 완료가 필요한 상태로 FE에 리다이렉트한다")
+    void handleGoogleOAuthCallbackWithNewUser() throws Exception {
+        GoogleOAuthUserInfo userInfo = new GoogleOAuthUserInfo(
+                "google-user-id",
+                "user@test.com",
+                "user"
+        );
+
+        given(googleOAuthService.fetchUserInfoWithAuthorizationCode("google-code"))
+                .willReturn(userInfo);
+        given(googleOAuthService.isRegisteredGoogleUser(userInfo))
+                .willReturn(false);
+        given(googleOAuthService.encodeCookieValue("google-user-id|user%40test.com|user"))
+                .willReturn("encoded-pending-user");
+        given(googleOAuthService.buildFrontendSignupRedirectUri(userInfo))
+                .willReturn("https://d1qcnjd8lnakb.cloudfront.net?oauth=signup_required");
+
+        mockMvc.perform(get("/api/auth/oauth/google/callback")
+                        .param("code", "google-code")
+                        .param("state", "state-token")
+                        .cookie(new Cookie("googleOAuthState", "state-token"))
+                        .header(HttpHeaders.USER_AGENT, "Chrome")
+                        .header("X-Forwarded-Proto", "https"))
+                .andExpect(status().isFound())
+                .andExpect(header().string(
+                        HttpHeaders.LOCATION,
+                        "https://d1qcnjd8lnakb.cloudfront.net?oauth=signup_required"
+                ))
+                .andExpect(mvcResult -> {
+                    assertThat(mvcResult.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                            .anyMatch(cookie -> cookie.contains("googleOAuthPendingUser=encoded-pending-user"))
+                            .anyMatch(cookie -> cookie.contains("googleOAuthState="));
                 });
     }
 

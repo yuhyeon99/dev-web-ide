@@ -2,7 +2,8 @@ package com.yuhyeon.devwebide.auth.controller;
 
 import com.yuhyeon.devwebide.auth.dto.AuthLogoutResponse;
 import com.yuhyeon.devwebide.auth.dto.AuthTokenRefreshResponse;
-import com.yuhyeon.devwebide.auth.dto.GoogleOAuthSignupRequest;
+import com.yuhyeon.devwebide.auth.dto.GoogleOAuthSignupCompletionRequest;
+import com.yuhyeon.devwebide.auth.dto.GoogleOAuthUserInfo;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginRequest;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginResponse;
 import com.yuhyeon.devwebide.auth.dto.OAuthLoginResult;
@@ -30,7 +31,7 @@ public class AuthController {
 
     private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
     private static final String GOOGLE_OAUTH_STATE_COOKIE_NAME = "googleOAuthState";
-    private static final String GOOGLE_OAUTH_SIGNUP_COOKIE_NAME = "googleOAuthSignup";
+    private static final String GOOGLE_OAUTH_PENDING_USER_COOKIE_NAME = "googleOAuthPendingUser";
     private static final String X_FORWARDED_FOR = "X-Forwarded-For";
     private static final String X_FORWARDED_PROTO = "X-Forwarded-Proto";
     private static final String CLOUDFRONT_FORWARDED_PROTO = "CloudFront-Forwarded-Proto";
@@ -60,13 +61,8 @@ public class AuthController {
 
     @GetMapping("/oauth/google/authorize")
     public ResponseEntity<Void> startGoogleOAuth(
-            @RequestParam String nickname,
-            @RequestParam boolean termsAgreed,
-            @RequestParam boolean privacyAgreed,
             HttpServletRequest servletRequest
     ) {
-        validateGoogleSignup(nickname, termsAgreed, privacyAgreed);
-
         String state = googleOAuthService.createState();
         ResponseCookie stateCookie = createOAuthCookie(
                 GOOGLE_OAUTH_STATE_COOKIE_NAME,
@@ -74,17 +70,10 @@ public class AuthController {
                 GOOGLE_OAUTH_COOKIE_MAX_AGE,
                 servletRequest
         );
-        ResponseCookie signupCookie = createOAuthCookie(
-                GOOGLE_OAUTH_SIGNUP_COOKIE_NAME,
-                encodeGoogleSignupCookie(nickname, termsAgreed, privacyAgreed),
-                GOOGLE_OAUTH_COOKIE_MAX_AGE,
-                servletRequest
-        );
 
         return ResponseEntity.status(HttpStatus.FOUND)
                 .header(HttpHeaders.LOCATION, googleOAuthService.buildAuthorizationUri(state))
                 .header(HttpHeaders.SET_COOKIE, stateCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, signupCookie.toString())
                 .build();
     }
 
@@ -94,24 +83,42 @@ public class AuthController {
             @RequestParam(required = false) String state,
             @RequestParam(required = false) String error,
             @CookieValue(name = GOOGLE_OAUTH_STATE_COOKIE_NAME, required = false) String savedState,
-            @CookieValue(name = GOOGLE_OAUTH_SIGNUP_COOKIE_NAME, required = false) String signupCookie,
             HttpServletRequest servletRequest
     ) {
         ResponseCookie deleteStateCookie = deleteCookie(GOOGLE_OAUTH_STATE_COOKIE_NAME, servletRequest);
-        ResponseCookie deleteSignupCookie = deleteCookie(GOOGLE_OAUTH_SIGNUP_COOKIE_NAME, servletRequest);
+        ResponseCookie deletePendingUserCookie = deleteCookie(
+                GOOGLE_OAUTH_PENDING_USER_COOKIE_NAME,
+                servletRequest
+        );
 
         if (error != null && !error.isBlank()) {
-            return buildGoogleOAuthFailureRedirect(error, deleteStateCookie, deleteSignupCookie);
+            return buildGoogleOAuthFailureRedirect(error, deleteStateCookie, deletePendingUserCookie);
         }
 
-        if (savedState == null || state == null || !savedState.equals(state) || signupCookie == null) {
-            return buildGoogleOAuthFailureRedirect("invalid_state", deleteStateCookie, deleteSignupCookie);
+        if (savedState == null || state == null || !savedState.equals(state)) {
+            return buildGoogleOAuthFailureRedirect("invalid_state", deleteStateCookie, deletePendingUserCookie);
         }
 
         try {
-            OAuthLoginResult result = googleOAuthService.loginWithAuthorizationCode(
-                    code,
-                    decodeGoogleSignupCookie(signupCookie),
+            GoogleOAuthUserInfo userInfo = googleOAuthService.fetchUserInfoWithAuthorizationCode(code);
+
+            if (!googleOAuthService.isRegisteredGoogleUser(userInfo)) {
+                ResponseCookie pendingUserCookie = createCrossSiteCookie(
+                        GOOGLE_OAUTH_PENDING_USER_COOKIE_NAME,
+                        encodeGoogleUserInfoCookie(userInfo),
+                        GOOGLE_OAUTH_COOKIE_MAX_AGE,
+                        servletRequest
+                );
+
+                return ResponseEntity.status(HttpStatus.FOUND)
+                        .header(HttpHeaders.LOCATION, googleOAuthService.buildFrontendSignupRedirectUri(userInfo))
+                        .header(HttpHeaders.SET_COOKIE, pendingUserCookie.toString())
+                        .header(HttpHeaders.SET_COOKIE, deleteStateCookie.toString())
+                        .build();
+            }
+
+            OAuthLoginResult result = googleOAuthService.loginExistingGoogleUser(
+                    userInfo,
                     extractClientIp(servletRequest),
                     servletRequest.getHeader(HttpHeaders.USER_AGENT)
             );
@@ -121,15 +128,43 @@ public class AuthController {
                     .header(HttpHeaders.LOCATION, googleOAuthService.buildFrontendSuccessRedirectUri(result))
                     .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, deleteStateCookie.toString())
-                    .header(HttpHeaders.SET_COOKIE, deleteSignupCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, deletePendingUserCookie.toString())
                     .build();
         } catch (RuntimeException exception) {
             return buildGoogleOAuthFailureRedirect(
                     "login_failed",
                     deleteStateCookie,
-                    deleteSignupCookie
+                    deletePendingUserCookie
             );
         }
+    }
+
+    @PostMapping("/oauth/google/signup")
+    public ResponseEntity<OAuthLoginResponse> completeGoogleOAuthSignup(
+            @Valid @RequestBody GoogleOAuthSignupCompletionRequest request,
+            @CookieValue(name = GOOGLE_OAUTH_PENDING_USER_COOKIE_NAME, required = false) String pendingUserCookie,
+            HttpServletRequest servletRequest
+    ) {
+        if (pendingUserCookie == null || pendingUserCookie.isBlank()) {
+            throw new IllegalArgumentException("Google OAuth 가입 정보가 만료되었습니다.");
+        }
+
+        OAuthLoginResult result = googleOAuthService.loginWithUserInfo(
+                decodeGoogleUserInfoCookie(pendingUserCookie),
+                request.toSignupRequest(),
+                extractClientIp(servletRequest),
+                servletRequest.getHeader(HttpHeaders.USER_AGENT)
+        );
+        ResponseCookie refreshTokenCookie = createRefreshTokenCookie(result, servletRequest);
+        ResponseCookie deletePendingUserCookie = deleteCookie(
+                GOOGLE_OAUTH_PENDING_USER_COOKIE_NAME,
+                servletRequest
+        );
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, deletePendingUserCookie.toString())
+                .body(result.response());
     }
 
     @PostMapping("/logout")
@@ -165,12 +200,12 @@ public class AuthController {
     private ResponseEntity<Void> buildGoogleOAuthFailureRedirect(
             String reason,
             ResponseCookie deleteStateCookie,
-            ResponseCookie deleteSignupCookie
+            ResponseCookie deletePendingUserCookie
     ) {
         return ResponseEntity.status(HttpStatus.FOUND)
                 .header(HttpHeaders.LOCATION, googleOAuthService.buildFrontendFailureRedirectUri(reason))
                 .header(HttpHeaders.SET_COOKIE, deleteStateCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, deleteSignupCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, deletePendingUserCookie.toString())
                 .build();
     }
 
@@ -182,7 +217,7 @@ public class AuthController {
                 .from(REFRESH_TOKEN_COOKIE_NAME, result.refreshToken())
                 .httpOnly(true)
                 .secure(isSecureRequest(servletRequest))
-                .sameSite("Lax")
+                .sameSite(resolveCrossSiteSameSite(servletRequest))
                 .path("/")
                 .maxAge(Duration.ofSeconds(result.refreshTokenExpiresInSeconds()))
                 .build();
@@ -204,6 +239,22 @@ public class AuthController {
                 .build();
     }
 
+    private ResponseCookie createCrossSiteCookie(
+            String name,
+            String value,
+            Duration maxAge,
+            HttpServletRequest servletRequest
+    ) {
+        return ResponseCookie
+                .from(name, value)
+                .httpOnly(true)
+                .secure(isSecureRequest(servletRequest))
+                .sameSite(resolveCrossSiteSameSite(servletRequest))
+                .path("/")
+                .maxAge(maxAge)
+                .build();
+    }
+
     private ResponseCookie deleteCookie(
             String name,
             HttpServletRequest servletRequest
@@ -212,7 +263,7 @@ public class AuthController {
                 .from(name, "")
                 .httpOnly(true)
                 .secure(isSecureRequest(servletRequest))
-                .sameSite("Lax")
+                .sameSite(resolveCrossSiteSameSite(servletRequest))
                 .path("/")
                 .maxAge(0)
                 .build();
@@ -231,43 +282,33 @@ public class AuthController {
                 || "https".equalsIgnoreCase(cloudFrontForwardedProto);
     }
 
-    private void validateGoogleSignup(
-            String nickname,
-            boolean termsAgreed,
-            boolean privacyAgreed
-    ) {
-        if (nickname == null || nickname.isBlank()) {
-            throw new IllegalArgumentException("닉네임은 필수입니다.");
-        }
-
-        if (!termsAgreed || !privacyAgreed) {
-            throw new IllegalArgumentException("약관과 개인정보 처리방침 동의가 필요합니다.");
-        }
+    private String resolveCrossSiteSameSite(HttpServletRequest servletRequest) {
+        return isSecureRequest(servletRequest) ? "None" : "Lax";
     }
 
-    private String encodeGoogleSignupCookie(
-            String nickname,
-            boolean termsAgreed,
-            boolean privacyAgreed
-    ) {
-        String value = URLEncoder.encode(nickname.trim(), StandardCharsets.UTF_8)
-                + "|" + termsAgreed
-                + "|" + privacyAgreed;
+    private String encodeGoogleUserInfoCookie(GoogleOAuthUserInfo userInfo) {
+        String value = URLEncoder.encode(userInfo.subject(), StandardCharsets.UTF_8)
+                + "|" + URLEncoder.encode(userInfo.email(), StandardCharsets.UTF_8)
+                + "|" + URLEncoder.encode(resolveCookieValue(userInfo.name()), StandardCharsets.UTF_8);
 
         return googleOAuthService.encodeCookieValue(value);
     }
 
-    private GoogleOAuthSignupRequest decodeGoogleSignupCookie(String signupCookie) {
-        String[] parts = googleOAuthService.decodeCookieValue(signupCookie).split("\\|", -1);
+    private GoogleOAuthUserInfo decodeGoogleUserInfoCookie(String userInfoCookie) {
+        String[] parts = googleOAuthService.decodeCookieValue(userInfoCookie).split("\\|", -1);
 
         if (parts.length != 3) {
-            throw new IllegalArgumentException("Google OAuth 가입 정보를 확인할 수 없습니다.");
+            throw new IllegalArgumentException("Google OAuth 사용자 정보를 확인할 수 없습니다.");
         }
 
-        return new GoogleOAuthSignupRequest(
+        return new GoogleOAuthUserInfo(
                 URLDecoder.decode(parts[0], StandardCharsets.UTF_8),
-                Boolean.parseBoolean(parts[1]),
-                Boolean.parseBoolean(parts[2])
+                URLDecoder.decode(parts[1], StandardCharsets.UTF_8),
+                URLDecoder.decode(parts[2], StandardCharsets.UTF_8)
         );
+    }
+
+    private String resolveCookieValue(String value) {
+        return value == null ? "" : value;
     }
 }

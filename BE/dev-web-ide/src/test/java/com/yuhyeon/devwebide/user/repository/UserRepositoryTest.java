@@ -7,7 +7,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -69,5 +71,57 @@ public class UserRepositoryTest {
 
         assertThat(exists).isTrue();
         assertThat(notExists).isFalse();
+    }
+
+    @Test
+    @DisplayName("활성 회원을 닉네임 또는 이메일로 검색하고 대상 ID는 제외한다")
+    void searchActiveUsersByNicknameOrEmail() {
+        User owner = User.builder()
+                .email("owner@test.com")
+                .nickname("owner")
+                .role(UserRole.USER)
+                .status(UserStatus.ACTIVE)
+                .build();
+        User activeByNickname = User.builder()
+                .email("member@test.com")
+                .nickname("memberKim")
+                .role(UserRole.USER)
+                .status(UserStatus.ACTIVE)
+                .build();
+        User activeByEmail = User.builder()
+                .email("kim-email@test.com")
+                .nickname("another")
+                .role(UserRole.USER)
+                .status(UserStatus.ACTIVE)
+                .build();
+        User inactive = User.builder()
+                .email("inactive-kim@test.com")
+                .nickname("inactiveKim")
+                .role(UserRole.USER)
+                .status(UserStatus.INACTIVE)
+                .build();
+
+        User savedOwner = userRepository.save(owner);
+        userRepository.save(activeByNickname);
+        userRepository.save(activeByEmail);
+        userRepository.save(inactive);
+
+        List<User> result =
+                userRepository.findByStatusAndIdNotAndNicknameContainingIgnoreCaseOrStatusAndIdNotAndEmailContainingIgnoreCase(
+                        UserStatus.ACTIVE,
+                        savedOwner.getId(),
+                        "kim",
+                        UserStatus.ACTIVE,
+                        savedOwner.getId(),
+                        "kim",
+                        PageRequest.of(0, 10)
+                );
+
+        assertThat(result)
+                .extracting(User::getEmail)
+                .containsExactlyInAnyOrder(
+                        "member@test.com",
+                        "kim-email@test.com"
+                );
     }
 }

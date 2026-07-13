@@ -6,6 +6,7 @@ import com.yuhyeon.devwebide.user.domain.UserRole;
 import com.yuhyeon.devwebide.user.domain.UserStatus;
 import com.yuhyeon.devwebide.user.dto.UserMeResponse;
 import com.yuhyeon.devwebide.user.dto.UserProfileUpdateRequest;
+import com.yuhyeon.devwebide.user.dto.UserSearchResponse;
 import com.yuhyeon.devwebide.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,6 +70,51 @@ class UserServiceTest {
 
         assertThat(response.nickname()).isEqualTo("새닉네임");
         assertThat(user.getNickname()).isEqualTo("새닉네임");
+    }
+
+    @Test
+    @DisplayName("초대 가능한 활성 회원을 검색한다")
+    void searchInvitableUsers() {
+        AuthenticatedPrincipal principal = createUserPrincipal(1L);
+        User currentUser = createUser(1L, UserStatus.ACTIVE);
+        User targetUser = createUser(2L, UserStatus.ACTIVE);
+        ReflectionTestUtils.setField(targetUser, "email", "target@test.com");
+        ReflectionTestUtils.setField(targetUser, "nickname", "target");
+
+        given(userRepository.findById(1L))
+                .willReturn(Optional.of(currentUser));
+        given(userRepository.findByStatusAndIdNotAndNicknameContainingIgnoreCaseOrStatusAndIdNotAndEmailContainingIgnoreCase(
+                org.mockito.ArgumentMatchers.eq(UserStatus.ACTIVE),
+                org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.eq("ta"),
+                org.mockito.ArgumentMatchers.eq(UserStatus.ACTIVE),
+                org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.eq("ta"),
+                org.mockito.ArgumentMatchers.any()
+        )).willReturn(List.of(targetUser));
+
+        List<UserSearchResponse> responses =
+                userService.searchInvitableUsers(principal, " ta ");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).userId()).isEqualTo(2L);
+        assertThat(responses.get(0).email()).isEqualTo("target@test.com");
+        assertThat(responses.get(0).nickname()).isEqualTo("target");
+    }
+
+    @Test
+    @DisplayName("검색어가 2글자 미만이면 빈 결과를 반환한다")
+    void searchInvitableUsersWithShortQuery() {
+        AuthenticatedPrincipal principal = createUserPrincipal(1L);
+        User currentUser = createUser(1L, UserStatus.ACTIVE);
+
+        given(userRepository.findById(1L))
+                .willReturn(Optional.of(currentUser));
+
+        List<UserSearchResponse> responses =
+                userService.searchInvitableUsers(principal, "t");
+
+        assertThat(responses).isEmpty();
     }
 
     @Test

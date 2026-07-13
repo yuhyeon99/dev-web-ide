@@ -6,6 +6,7 @@ import com.yuhyeon.devwebide.user.domain.UserRole;
 import com.yuhyeon.devwebide.user.domain.UserStatus;
 import com.yuhyeon.devwebide.user.dto.UserMeResponse;
 import com.yuhyeon.devwebide.user.dto.UserProfileUpdateRequest;
+import com.yuhyeon.devwebide.user.dto.UserSearchResponse;
 import com.yuhyeon.devwebide.user.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.http.MediaType;
+
+import java.util.List;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -122,9 +125,43 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("Security Principal 기반으로 초대 가능한 회원을 검색한다")
+    void search() throws Exception {
+        AuthenticatedPrincipal principal = new AuthenticatedPrincipal(
+                100L,
+                "USER",
+                1L,
+                null,
+                "USER"
+        );
+
+        given(accessTokenAuthenticationService.authenticate("access-token"))
+                .willReturn(principal);
+        given(userService.searchInvitableUsers(principal, "kim"))
+                .willReturn(List.of(
+                        new UserSearchResponse(2L, "kim@test.com", "kim")
+                ));
+
+        mockMvc.perform(get("/api/users/search")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                        .param("query", "kim"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].userId").value(2L))
+                .andExpect(jsonPath("$[0].email").value("kim@test.com"))
+                .andExpect(jsonPath("$[0].nickname").value("kim"));
+    }
+
+    @Test
     @DisplayName("인증이 없으면 현재 사용자 조회 API는 401을 반환한다")
     void meWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/api/users/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("인증이 없으면 회원 검색 API는 401을 반환한다")
+    void searchWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/api/users/search").param("query", "kim"))
                 .andExpect(status().isUnauthorized());
     }
 }

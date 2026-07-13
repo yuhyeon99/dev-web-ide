@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/runtimes").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users/search").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/users/me/profile").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/projects").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/projects/my").authenticated()

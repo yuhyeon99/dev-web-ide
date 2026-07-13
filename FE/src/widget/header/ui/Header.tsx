@@ -5,27 +5,16 @@ import { AuthModal } from '@/features/auth';
 import { OpenProjectsModal } from '@/features/open-projects';
 import {
   clearAuthSession,
-  getPendingOAuthSignup,
   getStoredAuthSession,
-  isProfileSetupRequired,
   subscribeAuthSession,
 } from '@/shared/api/auth';
 
 export const Header = () => {
   const [authSession, setAuthSession] = useState(() => getStoredAuthSession());
-  const [pendingSignup, setPendingSignup] = useState(() =>
-    getPendingOAuthSignup(),
-  );
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(
-    () =>
-      Boolean(getPendingOAuthSignup()) ||
-      isProfileSetupRequired(getStoredAuthSession()),
-  );
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isOpenProjectsModalOpen, setOpenProjectsModalOpen] = useState(false);
   const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
-  const profileSetupSession =
-    authSession && isProfileSetupRequired(authSession) ? authSession : null;
-  const authModalKey = `${pendingSignup?.email ?? 'none'}:${profileSetupSession?.userId ?? authSession?.userId ?? 'none'}`;
+  const authModalKey = `${authSession?.userId ?? 'none'}`;
   const profileInitial = useMemo(() => {
     if (!authSession?.nickname) {
       return '';
@@ -36,25 +25,12 @@ export const Header = () => {
 
   useEffect(() => {
     return subscribeAuthSession(() => {
-      const nextSession = getStoredAuthSession();
-      const nextPendingSignup = getPendingOAuthSignup();
-
-      setAuthSession(nextSession);
-      setPendingSignup(nextPendingSignup);
-
-      if (nextPendingSignup || isProfileSetupRequired(nextSession)) {
-        setIsAuthModalOpen(true);
-      }
+      setAuthSession(getStoredAuthSession());
     });
   }, []);
 
   const handleProfileButtonClick = () => {
     if (!authSession) {
-      setIsAuthModalOpen(true);
-      return;
-    }
-
-    if (isProfileSetupRequired(authSession)) {
       setIsAuthModalOpen(true);
       return;
     }
@@ -65,6 +41,11 @@ export const Header = () => {
   const handleLogout = () => {
     clearAuthSession();
     setProfileMenuOpen(false);
+  };
+
+  const navigateToProfileSetup = () => {
+    window.history.pushState(null, '', '/profile/setup');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   return (
@@ -163,8 +144,8 @@ export const Header = () => {
             <button
               type="button"
               onClick={() => {
-                setIsAuthModalOpen(true);
                 setProfileMenuOpen(false);
+                navigateToProfileSetup();
               }}
               className="mt-1 w-full px-3 py-1.5 text-left text-sm text-[#cccccc] hover:bg-[#04395e] hover:text-white"
             >
@@ -183,8 +164,8 @@ export const Header = () => {
       <AuthModal
         key={authModalKey}
         isOpen={isAuthModalOpen}
-        pendingSignup={pendingSignup}
-        profileSetupSession={profileSetupSession ?? authSession}
+        pendingSignup={null}
+        profileSetupSession={null}
         onClose={() => setIsAuthModalOpen(false)}
       />
       <OpenProjectsModal

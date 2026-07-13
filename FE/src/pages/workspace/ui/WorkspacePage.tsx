@@ -144,7 +144,10 @@ export const WorkspacePage = () => {
   const projectDetailQuery = useQuery({
     queryKey: ['project-detail', projectId],
     queryFn: async () => {
-      const projectSession = await resolveProjectApiSession();
+      const projectSession = await resolveProjectApiSession(
+        undefined,
+        projectId,
+      );
 
       return getProjectDetail(projectSession.accessToken, projectId);
     },
@@ -222,7 +225,10 @@ export const WorkspacePage = () => {
   );
   const saveFilesMutation = useMutation({
     mutationFn: async () => {
-      const projectSession = await resolveProjectApiSession();
+      const projectSession = await resolveProjectApiSession(
+        undefined,
+        projectId,
+      );
 
       await saveProjectFiles(projectId, {
         files: dirtyDrafts.map((draft) => ({

@@ -13,7 +13,10 @@ import {
 } from '@/shared/api/projects';
 import { getStoredAuthSession, subscribeAuthSession } from '@/shared/api/auth';
 import { getRuntimes } from '@/shared/api/runtimes';
-import { resolveProjectApiSession } from '@/shared/api/session';
+import {
+  resolveProjectApiSession,
+  saveProjectApiSession,
+} from '@/shared/api/session';
 import type {
   ProjectSummaryResponse,
   RuntimeResponse,
@@ -248,6 +251,7 @@ export const DashboardPage = () => {
         visibility: projectType === 'TEAM' ? 'TEAM' : 'PRIVATE',
         memberUserIds: [],
       });
+      saveProjectApiSession(project.id, projectSession);
 
       return { accessToken: projectSession.accessToken, project };
     },
@@ -301,6 +305,7 @@ export const DashboardPage = () => {
     const projectSession = await resolveProjectApiSession();
 
     await openProject(projectSession.accessToken, projectId);
+    saveProjectApiSession(projectId, projectSession);
     navigate(`/workspace?projectId=${projectId}`);
   };
 

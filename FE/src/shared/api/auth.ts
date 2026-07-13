@@ -238,13 +238,13 @@ export const consumeOAuthRedirect = () => {
       } satisfies PendingOAuthSignup),
     );
     dispatchAuthSessionChanged();
-    removeOAuthRedirectParams();
+    replaceOAuthRedirectParams('/profile/setup');
     return null;
   }
 
   if (searchParams.get('oauth') !== 'success') {
     clearPendingOAuthSignup();
-    removeOAuthRedirectParams();
+    replaceOAuthRedirectParams();
     return null;
   }
 
@@ -270,7 +270,7 @@ export const consumeOAuthRedirect = () => {
     !role ||
     !status
   ) {
-    removeOAuthRedirectParams();
+    replaceOAuthRedirectParams();
     return null;
   }
 
@@ -288,12 +288,14 @@ export const consumeOAuthRedirect = () => {
   };
 
   saveAuthSession(session);
-  removeOAuthRedirectParams();
+  replaceOAuthRedirectParams(
+    isProfileSetupRequired(session) ? '/profile/setup' : undefined,
+  );
 
   return session;
 };
 
-const removeOAuthRedirectParams = () => {
+const replaceOAuthRedirectParams = (nextPath?: string) => {
   const url = new URL(window.location.href);
 
   [
@@ -316,7 +318,7 @@ const removeOAuthRedirectParams = () => {
   window.history.replaceState(
     null,
     '',
-    `${url.pathname}${url.search}${url.hash}`,
+    `${nextPath ?? url.pathname}${url.search}${url.hash}`,
   );
 };
 

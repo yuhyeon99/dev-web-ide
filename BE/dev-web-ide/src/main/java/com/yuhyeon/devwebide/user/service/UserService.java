@@ -4,6 +4,7 @@ import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.user.domain.User;
 import com.yuhyeon.devwebide.user.domain.UserStatus;
 import com.yuhyeon.devwebide.user.dto.UserMeResponse;
+import com.yuhyeon.devwebide.user.dto.UserProfileUpdateRequest;
 import com.yuhyeon.devwebide.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,24 @@ public class UserService {
     private final UserRepository userRepository;
 
     public UserMeResponse getCurrentUser(AuthenticatedPrincipal principal) {
+        User user = getActiveUser(principal);
+
+        return UserMeResponse.from(user);
+    }
+
+    @Transactional
+    public UserMeResponse updateCurrentUserProfile(
+            AuthenticatedPrincipal principal,
+            UserProfileUpdateRequest request
+    ) {
+        User user = getActiveUser(principal);
+
+        user.updateNickname(request.nickname());
+
+        return UserMeResponse.from(user);
+    }
+
+    private User getActiveUser(AuthenticatedPrincipal principal) {
         if (principal == null) {
             throw new IllegalArgumentException("인증 정보가 필요합니다.");
         }
@@ -32,6 +51,6 @@ public class UserService {
             throw new IllegalArgumentException("활성 상태의 사용자가 아닙니다.");
         }
 
-        return UserMeResponse.from(user);
+        return user;
     }
 }

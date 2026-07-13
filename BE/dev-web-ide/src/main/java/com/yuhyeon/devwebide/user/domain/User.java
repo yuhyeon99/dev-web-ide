@@ -70,4 +70,15 @@ public class User {
         this.status = status;
     }
 
+    public void updateNickname(String nickname) {
+        if (nickname == null || nickname.isBlank()) {
+            throw new IllegalArgumentException("닉네임은 필수입니다.");
+        }
+
+        if (nickname.length() > 50) {
+            throw new IllegalArgumentException("닉네임은 50자를 초과할 수 없습니다.");
+        }
+
+        this.nickname = nickname.trim();
+    }
 }

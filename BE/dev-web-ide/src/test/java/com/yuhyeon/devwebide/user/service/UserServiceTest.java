@@ -5,6 +5,7 @@ import com.yuhyeon.devwebide.user.domain.User;
 import com.yuhyeon.devwebide.user.domain.UserRole;
 import com.yuhyeon.devwebide.user.domain.UserStatus;
 import com.yuhyeon.devwebide.user.dto.UserMeResponse;
+import com.yuhyeon.devwebide.user.dto.UserProfileUpdateRequest;
 import com.yuhyeon.devwebide.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,24 @@ class UserServiceTest {
 
         then(userRepository).should()
                 .findById(1L);
+    }
+
+    @Test
+    @DisplayName("현재 사용자의 닉네임을 수정한다")
+    void updateCurrentUserProfile() {
+        AuthenticatedPrincipal principal = createUserPrincipal(1L);
+        User user = createUser(1L, UserStatus.ACTIVE);
+
+        given(userRepository.findById(1L))
+                .willReturn(Optional.of(user));
+
+        UserMeResponse response = userService.updateCurrentUserProfile(
+                principal,
+                new UserProfileUpdateRequest("새닉네임")
+        );
+
+        assertThat(response.nickname()).isEqualTo("새닉네임");
+        assertThat(user.getNickname()).isEqualTo("새닉네임");
     }
 
     @Test

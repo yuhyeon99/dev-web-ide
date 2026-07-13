@@ -2,13 +2,17 @@ package com.yuhyeon.devwebide.user.controller;
 
 import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.user.dto.UserMeResponse;
+import com.yuhyeon.devwebide.user.dto.UserProfileUpdateRequest;
 import com.yuhyeon.devwebide.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,6 +26,16 @@ public class UserController {
             @AuthenticationPrincipal AuthenticatedPrincipal principal
     ) {
         UserMeResponse response = userService.getCurrentUser(principal);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/me/profile")
+    public ResponseEntity<UserMeResponse> updateProfile(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @Valid @RequestBody UserProfileUpdateRequest request
+    ) {
+        UserMeResponse response = userService.updateCurrentUserProfile(principal, request);
 
         return ResponseEntity.ok(response);
     }

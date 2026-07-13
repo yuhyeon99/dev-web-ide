@@ -43,9 +43,9 @@ jobs:
           java-version: 25
           cache: gradle
 
-      - name: Test BE
+      - name: Test and build BE jar
         working-directory: BE/dev-web-ide
-        run: ./gradlew test
+        run: ./gradlew test bootJar --no-daemon
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -71,6 +71,8 @@ jobs:
           push: true
           provenance: false
           sbom: false
+          cache-from: type=gha,scope=be-image
+          cache-to: type=gha,scope=be-image,mode=max
           tags: |
             ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
             ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest

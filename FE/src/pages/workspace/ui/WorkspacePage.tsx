@@ -1,4 +1,12 @@
-import { startTransition, type CSSProperties, useMemo, useState } from 'react';
+import {
+  startTransition,
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
@@ -15,8 +23,10 @@ import { resolveProjectApiSession } from '@/shared/api/session';
 import type {
   ProjectFileContentResponse,
   ProjectFileTreeResponse,
+  ProjectRealtimeEvent,
   ProjectSummaryResponse,
 } from '@/shared/api/types';
+import { subscribeProjectRealtimeEvents } from '@/shared/realtime/project-events';
 
 import { Editor } from './Editor';
 import { Sidebar } from './Sidebar';
@@ -139,6 +149,8 @@ export const WorkspacePage = () => {
   const [activeActivity, setActiveActivity] = useState<ActivityId>('explorer');
   const [activeTabId, setActiveTabId] = useState('');
   const [fileDrafts, setFileDrafts] = useState<Record<string, FileDraft>>({});
+  const activeFileIdRef = useRef<number | null>(null);
+  const fileDraftsRef = useRef<Record<string, FileDraft>>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [fileCreateMessage, setFileCreateMessage] = useState<string | null>(
     null,
@@ -359,6 +371,64 @@ export const WorkspacePage = () => {
       ]);
     },
   });
+
+  useEffect(() => {
+    activeFileIdRef.current = activeFileId;
+    fileDraftsRef.current = fileDrafts;
+  }, [activeFileId, fileDrafts]);
+
+  const handleProjectRealtimeEvent = useCallback(
+    (event: ProjectRealtimeEvent) => {
+      if (event.projectId !== projectId) {
+        return;
+      }
+
+      if (
+        event.type === 'FILE_CREATED' ||
+        event.type === 'FILE_RENAMED' ||
+        event.type === 'FILE_DELETED'
+      ) {
+        void queryClient.invalidateQueries({
+          queryKey: ['project-file-tree', projectId],
+        });
+      }
+
+      const currentActiveFileId = activeFileIdRef.current;
+
+      if (currentActiveFileId === null) {
+        return;
+      }
+
+      const eventFileIds = new Set([
+        ...event.fileIds,
+        ...(event.fileId ? [event.fileId] : []),
+      ]);
+
+      if (!eventFileIds.has(currentActiveFileId)) {
+        return;
+      }
+
+      const activeDraft = fileDraftsRef.current[String(currentActiveFileId)];
+
+      if (!activeDraft || activeDraft.content === activeDraft.savedContent) {
+        void queryClient.invalidateQueries({
+          queryKey: ['project-file-content', projectId, currentActiveFileId],
+        });
+      }
+    },
+    [projectId, queryClient],
+  );
+
+  useEffect(() => {
+    if (!Number.isFinite(projectId) || projectId <= 0) {
+      return undefined;
+    }
+
+    return subscribeProjectRealtimeEvents(
+      projectId,
+      handleProjectRealtimeEvent,
+    );
+  }, [handleProjectRealtimeEvent, projectId]);
 
   const handleActiveFileContentChange = (nextContent: string) => {
     if (activeFileId === null) {

@@ -173,3 +173,20 @@ export type ProjectRunResponse = {
     efsMountPath: string;
   };
 };
+
+export type ProjectRealtimeEventType =
+  | 'FILE_CREATED'
+  | 'FILE_RENAMED'
+  | 'FILE_DELETED'
+  | 'FILE_SAVED';
+
+export type ProjectRealtimeEvent = {
+  type: ProjectRealtimeEventType;
+  projectId: number;
+  fileId: number | null;
+  fileIds: number[];
+  path: string | null;
+  actorType: 'USER' | 'GUEST' | 'SYSTEM';
+  actorId: number | null;
+  occurredAt: string;
+};

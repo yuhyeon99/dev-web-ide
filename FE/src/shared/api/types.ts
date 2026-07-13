@@ -190,3 +190,21 @@ export type ProjectRealtimeEvent = {
   actorId: number | null;
   occurredAt: string;
 };
+
+export type CrdtUpdateMessage = {
+  projectId: number;
+  fileId: number;
+  roomId: string;
+  clientId: string;
+  updateBase64: string;
+  occurredAt: string;
+};
+
+export type TeamChatMessage = {
+  id: string;
+  projectId: number;
+  clientId: string;
+  senderName: string;
+  message: string;
+  occurredAt: string;
+};

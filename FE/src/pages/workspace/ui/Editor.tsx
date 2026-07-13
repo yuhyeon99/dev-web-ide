@@ -4,8 +4,16 @@ import type { WorkspaceTab } from '../model';
 import { FileIcon, PinIcon } from './WorkspaceIcons';
 import MonacoEditorComponent from './MonacoEditor';
 
+type EditorCollaboration = {
+  clientId: string;
+  fileId: number;
+  initialContent: string;
+  projectId: number;
+};
+
 type EditorProps = {
   activeTabId: string;
+  collaboration?: EditorCollaboration;
   content: string;
   isContentLoading?: boolean;
   onContentChange: (value: string) => void;
@@ -15,6 +23,7 @@ type EditorProps = {
 
 export const Editor = ({
   activeTabId,
+  collaboration,
   content,
   isContentLoading = false,
   onContentChange,
@@ -71,6 +80,8 @@ export const Editor = ({
             </p>
           ) : (
             <MonacoEditorComponent
+              key={activeTab.id}
+              collaboration={collaboration}
               language={activeTab.language}
               onChange={onContentChange}
               value={content}

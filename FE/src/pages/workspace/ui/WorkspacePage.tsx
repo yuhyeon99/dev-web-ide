@@ -19,6 +19,7 @@ import {
   runProject,
   saveProjectFiles,
 } from '@/shared/api/projects';
+import { getStoredAuthSession } from '@/shared/api/auth';
 import { resolveProjectApiSession } from '@/shared/api/session';
 import type {
   ProjectFileContentResponse,
@@ -30,6 +31,7 @@ import { subscribeProjectRealtimeEvents } from '@/shared/realtime/project-events
 
 import { Editor } from './Editor';
 import { Sidebar } from './Sidebar';
+import { TeamChat } from './TeamChat';
 import { Terminal } from './Terminal';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import {
@@ -157,6 +159,8 @@ export const WorkspacePage = () => {
   );
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
   const [terminalStatus, setTerminalStatus] = useState('status: idle');
+  const [realtimeClientId] = useState(() => crypto.randomUUID());
+  const [authSession] = useState(() => getStoredAuthSession());
   const projectsQuery = useQuery({
     queryKey: ['workspace-projects'],
     queryFn: async () => {
@@ -568,6 +572,16 @@ export const WorkspacePage = () => {
 
             <Editor
               activeTabId={effectiveActiveTabId}
+              collaboration={
+                activeFileId !== null && !fileContentQuery.isLoading
+                  ? {
+                      clientId: realtimeClientId,
+                      fileId: activeFileId,
+                      initialContent: activeFileContent,
+                      projectId,
+                    }
+                  : undefined
+              }
               content={activeFileContent}
               isContentLoading={fileContentQuery.isLoading}
               onContentChange={handleActiveFileContentChange}
@@ -586,17 +600,28 @@ export const WorkspacePage = () => {
             </div>
           ) : null}
 
-          <Terminal
-            isRunning={runProjectMutation.isPending}
-            lines={terminalLines}
-            onRun={() => runProjectMutation.mutate()}
-            runtimeLabel={
-              projectDetailQuery.data
-                ? `runtime: ${projectDetailQuery.data.runtime.displayName}`
-                : undefined
-            }
-            statusLabel={terminalStatus}
-          />
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <Terminal
+              isRunning={runProjectMutation.isPending}
+              lines={terminalLines}
+              onRun={() => runProjectMutation.mutate()}
+              runtimeLabel={
+                projectDetailQuery.data
+                  ? `runtime: ${projectDetailQuery.data.runtime.displayName}`
+                  : undefined
+              }
+              statusLabel={terminalStatus}
+            />
+
+            {projectDetailQuery.data?.projectType === 'TEAM' ? (
+              <TeamChat
+                key={projectId}
+                clientId={realtimeClientId}
+                projectId={projectId}
+                senderName={authSession?.nickname ?? 'Guest'}
+              />
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

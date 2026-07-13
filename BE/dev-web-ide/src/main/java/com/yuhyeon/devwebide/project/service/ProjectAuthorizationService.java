@@ -3,6 +3,7 @@ package com.yuhyeon.devwebide.project.service;
 import com.yuhyeon.devwebide.auth.dto.AuthenticatedPrincipal;
 import com.yuhyeon.devwebide.project.domain.Project;
 import com.yuhyeon.devwebide.project.domain.ProjectMemberStatus;
+import com.yuhyeon.devwebide.project.exception.ProjectAccessDeniedException;
 import com.yuhyeon.devwebide.project.repository.ProjectMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -60,7 +61,7 @@ public class ProjectAuthorizationService {
             return;
         }
 
-        throw new IllegalArgumentException("프로젝트를 조회할 권한이 없습니다.");
+        throw new ProjectAccessDeniedException("프로젝트를 조회할 권한이 없습니다.");
     }
 
     public void requireCanViewGuestProject(Project project, Long guestSessionId) {
@@ -77,7 +78,7 @@ public class ProjectAuthorizationService {
             return;
         }
 
-        throw new IllegalArgumentException("프로젝트를 조회할 권한이 없습니다.");
+        throw new ProjectAccessDeniedException("프로젝트를 조회할 권한이 없습니다.");
     }
 
     public void requireProjectOwner(Project project, Long userId) {
@@ -90,7 +91,7 @@ public class ProjectAuthorizationService {
         }
 
         if (!isOwner(project, userId)) {
-            throw new IllegalArgumentException("프로젝트 OWNER만 수행할 수 있습니다.");
+            throw new ProjectAccessDeniedException("프로젝트 OWNER만 수행할 수 있습니다.");
         }
     }
 

@@ -204,7 +204,7 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("GUEST principal이면 프로젝트 생성 예외가 발생한다")
+    @DisplayName("GUEST principal이면 게스트 프로젝트를 생성한다")
     void createProjectWithGuestPrincipal() {
         // given
         GuestSession guestSession = saveGuestSession(
@@ -225,13 +225,27 @@ class ProjectServiceTest {
                 List.of()
         );
 
-        // when & then
-        assertThatThrownBy(() -> projectService.createProject(
+        // when
+        ProjectCreateResponse response = projectService.createProject(
                 request,
                 guestPrincipal(guestSession)
-        ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("회원 인증이 필요합니다.");
+        );
+
+        // then
+        Project project = projectRepository.findById(response.id())
+                .orElseThrow();
+
+        assertThat(project.getName()).isEqualTo("guest-project");
+        assertThat(project.getOwnerUser()).isNull();
+        assertThat(project.getGuestSession().getId()).isEqualTo(guestSession.getId());
+        assertThat(project.getProjectType()).isEqualTo(ProjectType.GUEST);
+        assertThat(project.getVisibility()).isEqualTo(ProjectVisibility.PRIVATE);
+        assertThat(projectSettingsRepository.existsByProjectId(project.getId()))
+                .isTrue();
+        assertThat(projectFileRepository.findByProjectIdAndParentFileIsNullAndStatus(
+                project.getId(),
+                ProjectFileStatus.ACTIVE
+        )).isPresent();
     }
 
     @Test
@@ -439,13 +453,22 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("GUEST principal이면 내 프로젝트 목록 조회 예외가 발생한다")
+    @DisplayName("GUEST principal이면 게스트 세션의 프로젝트 목록을 조회한다")
     void getMyProjectsWithGuestPrincipal() {
         GuestSession guestSession = saveGuestSession("guest-my-projects-token");
+        Runtime runtime = saveRuntime(
+                "guest-list-runtime",
+                "Guest List Runtime"
+        );
+        Project guestProject = projectRepository.save(
+                createGuestProject(guestSession, runtime)
+        );
 
-        assertThatThrownBy(() -> projectService.getMyProjects(guestPrincipal(guestSession)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("회원 인증이 필요합니다.");
+        List<ProjectSummaryResponse> result =
+                projectService.getMyProjects(guestPrincipal(guestSession));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(guestProject.getId());
     }
 
     /**
@@ -676,16 +699,21 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("GUEST principal이면 프로젝트 상세 조회 예외가 발생한다")
+    @DisplayName("GUEST principal이면 본인 게스트 프로젝트 상세를 조회한다")
     void getProjectDetailWithGuestPrincipal() {
         GuestSession guestSession = saveGuestSession("guest-detail-token");
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createGuestProject(guestSession, runtime));
+        projectSettingsRepository.save(createProjectSettings(project));
 
-        assertThatThrownBy(() -> projectService.getProjectDetail(
-                1L,
+        ProjectDetailResponse response = projectService.getProjectDetail(
+                project.getId(),
                 guestPrincipal(guestSession)
-        ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("회원 인증이 필요합니다.");
+        );
+
+        assertThat(response.id()).isEqualTo(project.getId());
+        assertThat(response.projectType()).isEqualTo(ProjectType.GUEST);
+        assertThat(response.runtime().id()).isEqualTo(runtime.getId());
     }
 
     @Test
@@ -848,16 +876,23 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("GUEST principal이면 프로젝트를 열 수 없다")
+    @DisplayName("GUEST principal이면 본인 게스트 프로젝트를 열 수 있다")
     void openProjectWithGuestPrincipal() {
         GuestSession guestSession = guestSessionRepository.save(createGuestSession());
+        Runtime runtime = runtimeRepository.save(createRuntime());
+        Project project = projectRepository.save(createGuestProject(guestSession, runtime));
 
-        assertThatThrownBy(() -> projectService.openProject(
-                1L,
+        ProjectOpenResponse response = projectService.openProject(
+                project.getId(),
                 guestPrincipal(guestSession)
-        ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("회원 인증이 필요합니다.");
+        );
+
+        assertThat(response.projectId()).isEqualTo(project.getId());
+
+        List<ProjectAccessLog> accessLogs = projectAccessLogRepository.findAll();
+        assertThat(accessLogs).hasSize(1);
+        assertThat(accessLogs.get(0).getGuestSession().getId())
+                .isEqualTo(guestSession.getId());
     }
 
     @Test

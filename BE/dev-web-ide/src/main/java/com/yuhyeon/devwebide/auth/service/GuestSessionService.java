@@ -1,7 +1,10 @@
 package com.yuhyeon.devwebide.auth.service;
 
+import com.yuhyeon.devwebide.auth.dto.AuthTokenRefreshResponse;
 import com.yuhyeon.devwebide.auth.dto.GuestSessionCreateResponse;
+import com.yuhyeon.devwebide.user.domain.AuthSession;
 import com.yuhyeon.devwebide.user.domain.GuestSession;
+import com.yuhyeon.devwebide.user.repository.AuthSessionRepository;
 import com.yuhyeon.devwebide.user.repository.GuestSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,17 +21,37 @@ public class GuestSessionService {
     private static final long GUEST_SESSION_EXPIRATION_DAYS = 7L;
 
     private final GuestSessionRepository guestSessionRepository;
+    private final AuthSessionRepository authSessionRepository;
+    private final TokenService tokenService;
 
     @Transactional
     public GuestSessionCreateResponse createGuestSession(String clientIp) {
+        LocalDateTime now = LocalDateTime.now();
         GuestSession guestSession = GuestSession.builder()
                 .guestToken(UUID.randomUUID().toString())
                 .clientIp(clientIp)
-                .expiresAt(LocalDateTime.now().plusDays(GUEST_SESSION_EXPIRATION_DAYS))
+                .expiresAt(now.plusDays(GUEST_SESSION_EXPIRATION_DAYS))
                 .build();
 
         GuestSession savedGuestSession = guestSessionRepository.save(guestSession);
+        String refreshToken = tokenService.createRefreshToken();
 
-        return GuestSessionCreateResponse.from(savedGuestSession);
+        AuthSession authSession = AuthSession.builder()
+                .user(null)
+                .guestSession(savedGuestSession)
+                .refreshTokenHash(tokenService.hashRefreshToken(refreshToken))
+                .clientIp(clientIp)
+                .userAgent(null)
+                .expiresAt(tokenService.calculateRefreshTokenExpiresAt(now))
+                .build();
+
+        AuthSession savedAuthSession = authSessionRepository.save(authSession);
+        AuthTokenRefreshResponse tokenResponse = AuthTokenRefreshResponse.of(
+                tokenService.createAccessToken(savedAuthSession, now),
+                tokenService.getAccessTokenExpiresInSeconds(),
+                tokenService.calculateAccessTokenExpiresAt(now)
+        );
+
+        return GuestSessionCreateResponse.of(savedGuestSession, tokenResponse);
     }
 }

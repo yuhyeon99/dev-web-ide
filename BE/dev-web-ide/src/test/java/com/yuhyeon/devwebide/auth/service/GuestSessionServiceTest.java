@@ -1,7 +1,9 @@
 package com.yuhyeon.devwebide.auth.service;
 
 import com.yuhyeon.devwebide.auth.dto.GuestSessionCreateResponse;
+import com.yuhyeon.devwebide.user.domain.AuthSession;
 import com.yuhyeon.devwebide.user.domain.GuestSession;
+import com.yuhyeon.devwebide.user.repository.AuthSessionRepository;
 import com.yuhyeon.devwebide.user.repository.GuestSessionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +27,12 @@ class GuestSessionServiceTest {
     @Mock
     private GuestSessionRepository guestSessionRepository;
 
+    @Mock
+    private AuthSessionRepository authSessionRepository;
+
+    @Mock
+    private TokenService tokenService;
+
     @InjectMocks
     private GuestSessionService guestSessionService;
 
@@ -46,6 +54,22 @@ class GuestSessionServiceTest {
                     );
                     return guestSession;
                 });
+        given(tokenService.createRefreshToken()).willReturn("refresh-token");
+        given(tokenService.hashRefreshToken("refresh-token"))
+                .willReturn("refresh-token-hash");
+        given(tokenService.calculateRefreshTokenExpiresAt(any(LocalDateTime.class)))
+                .willReturn(LocalDateTime.of(2026, 7, 15, 10, 0));
+        given(authSessionRepository.save(any(AuthSession.class)))
+                .willAnswer(invocation -> {
+                    AuthSession authSession = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(authSession, "id", 10L);
+                    return authSession;
+                });
+        given(tokenService.createAccessToken(any(AuthSession.class), any(LocalDateTime.class)))
+                .willReturn("access-token");
+        given(tokenService.getAccessTokenExpiresInSeconds()).willReturn(3600L);
+        given(tokenService.calculateAccessTokenExpiresAt(any(LocalDateTime.class)))
+                .willReturn(LocalDateTime.of(2026, 7, 8, 11, 0));
 
         GuestSessionCreateResponse response =
                 guestSessionService.createGuestSession(clientIp);
@@ -54,6 +78,11 @@ class GuestSessionServiceTest {
 
         assertThat(response.guestSessionId()).isEqualTo(guestSessionId);
         assertThat(response.guestToken()).isNotBlank();
+        assertThat(response.accessToken()).isEqualTo("access-token");
+        assertThat(response.tokenType()).isEqualTo("Bearer");
+        assertThat(response.expiresIn()).isEqualTo(3600L);
+        assertThat(response.accessTokenExpiresAt())
+                .isEqualTo(LocalDateTime.of(2026, 7, 8, 11, 0));
         assertThat(response.expiresAt()).isBetween(before, after);
         assertThat(response.createdAt()).isEqualTo(LocalDateTime.of(2026, 7, 8, 10, 0));
 
@@ -68,5 +97,18 @@ class GuestSessionServiceTest {
         assertThat(savedGuestSession.getGuestToken()).isNotBlank();
         assertThat(savedGuestSession.getClientIp()).isEqualTo(clientIp);
         assertThat(savedGuestSession.getExpiresAt()).isBetween(before, after);
+
+        ArgumentCaptor<AuthSession> authSessionCaptor =
+                ArgumentCaptor.forClass(AuthSession.class);
+
+        then(authSessionRepository).should()
+                .save(authSessionCaptor.capture());
+
+        AuthSession savedAuthSession = authSessionCaptor.getValue();
+
+        assertThat(savedAuthSession.getGuestSession()).isSameAs(savedGuestSession);
+        assertThat(savedAuthSession.getRefreshTokenHash())
+                .isEqualTo("refresh-token-hash");
+        assertThat(savedAuthSession.getClientIp()).isEqualTo(clientIp);
     }
 }

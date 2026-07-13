@@ -57,12 +57,27 @@ public class ProjectService {
             AuthenticatedPrincipal principal
     ) {
         validateProjectCreateRequest(request);
-        Long ownerUserId = projectAuthorizationService.requireUserPrincipal(principal);
 
         if (request.isGuestProject()) {
-            throw new IllegalArgumentException("게스트 프로젝트 생성은 이번 전환 범위에서 지원하지 않습니다.");
+            Long guestSessionId = projectAuthorizationService.requireGuestPrincipal(principal);
+            Runtime runtime = getActiveRuntime(request.runtimeId());
+
+            Project project = createProjectEntity(
+                    request,
+                    runtime,
+                    null,
+                    guestSessionId
+            );
+
+            Project savedProject = projectRepository.save(project);
+
+            createDefaultProjectSettings(savedProject);
+            createRootProjectFile(savedProject);
+
+            return ProjectCreateResponse.from(savedProject);
         }
 
+        Long ownerUserId = projectAuthorizationService.requireUserPrincipal(principal);
         Runtime runtime = getActiveRuntime(request.runtimeId());
 
         Project project = createProjectEntity(
@@ -362,6 +377,18 @@ public class ProjectService {
      * @return 내 프로젝트 목록
      */
     public List<ProjectSummaryResponse> getMyProjects(AuthenticatedPrincipal principal) {
+        if (principal != null && principal.isGuestSession()) {
+            Long guestSessionId = projectAuthorizationService.requireGuestPrincipal(principal);
+
+            return projectRepository.findByGuestSessionIdAndStatusOrderByUpdatedAtDesc(
+                            guestSessionId,
+                            ProjectStatus.ACTIVE
+                    )
+                    .stream()
+                    .map(ProjectSummaryResponse::from)
+                    .toList();
+        }
+
         Long ownerUserId = projectAuthorizationService.requireUserPrincipal(principal);
         validateOwnerUserId(ownerUserId);
 
@@ -391,8 +418,6 @@ public class ProjectService {
             Long projectId,
             AuthenticatedPrincipal principal
     ) {
-        Long userId = projectAuthorizationService.requireUserPrincipal(principal);
-
         Project project = projectRepository.findByIdAndStatus(
                         projectId,
                         ProjectStatus.ACTIVE
@@ -401,7 +426,13 @@ public class ProjectService {
                         "존재하지 않거나 삭제된 프로젝트입니다. projectId=" + projectId
                 ));
 
-        projectAuthorizationService.requireCanViewProject(project, userId);
+        if (principal != null && principal.isGuestSession()) {
+            Long guestSessionId = projectAuthorizationService.requireGuestPrincipal(principal);
+            projectAuthorizationService.requireCanViewGuestProject(project, guestSessionId);
+        } else {
+            Long userId = projectAuthorizationService.requireUserPrincipal(principal);
+            projectAuthorizationService.requireCanViewProject(project, userId);
+        }
 
         ProjectSettings projectSettings =
                 projectSettingsRepository.findByProjectId(projectId)
@@ -514,29 +545,42 @@ public class ProjectService {
             Long projectId,
             AuthenticatedPrincipal principal
     ) {
-        Long userId = projectAuthorizationService.requireUserPrincipal(principal);
-
         Project project = projectRepository
                 .findByIdAndStatus(projectId, ProjectStatus.ACTIVE)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "프로젝트를 찾을 수 없습니다."
                 ));
 
-        projectAuthorizationService.requireCanOpenProject(project, userId);
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "사용자를 찾을 수 없습니다."
-                ));
-
         LocalDateTime openedAt = LocalDateTime.now();
 
-        ProjectAccessLog accessLog = ProjectAccessLog.builder()
-                .project(project)
-                .user(user)
-                .guestSession(null)
-                .accessType(ProjectAccessType.OPEN)
-                .build();
+        ProjectAccessLog accessLog;
+
+        if (principal != null && principal.isGuestSession()) {
+            Long guestSessionId = projectAuthorizationService.requireGuestPrincipal(principal);
+            projectAuthorizationService.requireCanOpenGuestProject(project, guestSessionId);
+
+            GuestSession guestSession = getGuestSession(guestSessionId);
+            accessLog = ProjectAccessLog.builder()
+                    .project(project)
+                    .user(null)
+                    .guestSession(guestSession)
+                    .accessType(ProjectAccessType.OPEN)
+                    .build();
+        } else {
+            Long userId = projectAuthorizationService.requireUserPrincipal(principal);
+            projectAuthorizationService.requireCanOpenProject(project, userId);
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "사용자를 찾을 수 없습니다."
+                    ));
+            accessLog = ProjectAccessLog.builder()
+                    .project(project)
+                    .user(user)
+                    .guestSession(null)
+                    .accessType(ProjectAccessType.OPEN)
+                    .build();
+        }
 
         projectAccessLogRepository.save(accessLog);
 

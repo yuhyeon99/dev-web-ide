@@ -38,6 +38,10 @@ class GuestSessionControllerTest {
         GuestSessionCreateResponse response = new GuestSessionCreateResponse(
                 1L,
                 "guest-token",
+                "access-token",
+                "Bearer",
+                3600L,
+                now.plusHours(1),
                 now.plusDays(7),
                 now
         );
@@ -53,6 +57,10 @@ class GuestSessionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.guestSessionId").value(1L))
                 .andExpect(jsonPath("$.guestToken").value("guest-token"))
+                .andExpect(jsonPath("$.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(3600L))
+                .andExpect(jsonPath("$.accessTokenExpiresAt").exists())
                 .andExpect(jsonPath("$.expiresAt").exists())
                 .andExpect(jsonPath("$.createdAt").exists());
 
@@ -68,6 +76,10 @@ class GuestSessionControllerTest {
         GuestSessionCreateResponse response = new GuestSessionCreateResponse(
                 1L,
                 "guest-token",
+                "access-token",
+                "Bearer",
+                3600L,
+                now.plusHours(1),
                 now.plusDays(7),
                 now
         );
@@ -84,6 +96,10 @@ class GuestSessionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.guestSessionId").value(1L))
                 .andExpect(jsonPath("$.guestToken").value("guest-token"))
+                .andExpect(jsonPath("$.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(3600L))
+                .andExpect(jsonPath("$.accessTokenExpiresAt").exists())
                 .andExpect(jsonPath("$.expiresAt").exists())
                 .andExpect(jsonPath("$.createdAt").exists());
 

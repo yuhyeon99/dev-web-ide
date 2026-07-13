@@ -8,6 +8,7 @@ type EditorProps = {
   activeTabId: string;
   content: string;
   isContentLoading?: boolean;
+  onContentChange: (value: string) => void;
   onTabChange: (tabId: string) => void;
   tabs: WorkspaceTab[];
 };
@@ -16,6 +17,7 @@ export const Editor = ({
   activeTabId,
   content,
   isContentLoading = false,
+  onContentChange,
   onTabChange,
   tabs,
 }: EditorProps) => {
@@ -70,6 +72,7 @@ export const Editor = ({
           ) : (
             <MonacoEditorComponent
               language={activeTab.language}
+              onChange={onContentChange}
               value={content}
             />
           )}

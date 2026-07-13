@@ -1,5 +1,5 @@
 import { startTransition, type CSSProperties, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import {
@@ -7,9 +7,11 @@ import {
   getProjectDetail,
   getProjectFileContent,
   getProjectFileTree,
+  saveProjectFiles,
 } from '@/shared/api/projects';
 import { ensureGuestSession } from '@/shared/api/session';
 import type {
+  ProjectFileContentResponse,
   ProjectFileTreeResponse,
   ProjectSummaryResponse,
 } from '@/shared/api/types';
@@ -112,12 +114,25 @@ const toWorkspaceProject = (project: ProjectSummaryResponse) => {
   };
 };
 
+type FileDraft = {
+  content: string;
+  savedContent: string;
+};
+
+type SavedDraft = {
+  content: string;
+  fileId: number;
+};
+
 export const WorkspacePage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const projectId = Number(searchParams.get('projectId'));
   const [activeActivity, setActiveActivity] = useState<ActivityId>('explorer');
   const [activeTabId, setActiveTabId] = useState('');
+  const [fileDrafts, setFileDrafts] = useState<Record<string, FileDraft>>({});
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const projectsQuery = useQuery({
     queryKey: ['guest-projects'],
     queryFn: async () => {
@@ -148,14 +163,17 @@ export const WorkspacePage = () => {
   const editorTabs = useMemo<WorkspaceTab[]>(
     () =>
       files.map((file, index) => ({
+        dirty:
+          fileDrafts[String(file.id)] !== undefined &&
+          fileDrafts[String(file.id)].content !==
+            fileDrafts[String(file.id)].savedContent,
         id: String(file.id),
         label: file.name,
         path: file.path,
         language: getLanguageByFileName(file.name),
         pinned: index === 0,
-        dirty: false,
       })),
-    [files],
+    [fileDrafts, files],
   );
   const effectiveActiveTabId = editorTabs.some((tab) => tab.id === activeTabId)
     ? activeTabId
@@ -169,6 +187,12 @@ export const WorkspacePage = () => {
     enabled:
       Number.isFinite(projectId) && projectId > 0 && activeFileId !== null,
   });
+  const activeFileContent =
+    activeFileId !== null
+      ? (fileDrafts[String(activeFileId)]?.content ??
+        fileContentQuery.data?.content ??
+        '')
+      : '';
   const workspaceProjects =
     projectsQuery.data?.map(toWorkspaceProject) ??
     (projectDetailQuery.data
@@ -186,6 +210,92 @@ export const WorkspacePage = () => {
     workspaceProjects[0];
   const workspaceTree = fileNodes.map(toWorkspaceTreeNode);
   const dirtyCount = editorTabs.filter((tab) => tab.dirty).length;
+  const dirtyDrafts = useMemo<SavedDraft[]>(
+    () =>
+      Object.entries(fileDrafts)
+        .filter(([, draft]) => draft.content !== draft.savedContent)
+        .map(([fileId, draft]) => ({
+          content: draft.content,
+          fileId: Number(fileId),
+        })),
+    [fileDrafts],
+  );
+  const saveFilesMutation = useMutation({
+    mutationFn: async () => {
+      const guestSession = await ensureGuestSession();
+
+      await saveProjectFiles(projectId, {
+        files: dirtyDrafts.map((draft) => ({
+          content: draft.content,
+          projectFileId: draft.fileId,
+        })),
+        guestSessionId: guestSession.guestSessionId,
+        userId: null,
+      });
+
+      return dirtyDrafts;
+    },
+    onError: () => {
+      setSaveMessage('저장 실패');
+    },
+    onSuccess: (savedDrafts) => {
+      setFileDrafts((currentDrafts) => {
+        const nextDrafts = { ...currentDrafts };
+
+        savedDrafts.forEach((savedDraft) => {
+          const currentDraft = currentDrafts[String(savedDraft.fileId)];
+
+          nextDrafts[String(savedDraft.fileId)] = {
+            content: currentDraft?.content ?? savedDraft.content,
+            savedContent: savedDraft.content,
+          };
+          queryClient.setQueryData<ProjectFileContentResponse>(
+            ['project-file-content', projectId, savedDraft.fileId],
+            (currentContent) =>
+              currentContent
+                ? {
+                    ...currentContent,
+                    content: savedDraft.content,
+                  }
+                : currentContent,
+          );
+        });
+
+        return nextDrafts;
+      });
+      setSaveMessage('저장됨');
+    },
+  });
+
+  const handleActiveFileContentChange = (nextContent: string) => {
+    if (activeFileId === null) {
+      return;
+    }
+
+    const fileId = String(activeFileId);
+
+    setFileDrafts((currentDrafts) => {
+      const currentDraft = currentDrafts[fileId];
+
+      return {
+        ...currentDrafts,
+        [fileId]: {
+          content: nextContent,
+          savedContent:
+            currentDraft?.savedContent ?? fileContentQuery.data?.content ?? '',
+        },
+      };
+    });
+    setSaveMessage(null);
+  };
+
+  const handleSave = () => {
+    if (dirtyDrafts.length === 0 || saveFilesMutation.isPending) {
+      return;
+    }
+
+    saveFilesMutation.mutate();
+  };
 
   if (!Number.isFinite(projectId) || projectId <= 0) {
     return (
@@ -242,11 +352,14 @@ export const WorkspacePage = () => {
           projects={workspaceProjects}
           activeProjectId={String(projectId)}
           dirtyCount={dirtyCount}
+          isSaving={saveFilesMutation.isPending}
+          onSave={handleSave}
           onProjectChange={(projectId) =>
             startTransition(() => {
               navigate(`/workspace?projectId=${projectId}`);
             })
           }
+          saveMessage={saveMessage}
           users={presenceUsers}
         />
 
@@ -275,8 +388,9 @@ export const WorkspacePage = () => {
 
             <Editor
               activeTabId={effectiveActiveTabId}
-              content={fileContentQuery.data?.content ?? ''}
+              content={activeFileContent}
               isContentLoading={fileContentQuery.isLoading}
+              onContentChange={handleActiveFileContentChange}
               onTabChange={(tabId) =>
                 startTransition(() => {
                   setActiveTabId(tabId);

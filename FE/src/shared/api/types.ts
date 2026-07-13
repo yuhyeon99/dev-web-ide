@@ -112,3 +112,28 @@ export type ProjectFileCreateResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type ProjectFileSaveRequest = {
+  userId: number | null;
+  guestSessionId: number | null;
+  files: Array<{
+    projectFileId: number;
+    content: string;
+  }>;
+};
+
+export type ProjectFileSaveResponse = {
+  projectId: number;
+  saveBatchId: number;
+  status: 'SUCCESS' | 'FAILED';
+  savedFileCount: number;
+  savedFiles: Array<{
+    fileVersionId: number;
+    projectFileId: number;
+    versionNo: number;
+    storagePath: string;
+    contentHash: string;
+    sizeBytes: number;
+    createdAt: string;
+  }>;
+};

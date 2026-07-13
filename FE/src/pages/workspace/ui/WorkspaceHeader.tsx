@@ -8,7 +8,10 @@ type WorkspaceHeaderProps = {
   projects: WorkspaceProject[];
   activeProjectId: string;
   dirtyCount: number;
+  isSaving?: boolean;
+  onSave: () => void;
   onProjectChange: (projectId: string) => void;
+  saveMessage?: string | null;
   users: PresenceUser[];
 };
 
@@ -25,7 +28,10 @@ export const WorkspaceHeader = ({
   projects,
   activeProjectId,
   dirtyCount,
+  isSaving = false,
+  onSave,
   onProjectChange,
+  saveMessage,
   users,
 }: WorkspaceHeaderProps) => {
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
@@ -108,16 +114,24 @@ export const WorkspaceHeader = ({
 
             <button
               type="button"
+              disabled={dirtyCount === 0 || isSaving}
+              onClick={onSave}
               className="inline-flex items-center gap-2 rounded-xl border border-[var(--ws-border)] bg-[#2a2d2e] px-3.5 py-2.5 text-sm font-medium text-[var(--ws-text)] transition hover:border-[#3c4858] hover:bg-[#303336]"
             >
               <SaveIcon className="h-4 w-4" />
-              <span>Save</span>
+              <span>{isSaving ? 'Saving' : 'Save'}</span>
               {dirtyCount > 0 ? (
                 <span className="rounded-full bg-[#3b82f6]/20 px-2 py-0.5 text-[11px] font-semibold text-[#9cdcfe]">
                   {dirtyCount}
                 </span>
               ) : null}
             </button>
+
+            {saveMessage ? (
+              <span className="text-xs text-[var(--ws-muted)]">
+                {saveMessage}
+              </span>
+            ) : null}
 
             <button
               type="button"

@@ -5,6 +5,8 @@ import type {
   ProjectDetailResponse,
   ProjectFileCreateResponse,
   ProjectFileContentResponse,
+  ProjectFileSaveRequest,
+  ProjectFileSaveResponse,
   ProjectFileTreeResponse,
   ProjectSummaryResponse,
 } from './types';
@@ -61,6 +63,19 @@ export const createProjectFile = (
 ) => {
   return apiRequest<ProjectFileCreateResponse>(
     `/api/projects/${projectId}/files`,
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    },
+  );
+};
+
+export const saveProjectFiles = (
+  projectId: number,
+  request: ProjectFileSaveRequest,
+) => {
+  return apiRequest<ProjectFileSaveResponse>(
+    `/api/projects/${projectId}/save`,
     {
       method: 'POST',
       body: JSON.stringify(request),

@@ -401,8 +401,12 @@
 - [ ] 실제 Docker/ECS/Fargate 실행 연동
 - [ ] 컨테이너 출력 수집 후 TerminalLog 저장 처리
 - [ ] idle timer 기반 컨테이너 자동 종료
-- [ ] WebSocket/공동 편집/CRDT 연동
-- [ ] Redis 연동
+- [~] WebSocket/공동 편집/CRDT 연동
+  - 프로젝트 파일 변경 이벤트 WebSocket topic 구현
+  - CRDT 기반 동시 편집 병합은 Yjs 등 별도 엔진 도입 필요
+- [~] Redis 연동
+  - Spring Data Redis 의존성 및 Pub/Sub 기반 프로젝트 이벤트 브리지 구현
+  - 운영 ElastiCache Redis 생성 및 ECS 환경변수 반영 필요
 - [ ] 전역 예외 응답 표준화
 - [ ] 운영 DB 마이그레이션 도구 적용 여부 확인
 
@@ -463,6 +467,12 @@
   - AWS OIDC Role: `GitHubActionsDevWebIdeDeployRole`
   - FE: build 후 S3 sync 및 CloudFront invalidation
   - BE: test 후 Docker image build/push, ECS task definition 등록, service update
+- [x] Redis 실시간 동기화 코드 기반 추가
+  - 설정 키: `app.redis.enabled`
+  - Redis channel: `dev-web-ide:project-events`
+  - WebSocket endpoint: `/ws`
+  - Project topic: `/topic/projects/{projectId}/events`
+  - 로컬 Redis compose: `docker-compose.redis.yml`
 
 ### 부분 완료
 
@@ -479,6 +489,10 @@
 - [~] RDS 보안 그룹
   - ECS service security group에서 RDS 접근 가능
   - RDS security group에 넓은 inbound 규칙이 남아 있어 운영 전 축소 필요
+- [~] Redis 연결
+  - 코드와 로컬 Redis compose 추가 완료
+  - 로컬 Redis `PING` 응답 확인
+  - 운영 ElastiCache Redis 생성 및 ECS task env 반영 필요
 
 ### 미완료
 
@@ -486,9 +500,6 @@
   - `SPRING_DATASOURCE_PASSWORD`
   - `APP_JWT_SECRET`
   - AWS Secrets Manager 또는 SSM Parameter Store 사용 필요
-- [ ] Redis 연결
-  - 세션 상태, 활성 사용자 수, WebSocket Pub/Sub, idle timer 보조 용도
-  - ElastiCache Redis 또는 호환 Redis 구성 필요
 ### 선택 또는 운영 고도화
 
 - [ ] API 커스텀 도메인 연결

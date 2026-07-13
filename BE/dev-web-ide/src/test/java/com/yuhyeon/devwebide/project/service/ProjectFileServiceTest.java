@@ -15,6 +15,7 @@ import com.yuhyeon.devwebide.project.repository.FileVersionRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectSaveBatchRepository;
+import com.yuhyeon.devwebide.realtime.service.ProjectRealtimeEventPublisher;
 import com.yuhyeon.devwebide.user.repository.GuestSessionRepository;
 import com.yuhyeon.devwebide.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -81,6 +82,9 @@ class ProjectFileServiceTest {
 
     @Mock
     private ProjectFileStorageService projectFileStorageService;
+
+    @Mock
+    private ProjectRealtimeEventPublisher realtimeEventPublisher;
 
     @Test
     @DisplayName("프로젝트 파일 트리를 조회한다")

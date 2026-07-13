@@ -6,6 +6,9 @@ import com.yuhyeon.devwebide.project.repository.FileVersionRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectFileRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectRepository;
 import com.yuhyeon.devwebide.project.repository.ProjectSaveBatchRepository;
+import com.yuhyeon.devwebide.realtime.dto.ProjectRealtimeEvent;
+import com.yuhyeon.devwebide.realtime.dto.ProjectRealtimeEventType;
+import com.yuhyeon.devwebide.realtime.service.ProjectRealtimeEventPublisher;
 import com.yuhyeon.devwebide.user.domain.GuestSession;
 import com.yuhyeon.devwebide.user.domain.User;
 import com.yuhyeon.devwebide.user.repository.GuestSessionRepository;
@@ -38,6 +41,7 @@ public class ProjectFileService {
     private final UserRepository userRepository;
     private final GuestSessionRepository guestSessionRepository;
     private final ProjectFileStorageService projectFileStorageService;
+    private final ProjectRealtimeEventPublisher realtimeEventPublisher;
 
     /**
      * 프로젝트 파일 트리 조회
@@ -211,6 +215,16 @@ public class ProjectFileService {
             savedFiles.add(SavedFileResponse.from(fileVersion));
         }
 
+        realtimeEventPublisher.publish(ProjectRealtimeEvent.of(
+                ProjectRealtimeEventType.FILE_SAVED,
+                project.getId(),
+                null,
+                projectFiles.stream().map(ProjectFile::getId).toList(),
+                null,
+                request.userId(),
+                request.guestSessionId()
+        ));
+
         return ProjectFileSaveResponse.of(
                 project.getId(),
                 saveBatch.getId(),
@@ -274,6 +288,16 @@ public class ProjectFileService {
             projectFileStorageService.createDirectory(project, savedProjectFile);
         }
 
+        realtimeEventPublisher.publish(ProjectRealtimeEvent.of(
+                ProjectRealtimeEventType.FILE_CREATED,
+                project.getId(),
+                savedProjectFile.getId(),
+                singleFileIdList(savedProjectFile.getId()),
+                savedProjectFile.getPath(),
+                null,
+                null
+        ));
+
         return ProjectFileCreateResponse.from(savedProjectFile);
     }
 
@@ -322,6 +346,16 @@ public class ProjectFileService {
             renameDescendantPaths(projectId, oldPath, newPath);
         }
 
+        realtimeEventPublisher.publish(ProjectRealtimeEvent.of(
+                ProjectRealtimeEventType.FILE_RENAMED,
+                project.getId(),
+                projectFile.getId(),
+                singleFileIdList(projectFile.getId()),
+                projectFile.getPath(),
+                null,
+                null
+        ));
+
         return ProjectFileCreateResponse.from(projectFile);
     }
 
@@ -341,6 +375,16 @@ public class ProjectFileService {
         }
 
         projectFile.delete();
+
+        realtimeEventPublisher.publish(ProjectRealtimeEvent.of(
+                ProjectRealtimeEventType.FILE_DELETED,
+                project.getId(),
+                projectFile.getId(),
+                singleFileIdList(projectFile.getId()),
+                projectFile.getPath(),
+                null,
+                null
+        ));
 
         return ProjectFileDeleteResponse.from(projectFile);
     }
@@ -597,5 +641,13 @@ public class ProjectFileService {
         return fileVersionRepository.findTopByProjectFileIdOrderByVersionNoDesc(projectFileId)
                 .map(fileVersion -> fileVersion.getVersionNo() + 1)
                 .orElse(1);
+    }
+
+    private List<Long> singleFileIdList(Long fileId) {
+        if (fileId == null) {
+            return List.of();
+        }
+
+        return List.of(fileId);
     }
 }

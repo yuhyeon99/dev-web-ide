@@ -1,6 +1,8 @@
 package com.yuhyeon.devwebide.realtime.config;
 
+import com.yuhyeon.devwebide.realtime.service.CrdtUpdateRedisSubscriber;
 import com.yuhyeon.devwebide.realtime.service.ProjectRealtimeRedisSubscriber;
+import com.yuhyeon.devwebide.realtime.service.TeamChatRedisSubscriber;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -25,18 +27,34 @@ public class RealtimeRedisConfig {
     @Value("${app.redis.project-events-channel}")
     private String projectEventsChannel;
 
+    @Value("${app.redis.crdt-updates-channel}")
+    private String crdtUpdatesChannel;
+
+    @Value("${app.redis.chat-messages-channel}")
+    private String chatMessagesChannel;
+
     @Bean
     public RedisMessageListenerContainer projectRealtimeRedisMessageListenerContainer(
             RedisConnectionFactory connectionFactory,
-            ProjectRealtimeRedisSubscriber subscriber
+            ProjectRealtimeRedisSubscriber projectSubscriber,
+            CrdtUpdateRedisSubscriber crdtSubscriber,
+            TeamChatRedisSubscriber chatSubscriber
     ) {
         RedisMessageListenerContainer container =
                 new RedisMessageListenerContainer();
 
         container.setConnectionFactory(connectionFactory);
         container.addMessageListener(
-                subscriber,
+                projectSubscriber,
                 new ChannelTopic(projectEventsChannel)
+        );
+        container.addMessageListener(
+                crdtSubscriber,
+                new ChannelTopic(crdtUpdatesChannel)
+        );
+        container.addMessageListener(
+                chatSubscriber,
+                new ChannelTopic(chatMessagesChannel)
         );
 
         return container;

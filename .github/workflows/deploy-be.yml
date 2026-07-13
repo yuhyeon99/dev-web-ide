@@ -1,0 +1,120 @@
+name: Deploy BE
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'BE/dev-web-ide/**'
+      - '.github/workflows/deploy-be.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-be-main
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::725478842252:role/GitHubActionsDevWebIdeDeployRole
+  ECR_REGISTRY: 725478842252.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: dev-web-ide-be
+  ECS_CLUSTER: dev-web-ide-prod-cluster
+  ECS_SERVICE: dev-web-ide-be-prod-service
+  ECS_TASK_DEFINITION_FAMILY: dev-web-ide-be-prod-task
+  ECS_CONTAINER_NAME: dev-web-ide-be
+
+jobs:
+  deploy:
+    name: Test, build and deploy BE
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: gradle
+
+      - name: Test BE
+        working-directory: BE/dev-web-ide
+        run: ./gradlew test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push BE image
+        uses: docker/build-push-action@v6
+        with:
+          context: BE/dev-web-ide
+          file: BE/dev-web-ide/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Register ECS task definition
+        id: task-definition
+        env:
+          IMAGE_URI: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "${ECS_TASK_DEFINITION_FAMILY}" \
+            > task-definition.json
+
+          jq \
+            --arg image "${IMAGE_URI}" \
+            --arg container "${ECS_CONTAINER_NAME}" \
+            '.taskDefinition
+              | .containerDefinitions = (
+                  .containerDefinitions
+                  | map(if .name == $container then .image = $image else . end)
+                )
+              | del(
+                  .taskDefinitionArn,
+                  .revision,
+                  .status,
+                  .requiresAttributes,
+                  .compatibilities,
+                  .registeredAt,
+                  .registeredBy
+                )' \
+            task-definition.json > new-task-definition.json
+
+          task_definition_arn="$(aws ecs register-task-definition \
+            --cli-input-json file://new-task-definition.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)"
+
+          echo "task-definition-arn=${task_definition_arn}" >> "${GITHUB_OUTPUT}"
+
+      - name: Update ECS service
+        run: |
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${ECS_SERVICE}" \
+            --task-definition "${{ steps.task-definition.outputs.task-definition-arn }}"
+
+          aws ecs wait services-stable \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}"

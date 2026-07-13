@@ -391,7 +391,9 @@
 
 ## 현재 미완료 또는 추가 구현 필요 항목
 
-- [ ] 실제 OAuth provider 검증 연동
+- [~] 실제 OAuth provider 검증 연동
+  - Google OAuth authorization code flow는 구현 및 운영 배포 완료
+  - GitHub/Kakao 등 다른 provider는 아직 미연동
 - [ ] ProjectFile API Security principal 기반 전환
 - [ ] ProjectRun / WorkspaceSessionStop / TerminalLog API Security principal 기반 전환
 - [ ] 프로젝트 복구 API
@@ -423,7 +425,7 @@
 - [x] ECS Fargate 기반 백엔드 서비스 배포
   - Cluster: `dev-web-ide-prod-cluster`
   - Service: `dev-web-ide-be-prod-service`
-  - Task Definition: `dev-web-ide-be-prod-task:4`
+  - Task Definition: `dev-web-ide-be-prod-task:5`
   - Desired tasks: `1`
   - Running tasks: `1`
 - [x] ALB 기반 백엔드 HTTP 진입점 구성
@@ -449,20 +451,31 @@
   - Access Point: `fsap-032b7a3e38c1af59e`
   - EFS security group: `sg-02c0c5275b6812b82`
   - ECS mount path: `/app/storage`
-  - ECS task definition: `dev-web-ide-be-prod-task:4`
+  - ECS task definition: `dev-web-ide-be-prod-task:5`
   - 임시 프로젝트 파일 저장 후 ECS task 재배포 뒤 동일 파일 내용 재조회 성공
+- [x] Google OAuth 로그인 운영 배포
+  - Google authorize/callback API 구현
+  - Google client secret은 AWS Secrets Manager에서 ECS secret으로 주입
+  - FE 로그인 버튼, OAuth callback 처리, JWT 저장 흐름 연결
+- [x] CI/CD 자동 배포 설정
+  - GitHub Actions workflow: `.github/workflows/deploy-fe.yml`
+  - GitHub Actions workflow: `.github/workflows/deploy-be.yml`
+  - AWS OIDC Role: `GitHubActionsDevWebIdeDeployRole`
+  - FE: build 후 S3 sync 및 CloudFront invalidation
+  - BE: test 후 Docker image build/push, ECS task definition 등록, service update
 
 ### 부분 완료
 
-- [~] FE API base URL 설정
+- [x] FE API base URL 설정 및 주요 API 연동
   - FE production env: `VITE_API_BASE_URL=https://d15mkrht7zfcoy.cloudfront.net`
-  - 아직 실제 FE API 호출 코드는 mock/publishing 상태에서 순차 연동 필요
+  - 게스트 세션, 프로젝트 생성/조회/열기, 파일 조회/저장, Google OAuth 로그인 흐름 연동
 - [~] HTTPS API endpoint 적용
   - 도메인 없이 API용 CloudFront를 ALB 앞에 두어 HTTPS endpoint 확보
   - FE/BE 모두 CloudFront HTTPS endpoint를 사용하므로 현재 단계에서 ALB 자체 HTTPS listener는 필수 아님
 - [~] DB/JWT secret 운영 주입
   - 현재 ECS Task Definition 환경변수로 주입됨
-  - 동작은 확인됐으나 Secrets Manager 또는 SSM Parameter Store 이전 필요
+  - Google OAuth client secret은 AWS Secrets Manager로 전환 완료
+  - DB password, JWT secret은 Secrets Manager 또는 SSM Parameter Store 이전 필요
 - [~] RDS 보안 그룹
   - ECS service security group에서 RDS 접근 가능
   - RDS security group에 넓은 inbound 규칙이 남아 있어 운영 전 축소 필요
@@ -476,10 +489,6 @@
 - [ ] Redis 연결
   - 세션 상태, 활성 사용자 수, WebSocket Pub/Sub, idle timer 보조 용도
   - ElastiCache Redis 또는 호환 Redis 구성 필요
-- [ ] CI/CD 자동 배포
-  - 현재 Docker build, ECR push, ECS update는 수동 CLI 작업
-  - GitHub Actions 등으로 build/push/deploy 자동화 필요
-
 ### 선택 또는 운영 고도화
 
 - [ ] API 커스텀 도메인 연결

@@ -1,0 +1,72 @@
+name: Deploy FE
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'FE/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/deploy-fe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-fe-main
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::725478842252:role/GitHubActionsDevWebIdeDeployRole
+  FE_BUCKET: dev-web-ide-fe-prod-apne2
+  FE_CLOUDFRONT_DISTRIBUTION_ID: E1WXIKMHAA9OB9
+  VITE_API_BASE_URL: https://d15mkrht7zfcoy.cloudfront.net
+
+jobs:
+  deploy:
+    name: Build and deploy FE
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint FE
+        run: pnpm --dir FE exec eslint .
+
+      - name: Build FE
+        run: pnpm --filter @dev-web-ide/fe build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync FE assets to S3
+        run: aws s3 sync FE/dist "s3://${FE_BUCKET}" --delete
+
+      - name: Invalidate FE CloudFront cache
+        run: >
+          aws cloudfront create-invalidation
+          --distribution-id "${FE_CLOUDFRONT_DISTRIBUTION_ID}"
+          --paths '/*'

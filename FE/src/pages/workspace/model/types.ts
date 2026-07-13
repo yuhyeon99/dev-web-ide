@@ -48,7 +48,7 @@ export type WorkspaceTab = {
   id: string;
   label: string;
   path: string;
-  language: 'tsx' | 'css' | 'ts';
+  language: string;
   pinned: boolean;
   dirty: boolean;
 };

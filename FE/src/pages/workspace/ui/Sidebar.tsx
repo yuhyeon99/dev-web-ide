@@ -27,6 +27,7 @@ type SidebarProps = {
   fileTree: WorkspaceTreeNode[];
   onActivityChange: (activityId: ActivityId) => void;
   onSelectTab: (tabId: string) => void;
+  projectLabel: string;
   settingsSections: SettingSection[];
   tabs: WorkspaceTab[];
 };
@@ -149,6 +150,7 @@ export const Sidebar = ({
   fileTree,
   onActivityChange,
   onSelectTab,
+  projectLabel,
   settingsSections,
   tabs,
 }: SidebarProps) => {
@@ -252,7 +254,7 @@ export const Sidebar = ({
                     Files
                   </p>
                   <span className="text-[11px] text-[var(--ws-muted)]">
-                    Project A
+                    {projectLabel}
                   </span>
                 </div>
                 <div className="space-y-0.5">

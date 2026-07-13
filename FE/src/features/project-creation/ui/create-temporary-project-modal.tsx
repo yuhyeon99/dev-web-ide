@@ -1,21 +1,40 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+/* eslint-disable no-unused-vars */
+
+import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 
 import {
   invitableMembers,
   projectCreationPreviewModeOptions,
   projectRoleOptions,
   projectTypeOptions,
-  runtimeOptions,
   type ProjectCreationPreviewMode,
   type ProjectRole,
   type ProjectType,
-  type RuntimeId,
   type SelectedMember,
 } from '../model/project-creation';
+
+export type ProjectCreationRuntimeOption = {
+  id: string;
+  label: string;
+  description: string;
+  badge: string;
+  meta: string;
+};
+
+export type ProjectCreateFormValues = {
+  name: string;
+  runtimeId: number;
+  projectType: 'GUEST' | 'PERSONAL' | 'TEAM';
+};
 
 type CreateTemporaryProjectModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  createError?: string | null;
+  isCreating?: boolean;
+  isRuntimeLoading?: boolean;
+  onCreateProject: (values: ProjectCreateFormValues) => Promise<void> | void;
+  runtimeOptions: ProjectCreationRuntimeOption[];
 };
 
 const handleDialogClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -39,23 +58,25 @@ const roleToneClassNameMap: Record<ProjectRole, string> = {
     'border-[#c5c5c5]/20 bg-[#c5c5c5]/8 text-[#d4d4d4] shadow-[inset_0_0_0_1px_rgba(197,197,197,0.1)]',
 };
 
-const runtimeAccentClassNameMap: Record<RuntimeId, string> = {
-  nodejs: 'text-[#4ec9b0]',
-  python: 'text-[#ffd866]',
-  java: 'text-[#ff8f6b]',
-  cpp: 'text-[#9cdcfe]',
+const getRuntimeAccentClassName = (runtimeId: string) => {
+  if (runtimeId.includes('python')) {
+    return 'text-[#ffd866]';
+  }
+
+  if (runtimeId.includes('java')) {
+    return 'text-[#ff8f6b]';
+  }
+
+  if (runtimeId.includes('cpp') || runtimeId.includes('gcc')) {
+    return 'text-[#9cdcfe]';
+  }
+
+  return 'text-[#4ec9b0]';
 };
 
 const projectTypeMetaMap: Record<ProjectType, string> = {
   personal: '혼자 작업',
   team: '멤버 초대',
-};
-
-const runtimeMetaMap: Record<RuntimeId, string> = {
-  nodejs: 'JS/TS',
-  python: '스크립트',
-  java: 'JVM',
-  cpp: 'Native',
 };
 
 const roleCapabilityMap: Record<ProjectRole, string> = {
@@ -65,25 +86,30 @@ const roleCapabilityMap: Record<ProjectRole, string> = {
 };
 
 export const CreateTemporaryProjectModal = ({
+  createError,
   isOpen,
+  isCreating = false,
+  isRuntimeLoading = false,
   onClose,
+  onCreateProject,
+  runtimeOptions,
 }: CreateTemporaryProjectModalProps) => {
   const [previewMode, setPreviewMode] =
     useState<ProjectCreationPreviewMode>('guest');
   const [projectTitle, setProjectTitle] = useState('');
   const [projectType, setProjectType] = useState<ProjectType>('personal');
-  const [selectedRuntime, setSelectedRuntime] = useState<RuntimeId>('nodejs');
+  const [selectedRuntime, setSelectedRuntime] = useState('');
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<SelectedMember[]>([]);
 
-  const resetModalState = () => {
+  const resetModalState = useCallback(() => {
     setPreviewMode('guest');
     setProjectTitle('');
     setProjectType('personal');
-    setSelectedRuntime('nodejs');
+    setSelectedRuntime('');
     setMemberSearchQuery('');
     setSelectedMembers([]);
-  };
+  }, []);
 
   const handleClose = () => {
     resetModalState();
@@ -113,7 +139,7 @@ export const CreateTemporaryProjectModal = ({
         window.removeEventListener('keydown', handleEscapeKeydown);
       };
     },
-    [isOpen, onClose],
+    [isOpen, onClose, resetModalState],
   );
 
   if (!isOpen) {
@@ -125,8 +151,9 @@ export const CreateTemporaryProjectModal = ({
   const effectiveProjectType: ProjectType = isGuestPreview
     ? 'personal'
     : projectType;
+  const selectedRuntimeId = selectedRuntime || runtimeOptions[0]?.id || '';
   const selectedRuntimeOption = runtimeOptions.find(
-    (runtimeOption) => runtimeOption.id === selectedRuntime,
+    (runtimeOption) => runtimeOption.id === selectedRuntimeId,
   );
   const normalizedQuery = memberSearchQuery.trim().toLowerCase();
   const searchableMembers = invitableMembers.filter((member) => {
@@ -149,7 +176,11 @@ export const CreateTemporaryProjectModal = ({
   const visibleSearchResults = searchableMembers.slice(0, 5);
   const teamMemberCount =
     effectiveProjectType === 'team' ? selectedMembers.length + 1 : 1;
-  const isCreateDisabled = projectTitle.trim().length === 0;
+  const isCreateDisabled =
+    projectTitle.trim().length === 0 ||
+    !selectedRuntimeId ||
+    isCreating ||
+    isRuntimeLoading;
   const projectTitleDisplay = projectTitle.trim() || '제목 없음';
   const showTeamSection = !isGuestPreview && effectiveProjectType === 'team';
 
@@ -192,7 +223,20 @@ export const CreateTemporaryProjectModal = ({
     );
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
+    if (isCreateDisabled) {
+      return;
+    }
+
+    await onCreateProject({
+      name: projectTitle.trim(),
+      runtimeId: Number(selectedRuntimeId),
+      projectType: isGuestPreview
+        ? 'GUEST'
+        : effectiveProjectType === 'team'
+          ? 'TEAM'
+          : 'PERSONAL',
+    });
     handleClose();
   };
 
@@ -565,7 +609,7 @@ export const CreateTemporaryProjectModal = ({
                   <div className={summaryRowClassName}>
                     <span className="text-[#858585]">런타임</span>
                     <span className="font-medium text-[#f3f3f3]">
-                      {selectedRuntimeOption?.label}
+                      {selectedRuntimeOption?.label ?? '-'}
                     </span>
                   </div>
                   <div className={summaryRowClassName}>
@@ -583,66 +627,76 @@ export const CreateTemporaryProjectModal = ({
                     런타임
                   </h3>
                   <span className="text-xs text-[#858585]">
-                    {selectedRuntimeOption?.label}
+                    {isRuntimeLoading
+                      ? '불러오는 중'
+                      : (selectedRuntimeOption?.label ?? '선택 필요')}
                   </span>
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-2 xl:mt-4">
-                  {runtimeOptions.map((runtimeOption) => {
-                    const isActive = runtimeOption.id === selectedRuntime;
+                  {runtimeOptions.length > 0 ? (
+                    runtimeOptions.map((runtimeOption) => {
+                      const isActive = runtimeOption.id === selectedRuntimeId;
 
-                    return (
-                      <button
-                        key={runtimeOption.id}
-                        type="button"
-                        onClick={() => setSelectedRuntime(runtimeOption.id)}
-                        className={`rounded-lg border px-2.5 py-2.5 text-left transition ${
-                          isActive
-                            ? 'border-[#0e639c] bg-[#0e639c]/10 shadow-[inset_0_0_0_1px_rgba(14,99,156,0.24)]'
-                            : 'border-[#313131] bg-[#1e1e1e] hover:border-[#3c3c3c] hover:bg-[#232326]'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
+                      return (
+                        <button
+                          key={runtimeOption.id}
+                          type="button"
+                          onClick={() => setSelectedRuntime(runtimeOption.id)}
+                          className={`rounded-lg border px-2.5 py-2.5 text-left transition ${
+                            isActive
+                              ? 'border-[#0e639c] bg-[#0e639c]/10 shadow-[inset_0_0_0_1px_rgba(14,99,156,0.24)]'
+                              : 'border-[#313131] bg-[#1e1e1e] hover:border-[#3c3c3c] hover:bg-[#232326]'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <span
+                                className={`inline-flex rounded-md border border-[#3c3c3c] bg-[#1b1b1c] px-2 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase ${getRuntimeAccentClassName(runtimeOption.id)}`}
+                              >
+                                {runtimeOption.badge}
+                              </span>
+                              <p className="mt-1.5 text-sm font-semibold text-[#f3f3f3]">
+                                {runtimeOption.label}
+                              </p>
+                              <p className="mt-0.5 truncate text-[10px] text-[#858585]">
+                                {runtimeOption.meta}
+                              </p>
+                            </div>
                             <span
-                              className={`inline-flex rounded-md border border-[#3c3c3c] bg-[#1b1b1c] px-2 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase ${runtimeAccentClassNameMap[runtimeOption.id]}`}
+                              className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                                isActive
+                                  ? 'border-[#4fc1ff] bg-[#0e639c] text-white'
+                                  : 'border-[#4b4b4f] bg-transparent text-transparent'
+                              }`}
+                              aria-hidden="true"
                             >
-                              {runtimeOption.badge}
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                className="h-2.5 w-2.5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="m3.5 8 2.5 2.5L12.5 4"
+                                />
+                              </svg>
                             </span>
-                            <p className="mt-1.5 text-sm font-semibold text-[#f3f3f3]">
-                              {runtimeOption.label}
-                            </p>
-                            <p className="mt-0.5 truncate text-[10px] text-[#858585]">
-                              {runtimeMetaMap[runtimeOption.id]}
-                            </p>
                           </div>
-                          <span
-                            className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                              isActive
-                                ? 'border-[#4fc1ff] bg-[#0e639c] text-white'
-                                : 'border-[#4b4b4f] bg-transparent text-transparent'
-                            }`}
-                            aria-hidden="true"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 16 16"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              className="h-2.5 w-2.5"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="m3.5 8 2.5 2.5L12.5 4"
-                              />
-                            </svg>
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="col-span-2 rounded-lg border border-dashed border-[#3c3c3c] bg-[#1e1e1e] px-3 py-6 text-center text-sm text-[#858585]">
+                      {isRuntimeLoading
+                        ? '런타임을 불러오는 중입니다.'
+                        : '사용 가능한 런타임이 없습니다.'}
+                    </div>
+                  )}
                 </div>
               </section>
             </aside>
@@ -651,9 +705,10 @@ export const CreateTemporaryProjectModal = ({
 
         <div className="flex flex-col gap-2 border-t border-[#313131] bg-[#181818] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="text-xs text-[#858585]">
-            {isCreateDisabled
-              ? '프로젝트 제목을 입력하세요.'
-              : `${selectedRuntimeOption?.label} 환경으로 생성 준비됨`}
+            {createError ??
+              (isCreateDisabled
+                ? '프로젝트 제목을 입력하세요.'
+                : `${selectedRuntimeOption?.label} 환경으로 생성 준비됨`)}
           </p>
 
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -674,7 +729,7 @@ export const CreateTemporaryProjectModal = ({
                   : 'bg-[#0e639c] text-white hover:bg-[#1177bb]'
               }`}
             >
-              생성
+              {isCreating ? '생성 중' : '생성'}
             </button>
           </div>
         </div>

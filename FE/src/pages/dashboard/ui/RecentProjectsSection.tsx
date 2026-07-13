@@ -1,6 +1,9 @@
+/* eslint-disable no-unused-vars */
+
 import { useState } from 'react';
 
 type RecentProject = {
+  id?: number;
   name: string;
   description: string;
   updatedAt: string;
@@ -13,6 +16,7 @@ type RecentProjectsSectionProps = {
   projects: RecentProject[];
   emptyMessage: string;
   defaultExpanded?: boolean;
+  onProjectOpen?: (projectId: number) => void;
 };
 
 export const RecentProjectsSection = ({
@@ -21,6 +25,7 @@ export const RecentProjectsSection = ({
   projects,
   emptyMessage,
   defaultExpanded = false,
+  onProjectOpen,
 }: RecentProjectsSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -65,9 +70,15 @@ export const RecentProjectsSection = ({
           <div className="flex flex-col gap-2">
             {projects.length > 0 ? (
               projects.map((project) => (
-                <article
+                <button
                   key={`${project.name}-${project.updatedAt}`}
-                  className="flex flex-col gap-3 rounded-md border border-[#313131] bg-[#1e1e1e] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  type="button"
+                  onClick={() => {
+                    if (project.id) {
+                      onProjectOpen?.(project.id);
+                    }
+                  }}
+                  className="flex flex-col gap-3 rounded-md border border-[#313131] bg-[#1e1e1e] px-4 py-3 text-left transition hover:border-[#3c3c3c] hover:bg-[#232326] sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
@@ -85,7 +96,7 @@ export const RecentProjectsSection = ({
                   <div className="shrink-0 text-xs font-medium text-[#6a9955]">
                     {project.updatedAt}
                   </div>
-                </article>
+                </button>
               ))
             ) : (
               <div className="rounded-md border border-dashed border-[#3c3c3c] bg-[#1e1e1e] p-4 text-sm text-[#858585]">

@@ -1,13 +1,25 @@
 import MonacoEditor from '@monaco-editor/react';
 
-const MonacoEditorComponent = (props: any) => {
+type MonacoEditorComponentProps = {
+  language: string;
+  value: string;
+};
+
+const MonacoEditorComponent = ({
+  language,
+  value,
+}: MonacoEditorComponentProps) => {
   return (
     <MonacoEditor
       height="100%"
+      language={language}
       theme="vs-dark"
-      defaultLanguage="javascript"
-      defaultValue="// some comment"
-      {...props}
+      value={value}
+      options={{
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        wordWrap: 'on',
+      }}
     />
   );
 };

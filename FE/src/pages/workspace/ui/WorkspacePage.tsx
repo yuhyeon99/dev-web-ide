@@ -3,10 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import {
+  createProjectFile,
   getMyProjects,
   getProjectDetail,
   getProjectFileContent,
   getProjectFileTree,
+  runProject,
   saveProjectFiles,
 } from '@/shared/api/projects';
 import { resolveProjectApiSession } from '@/shared/api/session';
@@ -21,11 +23,8 @@ import { Sidebar } from './Sidebar';
 import { Terminal } from './Terminal';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import {
-  activityItems,
-  presenceUsers,
-  settingSections,
-  terminalSessions,
   type ActivityId,
+  type ActivityItem,
   type WorkspaceTab,
   type WorkspaceTreeNode,
 } from '../model';
@@ -39,6 +38,14 @@ const workspaceTheme = {
   '--ws-text': '#d4d4d4',
   '--ws-muted': '#8b949e',
 } as CSSProperties;
+
+const workspaceActivityItems: ActivityItem[] = [
+  {
+    id: 'explorer',
+    label: 'Explorer',
+    description: '프로젝트 파일 탐색',
+  },
+];
 
 const getLanguageByFileName = (fileName: string) => {
   if (fileName.endsWith('.tsx') || fileName.endsWith('.jsx')) {
@@ -133,6 +140,11 @@ export const WorkspacePage = () => {
   const [activeTabId, setActiveTabId] = useState('');
   const [fileDrafts, setFileDrafts] = useState<Record<string, FileDraft>>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [fileCreateMessage, setFileCreateMessage] = useState<string | null>(
+    null,
+  );
+  const [terminalLines, setTerminalLines] = useState<string[]>([]);
+  const [terminalStatus, setTerminalStatus] = useState('status: idle');
   const projectsQuery = useQuery({
     queryKey: ['workspace-projects'],
     queryFn: async () => {
@@ -162,6 +174,17 @@ export const WorkspacePage = () => {
     () => fileTreeQuery.data ?? [],
     [fileTreeQuery.data],
   );
+  const rootDirectory = useMemo(() => {
+    const directories = fileNodes.filter(
+      (fileNode) => fileNode.fileType === 'DIRECTORY',
+    );
+
+    return (
+      directories.find((fileNode) => fileNode.parentFileId === null) ??
+      directories[0] ??
+      null
+    );
+  }, [fileNodes]);
   const files = useMemo(() => flattenFiles(fileNodes), [fileNodes]);
   const editorTabs = useMemo<WorkspaceTab[]>(
     () =>
@@ -272,6 +295,70 @@ export const WorkspacePage = () => {
       setSaveMessage('저장됨');
     },
   });
+  const createFileMutation = useMutation({
+    mutationFn: async (request: {
+      fileType: 'FILE' | 'DIRECTORY';
+      name: string;
+    }) => {
+      if (!rootDirectory) {
+        throw new Error('루트 디렉터리를 찾을 수 없습니다.');
+      }
+
+      return createProjectFile(projectId, {
+        parentFileId: rootDirectory.id,
+        name: request.name,
+        fileType: request.fileType,
+      });
+    },
+    onError: () => {
+      setFileCreateMessage('파일을 생성하지 못했습니다.');
+    },
+    onSuccess: async (createdFile) => {
+      setFileCreateMessage(null);
+      await queryClient.invalidateQueries({
+        queryKey: ['project-file-tree', projectId],
+      });
+
+      if (createdFile.fileType === 'FILE') {
+        setActiveTabId(String(createdFile.projectFileId));
+      }
+    },
+  });
+  const runProjectMutation = useMutation({
+    mutationFn: async () => {
+      const projectSession = await resolveProjectApiSession(
+        undefined,
+        projectId,
+      );
+
+      return runProject(projectId, {
+        guestSessionId: projectSession.guestSessionId,
+        userId: projectSession.userId,
+      });
+    },
+    onMutate: () => {
+      setTerminalStatus('status: starting');
+      setTerminalLines(['$ run project', '프로젝트 실행 세션을 시작합니다.']);
+    },
+    onError: () => {
+      setTerminalStatus('status: failed');
+      setTerminalLines((currentLines) => [
+        ...currentLines,
+        '프로젝트 실행에 실패했습니다.',
+      ]);
+    },
+    onSuccess: (response) => {
+      setTerminalStatus(`status: ${response.container.status.toLowerCase()}`);
+      setTerminalLines([
+        '$ run project',
+        `workspace session #${response.workspaceSessionId}`,
+        `container #${response.containerInstanceId} ${response.container.status}`,
+        `runtime ${response.runtimeDisplayName} (${response.runtimeLanguage})`,
+        `image ${response.dockerImage}`,
+        `efs ${response.efsMountPath}`,
+      ]);
+    },
+  });
 
   const handleActiveFileContentChange = (nextContent: string) => {
     if (activeFileId === null) {
@@ -301,6 +388,21 @@ export const WorkspacePage = () => {
     }
 
     saveFilesMutation.mutate();
+  };
+
+  const handleCreateFile = (fileType: 'FILE' | 'DIRECTORY') => {
+    const defaultName = fileType === 'FILE' ? 'new-file.txt' : 'new-folder';
+    const name = window.prompt(
+      fileType === 'FILE' ? '새 파일 이름' : '새 폴더 이름',
+      defaultName,
+    );
+    const trimmedName = name?.trim();
+
+    if (!trimmedName || createFileMutation.isPending) {
+      return;
+    }
+
+    createFileMutation.mutate({ fileType, name: trimmedName });
   };
 
   if (!Number.isFinite(projectId) || projectId <= 0) {
@@ -366,29 +468,31 @@ export const WorkspacePage = () => {
             })
           }
           saveMessage={saveMessage}
-          users={presenceUsers}
+          users={[]}
         />
 
         <div className="flex min-h-0 flex-1 flex-col gap-3 px-3 pb-3 lg:px-4 lg:pb-4">
           <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[21rem_minmax(0,1fr)]">
             <Sidebar
-              activities={activityItems}
+              activities={workspaceActivityItems}
               activeActivity={activeActivity}
               activeFilePath={activeTab?.path ?? ''}
-              collaborators={presenceUsers}
+              collaborators={[]}
               fileTree={workspaceTree}
+              isCreatingFile={createFileMutation.isPending}
               onActivityChange={(activityId) =>
                 startTransition(() => {
                   setActiveActivity(activityId);
                 })
               }
+              onCreateDirectory={() => handleCreateFile('DIRECTORY')}
+              onCreateFile={() => handleCreateFile('FILE')}
               onSelectTab={(tabId) =>
                 startTransition(() => {
                   setActiveTabId(tabId);
                 })
               }
               projectLabel={activeProject.label}
-              settingsSections={settingSections}
               tabs={editorTabs}
             />
 
@@ -406,7 +510,23 @@ export const WorkspacePage = () => {
             />
           </div>
 
-          <Terminal sessions={terminalSessions} />
+          {fileCreateMessage ? (
+            <div className="rounded-md border border-[#5a2c2c] bg-[#2b1d1d] px-3 py-2 text-sm text-[#f3b7b7]">
+              {fileCreateMessage}
+            </div>
+          ) : null}
+
+          <Terminal
+            isRunning={runProjectMutation.isPending}
+            lines={terminalLines}
+            onRun={() => runProjectMutation.mutate()}
+            runtimeLabel={
+              projectDetailQuery.data
+                ? `runtime: ${projectDetailQuery.data.runtime.displayName}`
+                : undefined
+            }
+            statusLabel={terminalStatus}
+          />
         </div>
       </div>
     </div>

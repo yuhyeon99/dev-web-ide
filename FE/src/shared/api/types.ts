@@ -24,6 +24,16 @@ export type ProjectType = 'PERSONAL' | 'TEAM' | 'GUEST';
 export type ProjectVisibility = 'PRIVATE' | 'TEAM';
 export type ProjectStatus = 'ACTIVE' | 'DELETED';
 export type ProjectFileType = 'FILE' | 'DIRECTORY';
+export type WorkspaceSessionStatus =
+  | 'STARTING'
+  | 'RUNNING'
+  | 'STOPPED'
+  | 'FAILED';
+export type ContainerInstanceStatus =
+  | 'STARTING'
+  | 'RUNNING'
+  | 'STOPPED'
+  | 'FAILED';
 
 export type ProjectCreateRequest = {
   name: string;
@@ -136,4 +146,30 @@ export type ProjectFileSaveResponse = {
     sizeBytes: number;
     createdAt: string;
   }>;
+};
+
+export type ProjectRunRequest = {
+  userId: number | null;
+  guestSessionId: number | null;
+};
+
+export type ProjectRunResponse = {
+  projectId: number;
+  workspaceSessionId: number;
+  containerInstanceId: number;
+  runtimeName: string;
+  runtimeDisplayName: string;
+  runtimeLanguage: RuntimeLanguage;
+  dockerImage: string;
+  workspaceStatus: WorkspaceSessionStatus;
+  efsMountPath: string;
+  container: {
+    id: number;
+    provider: string;
+    taskArn: string | null;
+    containerId: string;
+    dockerImage: string;
+    status: ContainerInstanceStatus;
+    efsMountPath: string;
+  };
 };

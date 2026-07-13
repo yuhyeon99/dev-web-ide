@@ -1,11 +1,9 @@
 /* eslint-disable no-unused-vars */
 
-import { useState } from 'react';
 import type {
   ActivityId,
   ActivityItem,
   PresenceUser,
-  SettingSection,
   WorkspaceTab,
   WorkspaceTreeNode,
 } from '../model';
@@ -26,9 +24,11 @@ type SidebarProps = {
   collaborators: PresenceUser[];
   fileTree: WorkspaceTreeNode[];
   onActivityChange: (activityId: ActivityId) => void;
+  onCreateDirectory: () => void;
+  onCreateFile: () => void;
   onSelectTab: (tabId: string) => void;
   projectLabel: string;
-  settingsSections: SettingSection[];
+  isCreatingFile?: boolean;
   tabs: WorkspaceTab[];
 };
 
@@ -148,21 +148,14 @@ export const Sidebar = ({
   activeFilePath,
   collaborators,
   fileTree,
+  isCreatingFile = false,
   onActivityChange,
+  onCreateDirectory,
+  onCreateFile,
   onSelectTab,
   projectLabel,
-  settingsSections,
   tabs,
 }: SidebarProps) => {
-  const [settingState, setSettingState] = useState<Record<string, boolean>>(
-    () =>
-      Object.fromEntries(
-        settingsSections.flatMap((section) =>
-          section.items.map((item) => [item.id, item.enabled]),
-        ),
-      ),
-  );
-
   const panelMeta = activityTitleMap[activeActivity];
 
   const handleSelectPath = (path: string) => {
@@ -223,50 +216,80 @@ export const Sidebar = ({
                   </span>
                 </div>
                 <div className="space-y-1">
-                  {tabs.map((tab) => {
-                    const isActive = tab.path === activeFilePath;
+                  {tabs.length > 0 ? (
+                    tabs.map((tab) => {
+                      const isActive = tab.path === activeFilePath;
 
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => onSelectTab(tab.id)}
-                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
-                          isActive
-                            ? 'bg-[rgba(14,99,156,0.22)] text-white'
-                            : 'text-[var(--ws-text)] hover:bg-[#2a2d2e]'
-                        }`}
-                      >
-                        <FileIcon className="h-4 w-4 shrink-0 text-[#9cdcfe]" />
-                        <span className="truncate">{tab.label}</span>
-                        {tab.dirty ? (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-[#e2c08d]" />
-                        ) : null}
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => onSelectTab(tab.id)}
+                          className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
+                            isActive
+                              ? 'bg-[rgba(14,99,156,0.22)] text-white'
+                              : 'text-[var(--ws-text)] hover:bg-[#2a2d2e]'
+                          }`}
+                        >
+                          <FileIcon className="h-4 w-4 shrink-0 text-[#9cdcfe]" />
+                          <span className="truncate">{tab.label}</span>
+                          {tab.dirty ? (
+                            <span className="ml-auto h-2 w-2 rounded-full bg-[#e2c08d]" />
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="rounded-md border border-dashed border-[#3c3c3c] bg-[#1e1e1e] px-3 py-2 text-sm text-[var(--ws-muted)]">
+                      열린 파일이 없습니다.
+                    </div>
+                  )}
                 </div>
               </section>
 
               <section>
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2 flex items-center justify-between gap-3">
                   <p className="text-[11px] font-semibold tracking-[0.16em] text-[var(--ws-muted)] uppercase">
                     Files
                   </p>
-                  <span className="text-[11px] text-[var(--ws-muted)]">
-                    {projectLabel}
-                  </span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-[11px] text-[var(--ws-muted)]">
+                      {projectLabel}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={isCreatingFile}
+                      onClick={onCreateFile}
+                      className="rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-1 text-[11px] font-semibold text-[#d4d4d4] transition hover:border-[#4a4a4a] hover:bg-[#252526] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      File
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isCreatingFile}
+                      onClick={onCreateDirectory}
+                      className="rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-1 text-[11px] font-semibold text-[#d4d4d4] transition hover:border-[#4a4a4a] hover:bg-[#252526] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Dir
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-0.5">
-                  {fileTree.map((node) => (
-                    <TreeNodeRow
-                      key={node.id}
-                      activeFilePath={activeFilePath}
-                      depth={0}
-                      node={node}
-                      onSelectPath={handleSelectPath}
-                    />
-                  ))}
+                  {fileTree.length > 0 ? (
+                    fileTree.map((node) => (
+                      <TreeNodeRow
+                        key={node.id}
+                        activeFilePath={activeFilePath}
+                        depth={0}
+                        node={node}
+                        onSelectPath={handleSelectPath}
+                      />
+                    ))
+                  ) : (
+                    <div className="rounded-md border border-dashed border-[#3c3c3c] bg-[#1e1e1e] px-3 py-2 text-sm text-[var(--ws-muted)]">
+                      파일이 없습니다.
+                    </div>
+                  )}
                 </div>
               </section>
             </div>
@@ -274,91 +297,44 @@ export const Sidebar = ({
 
           {activeActivity === 'collaboration' ? (
             <div className="space-y-3">
-              {collaborators.map((user) => (
-                <article
-                  key={user.id}
-                  className="rounded-2xl border p-3"
-                  style={{
-                    borderColor: user.accent,
-                    backgroundColor: user.accentSoft,
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--ws-text)]">
-                        {user.name}
-                      </p>
-                      <p className="mt-1 text-[11px] text-[var(--ws-muted)]">
-                        {user.role} · {user.status}
+              {collaborators.length > 0 ? (
+                collaborators.map((user) => (
+                  <article
+                    key={user.id}
+                    className="rounded-2xl border p-3"
+                    style={{
+                      borderColor: user.accent,
+                      backgroundColor: user.accentSoft,
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--ws-text)]">
+                          {user.name}
+                        </p>
+                        <p className="mt-1 text-[11px] text-[var(--ws-muted)]">
+                          {user.role} · {user.status}
+                        </p>
+                      </div>
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: user.accent }}
+                      />
+                    </div>
+                    <div className="mt-3 space-y-1.5 text-[12px] text-[var(--ws-text)]">
+                      <p>{user.file}</p>
+                      <p className="text-[var(--ws-muted)]">{user.location}</p>
+                      <p className="text-[var(--ws-muted)]">
+                        마지막 활동 {user.lastSeen}
                       </p>
                     </div>
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: user.accent }}
-                    />
-                  </div>
-                  <div className="mt-3 space-y-1.5 text-[12px] text-[var(--ws-text)]">
-                    <p>{user.file}</p>
-                    <p className="text-[var(--ws-muted)]">{user.location}</p>
-                    <p className="text-[var(--ws-muted)]">
-                      마지막 활동 {user.lastSeen}
-                    </p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : null}
-
-          {activeActivity === 'settings' ? (
-            <div className="space-y-4">
-              {settingsSections.map((section) => (
-                <section key={section.id}>
-                  <p className="mb-2 text-[11px] font-semibold tracking-[0.16em] text-[var(--ws-muted)] uppercase">
-                    {section.title}
-                  </p>
-                  <div className="space-y-2">
-                    {section.items.map((item) => {
-                      const isEnabled = settingState[item.id];
-
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() =>
-                            setSettingState((current) => ({
-                              ...current,
-                              [item.id]: !current[item.id],
-                            }))
-                          }
-                          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[var(--ws-border)] bg-[#1f1f1f] px-3 py-3 text-left transition hover:border-[#3c4858]"
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-[var(--ws-text)]">
-                              {item.label}
-                            </p>
-                            <p className="mt-1 text-[12px] text-[var(--ws-muted)]">
-                              {item.description}
-                            </p>
-                          </div>
-                          <span
-                            className={`flex h-6 w-11 shrink-0 items-center rounded-full border px-1 transition ${
-                              isEnabled
-                                ? 'border-[#0e639c] bg-[#0e639c]'
-                                : 'border-[#3c3c3c] bg-[#2a2d2e]'
-                            }`}
-                          >
-                            <span
-                              className={`h-4 w-4 rounded-full bg-white transition ${
-                                isEnabled ? 'translate-x-5' : ''
-                              }`}
-                            />
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
+                  </article>
+                ))
+              ) : (
+                <div className="rounded-md border border-dashed border-[#3c3c3c] bg-[#1e1e1e] px-3 py-2 text-sm text-[var(--ws-muted)]">
+                  접속 중인 사용자가 없습니다.
+                </div>
+              )}
             </div>
           ) : null}
         </div>

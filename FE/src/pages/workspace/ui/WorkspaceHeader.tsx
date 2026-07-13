@@ -146,65 +146,71 @@ export const WorkspaceHeader = ({
             <span className="mr-1 text-[11px] font-semibold tracking-[0.18em] text-[var(--ws-muted)] uppercase">
               Presence
             </span>
-            {users.map((user) => (
-              <div key={user.id} className="group relative">
-                <div
-                  className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5"
-                  style={{
-                    borderColor: user.accent,
-                    backgroundColor: user.accentSoft,
-                  }}
-                >
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: user.accent }}
-                  />
-                  <span className="text-sm font-medium text-[var(--ws-text)]">
-                    {user.name}
-                  </span>
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(255,255,255,0.08)] text-[10px] font-semibold text-white">
-                    {initials(user.name)}
-                  </span>
-                </div>
-
-                <div className="pointer-events-none absolute right-0 z-20 mt-2 hidden w-64 rounded-2xl border border-[var(--ws-border)] bg-[#1f1f1f] p-3 opacity-0 shadow-[0_18px_36px_rgba(0,0,0,0.35)] transition md:block md:translate-y-1 md:group-hover:translate-y-0 md:group-hover:opacity-100">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--ws-text)]">
-                        {user.name}
-                      </p>
-                      <p className="mt-1 text-[11px] text-[var(--ws-muted)]">
-                        {user.role} · {user.status}
-                      </p>
-                    </div>
+            {users.length > 0 ? (
+              users.map((user) => (
+                <div key={user.id} className="group relative">
+                  <div
+                    className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5"
+                    style={{
+                      borderColor: user.accent,
+                      backgroundColor: user.accentSoft,
+                    }}
+                  >
                     <span
                       className="h-2.5 w-2.5 rounded-full"
                       style={{ backgroundColor: user.accent }}
                     />
+                    <span className="text-sm font-medium text-[var(--ws-text)]">
+                      {user.name}
+                    </span>
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(255,255,255,0.08)] text-[10px] font-semibold text-white">
+                      {initials(user.name)}
+                    </span>
                   </div>
-                  <dl className="mt-3 space-y-2 text-[11px] text-[var(--ws-muted)]">
-                    <div className="flex items-start justify-between gap-3">
-                      <dt>현재 파일</dt>
-                      <dd className="text-right text-[var(--ws-text)]">
-                        {user.file}
-                      </dd>
+
+                  <div className="pointer-events-none absolute right-0 z-20 mt-2 hidden w-64 rounded-2xl border border-[var(--ws-border)] bg-[#1f1f1f] p-3 opacity-0 shadow-[0_18px_36px_rgba(0,0,0,0.35)] transition md:block md:translate-y-1 md:group-hover:translate-y-0 md:group-hover:opacity-100">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--ws-text)]">
+                          {user.name}
+                        </p>
+                        <p className="mt-1 text-[11px] text-[var(--ws-muted)]">
+                          {user.role} · {user.status}
+                        </p>
+                      </div>
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: user.accent }}
+                      />
                     </div>
-                    <div className="flex items-start justify-between gap-3">
-                      <dt>현재 위치</dt>
-                      <dd className="text-right text-[var(--ws-text)]">
-                        {user.location}
-                      </dd>
-                    </div>
-                    <div className="flex items-start justify-between gap-3">
-                      <dt>마지막 활동</dt>
-                      <dd className="text-right text-[var(--ws-text)]">
-                        {user.lastSeen}
-                      </dd>
-                    </div>
-                  </dl>
+                    <dl className="mt-3 space-y-2 text-[11px] text-[var(--ws-muted)]">
+                      <div className="flex items-start justify-between gap-3">
+                        <dt>현재 파일</dt>
+                        <dd className="text-right text-[var(--ws-text)]">
+                          {user.file}
+                        </dd>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <dt>현재 위치</dt>
+                        <dd className="text-right text-[var(--ws-text)]">
+                          {user.location}
+                        </dd>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <dt>마지막 활동</dt>
+                        <dd className="text-right text-[var(--ws-text)]">
+                          {user.lastSeen}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <span className="rounded-full border border-[#3c3c3c] bg-[#1e1e1e] px-3 py-1.5 text-xs text-[var(--ws-muted)]">
+                접속 중인 사용자가 없습니다.
+              </span>
+            )}
           </div>
         </div>
       </section>

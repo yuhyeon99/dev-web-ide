@@ -8,6 +8,8 @@ import type {
   ProjectFileSaveRequest,
   ProjectFileSaveResponse,
   ProjectFileTreeResponse,
+  ProjectRunRequest,
+  ProjectRunResponse,
   ProjectSummaryResponse,
 } from './types';
 
@@ -81,4 +83,11 @@ export const saveProjectFiles = (
       body: JSON.stringify(request),
     },
   );
+};
+
+export const runProject = (projectId: number, request: ProjectRunRequest) => {
+  return apiRequest<ProjectRunResponse>(`/api/projects/${projectId}/run`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
 };

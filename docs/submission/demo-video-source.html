@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dev Web IDE Demo Video Source</title>
+    <style>
+      body {
+        margin: 0;
+        background: #111315;
+        color: white;
+        font-family:
+          Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #download {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        border: 1px solid #3c3c3c;
+        border-radius: 8px;
+        background: #252526;
+        color: #f3f3f3;
+        padding: 10px 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="demo" width="1280" height="720"></canvas>
+    <button id="download" type="button">Generate WebM</button>
+    <script>
+      const canvas = document.getElementById("demo");
+      const ctx = canvas.getContext("2d");
+      const scenes = [
+        {
+          title: "Dev Web IDE",
+          caption:
+            "브라우저에서 프로젝트 생성, 코드 편집, 실행, 협업을 제공하는 웹 기반 IDE입니다.",
+          mode: "title",
+        },
+        {
+          title: "Dashboard",
+          caption: "최근 프로젝트, 내 프로젝트, 공유 프로젝트를 확인합니다.",
+          mode: "dashboard",
+        },
+        {
+          title: "Team Project",
+          caption:
+            "팀 프로젝트 생성 시 실제 가입된 회원을 검색해 팀원으로 초대합니다.",
+          mode: "team",
+        },
+        {
+          title: "Shared Projects",
+          caption:
+            "초대받은 계정은 공유 프로젝트 목록에서 팀 프로젝트를 확인합니다.",
+          mode: "shared",
+        },
+        {
+          title: "Workspace",
+          caption: "파일 트리와 Monaco Editor가 실제 프로젝트 API와 연결됩니다.",
+          mode: "workspace",
+        },
+        {
+          title: "Save & Run",
+          caption:
+            "Save는 파일 저장 API, Run은 프로젝트 실행 API와 연결됩니다.",
+          mode: "terminal",
+        },
+        {
+          title: "Realtime Collaboration",
+          caption:
+            "Yjs CRDT 업데이트가 WebSocket과 Redis Pub/Sub으로 전달됩니다.",
+          mode: "realtime",
+        },
+        {
+          title: "Team Chat",
+          caption: "팀 워크스페이스에서 WebSocket 기반 채팅을 사용할 수 있습니다.",
+          mode: "chat",
+        },
+        {
+          title: "AWS Architecture",
+          caption:
+            "S3, CloudFront, ECS, ECR, RDS, EFS, Redis로 운영 구조를 구성했습니다.",
+          mode: "architecture",
+        },
+      ];
+      const sceneDuration = 5;
+      const width = canvas.width;
+      const height = canvas.height;
+
+      function rect(x, y, w, h, color, stroke = "#313135") {
+        ctx.fillStyle = color;
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, 8);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      function text(value, x, y, size, color = "#f3f3f3", weight = "700") {
+        ctx.fillStyle = color;
+        ctx.font = `${weight} ${size}px Inter, system-ui, sans-serif`;
+        ctx.fillText(value, x, y);
+      }
+
+      function caption(value) {
+        rect(70, 610, 1140, 68, "rgba(18,18,18,0.9)", "#3c3c3c");
+        text(value, 96, 652, 24, "#f3f3f3", "700");
+      }
+
+      function background() {
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, "#111315");
+        gradient.addColorStop(1, "#1f2933");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = "rgba(79,193,255,0.08)";
+        ctx.beginPath();
+        ctx.arc(160, 80, 180, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawDashboard() {
+        rect(80, 120, 1120, 430, "#1e1e1e");
+        text("Dashboard", 110, 168, 28, "#4fc1ff");
+        ["최근 프로젝트", "내 프로젝트", "공유 프로젝트"].forEach((label, i) => {
+          rect(120 + i * 350, 220, 300, 210, "#252526");
+          text(label, 145 + i * 350, 268, 24);
+          text("API 연동 데이터", 145 + i * 350, 315, 18, "#9da1a6");
+          text("프로젝트 열기", 145 + i * 350, 362, 18, "#6a9955");
+        });
+      }
+
+      function drawTeam() {
+        rect(180, 110, 920, 470, "#1e1e1e");
+        text("새 팀 프로젝트", 230, 170, 32);
+        rect(230, 220, 380, 54, "#252526");
+        text("닉네임 또는 이메일 검색", 255, 255, 18, "#9da1a6");
+        ["kim@test.com", "member@test.com"].forEach((email, i) => {
+          rect(230, 310 + i * 76, 620, 56, "#252526");
+          text(email, 255, 346 + i * 76, 20);
+          rect(760, 322 + i * 76, 70, 32, "#0e639c", "#0e639c");
+          text("추가", 778, 345 + i * 76, 16);
+        });
+      }
+
+      function drawWorkspace() {
+        rect(70, 90, 1140, 500, "#1e1e1e");
+        rect(70, 90, 1140, 52, "#252526");
+        text("Workspace · Save · Run", 96, 124, 20);
+        rect(70, 142, 260, 448, "#181818");
+        ["src", "App.tsx", "README.md", "package.json"].forEach((file, i) => {
+          rect(95, 180 + i * 54, 205, 38, i === 1 ? "#0e639c" : "#252526");
+          text(file, 116, 206 + i * 54, 17);
+        });
+        rect(330, 142, 880, 448, "#111315");
+        text("const Workspace = () => {", 370, 210, 24, "#569cd6", "700");
+        text("// Monaco Editor + File Tree", 370, 260, 22, "#6a9955");
+        text('return "Build in browser";', 370, 310, 24, "#ce9178");
+        text("};", 370, 360, 24, "#dcdcaa");
+      }
+
+      function drawTerminal() {
+        drawWorkspace();
+        rect(330, 440, 880, 150, "#1f1f1f");
+        text("Terminal", 360, 480, 22, "#4fc1ff");
+        text("$ run project", 360, 522, 20, "#d4d4d4");
+        text("container RUNNING · efs /app/storage", 360, 556, 18, "#6a9955");
+      }
+
+      function drawRealtime() {
+        const nodes = [
+          ["Monaco", 120, 250],
+          ["Yjs CRDT", 330, 250],
+          ["WebSocket", 550, 250],
+          ["Redis", 780, 250],
+          ["Other User", 990, 250],
+        ];
+        nodes.forEach(([label, x, y]) => {
+          rect(x, y, 150, 90, "#252526");
+          text(label, x + 24, y + 55, 21);
+        });
+        ctx.strokeStyle = "#4fc1ff";
+        ctx.lineWidth = 4;
+        for (let i = 0; i < nodes.length - 1; i += 1) {
+          const x = nodes[i][1] + 150;
+          const y = nodes[i][2] + 45;
+          ctx.beginPath();
+          ctx.moveTo(x + 8, y);
+          ctx.lineTo(x + 52, y);
+          ctx.stroke();
+        }
+      }
+
+      function drawChat() {
+        drawWorkspace();
+        rect(870, 170, 300, 370, "#1f1f1f");
+        text("Team Chat", 895, 210, 22, "#4fc1ff");
+        rect(900, 250, 220, 54, "#252526");
+        text("안녕하세요!", 920, 284, 18);
+        rect(930, 324, 210, 54, "#163626", "#24533d");
+        text("같이 편집해요", 950, 358, 18);
+        rect(900, 455, 220, 44, "#161616");
+        text("메시지 입력", 920, 483, 16, "#9da1a6");
+      }
+
+      function drawArchitecture() {
+        const labels = [
+          "CloudFront",
+          "S3",
+          "ALB",
+          "ECS Fargate",
+          "ECR",
+          "RDS MySQL",
+          "EFS",
+          "Redis",
+        ];
+        labels.forEach((label, i) => {
+          const x = 150 + (i % 4) * 250;
+          const y = 170 + Math.floor(i / 4) * 150;
+          rect(x, y, 180, 86, "#252526");
+          text(label, x + 24, y + 52, 20);
+        });
+      }
+
+      function drawScene(index) {
+        const scene = scenes[index];
+        background();
+        text(scene.title, 70, 82, 44, "#f3f3f3", "800");
+
+        if (scene.mode === "dashboard" || scene.mode === "shared") drawDashboard();
+        else if (scene.mode === "team") drawTeam();
+        else if (scene.mode === "workspace") drawWorkspace();
+        else if (scene.mode === "terminal") drawTerminal();
+        else if (scene.mode === "realtime") drawRealtime();
+        else if (scene.mode === "chat") drawChat();
+        else if (scene.mode === "architecture") drawArchitecture();
+        else {
+          text("Cloud-based Web IDE", 70, 240, 58, "#4fc1ff", "800");
+          text("Code · Save · Run · Collaborate", 74, 310, 32, "#9da1a6");
+        }
+
+        caption(scene.caption);
+      }
+
+      function renderLoop(start = performance.now()) {
+        const elapsed = (performance.now() - start) / 1000;
+        const index = Math.min(
+          scenes.length - 1,
+          Math.floor(elapsed / sceneDuration),
+        );
+        drawScene(index);
+        if (elapsed < scenes.length * sceneDuration) {
+          requestAnimationFrame(() => renderLoop(start));
+        }
+      }
+
+      async function record() {
+        const stream = canvas.captureStream(30);
+        const recorder = new MediaRecorder(stream, {
+          mimeType: "video/webm;codecs=vp9",
+        });
+        const chunks = [];
+        recorder.ondataavailable = (event) => chunks.push(event.data);
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: "video/webm" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "dev-web-ide-demo.webm";
+          link.textContent = "Download demo WebM";
+          link.style.position = "fixed";
+          link.style.left = "20px";
+          link.style.bottom = "20px";
+          link.style.color = "#4fc1ff";
+          document.body.appendChild(link);
+          link.click();
+        };
+        recorder.start();
+        const start = performance.now();
+        renderLoop(start);
+        setTimeout(() => recorder.stop(), scenes.length * sceneDuration * 1000);
+      }
+
+      document.getElementById("download").addEventListener("click", record);
+      renderLoop();
+    </script>
+  </body>
+</html>

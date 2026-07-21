@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dev Web IDE 발표 자료</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111315;
+        --panel: #1f1f1f;
+        --panel-2: #252526;
+        --border: #313135;
+        --text: #f3f3f3;
+        --muted: #9da1a6;
+        --blue: #4fc1ff;
+        --green: #4ec9b0;
+        --orange: #ce9178;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      main {
+        width: 100%;
+      }
+
+      section {
+        min-height: 100vh;
+        padding: 56px clamp(28px, 7vw, 96px);
+        display: grid;
+        align-content: center;
+        gap: 28px;
+        border-bottom: 1px solid var(--border);
+        background:
+          radial-gradient(circle at 12% 8%, rgba(79, 193, 255, 0.12), transparent 28%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 34%),
+          var(--bg);
+      }
+
+      .eyebrow {
+        color: var(--blue);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        max-width: 1040px;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        font-size: clamp(44px, 7vw, 88px);
+        line-height: 0.95;
+      }
+
+      h2 {
+        font-size: clamp(34px, 5vw, 64px);
+        line-height: 1.02;
+      }
+
+      p {
+        max-width: 900px;
+        margin: 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2vw, 24px);
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+
+      .card {
+        min-height: 156px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: linear-gradient(180deg, var(--panel-2), var(--panel));
+        padding: 22px;
+      }
+
+      .card h3 {
+        margin: 0 0 10px;
+        font-size: 20px;
+      }
+
+      .card p,
+      li {
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.55;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      .architecture {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(140px, 1fr));
+        gap: 12px;
+        max-width: 1100px;
+      }
+
+      .node {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #1e1e1e;
+        padding: 18px;
+        text-align: center;
+        font-weight: 800;
+      }
+
+      .node strong {
+        display: block;
+        color: var(--blue);
+        font-size: 13px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      .wide {
+        grid-column: span 2;
+      }
+
+      .mock {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: #1e1e1e;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+      }
+
+      .mock-header {
+        display: flex;
+        justify-content: space-between;
+        padding: 14px 18px;
+        background: #252526;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .mock-body {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        min-height: 360px;
+      }
+
+      .tree {
+        border-right: 1px solid var(--border);
+        padding: 18px;
+      }
+
+      .file {
+        padding: 10px 12px;
+        margin: 7px 0;
+        border-radius: 6px;
+        background: #252526;
+        color: var(--muted);
+      }
+
+      .file.active {
+        color: var(--text);
+        background: #0e639c;
+      }
+
+      .editor {
+        padding: 20px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 15px;
+        line-height: 1.8;
+      }
+
+      .keyword {
+        color: #569cd6;
+      }
+
+      .string {
+        color: #ce9178;
+      }
+
+      .function {
+        color: #dcdcaa;
+      }
+
+      .comment {
+        color: #6a9955;
+      }
+
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .badge {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: #1e1e1e;
+        color: var(--text);
+        padding: 10px 14px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .footer {
+        position: fixed;
+        right: 20px;
+        bottom: 16px;
+        color: #6b7280;
+        font-size: 12px;
+      }
+
+      @media print {
+        section {
+          min-height: 100vh;
+          page-break-after: always;
+        }
+
+        .footer {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <div class="eyebrow">Web IDE Platform</div>
+        <h1>Dev Web IDE</h1>
+        <p>
+          브라우저에서 프로젝트 생성, 코드 편집, 파일 저장, 실행, 팀 협업을
+          제공하는 클라우드 기반 통합 개발 환경입니다.
+        </p>
+        <div class="badge-row">
+          <span class="badge">React</span>
+          <span class="badge">Spring Boot</span>
+          <span class="badge">AWS ECS</span>
+          <span class="badge">RDS</span>
+          <span class="badge">EFS</span>
+          <span class="badge">Redis</span>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Problem</div>
+        <h2>개발 환경 구성과 협업 비용을 줄입니다</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>환경 구성 부담</h3>
+            <p>언어별 런타임과 실행 환경을 로컬에 직접 설치해야 합니다.</p>
+          </div>
+          <div class="card">
+            <h3>팀 환경 불일치</h3>
+            <p>팀원마다 OS, 버전, 의존성이 달라 같은 결과를 보장하기 어렵습니다.</p>
+          </div>
+          <div class="card">
+            <h3>협업 도구 분산</h3>
+            <p>파일 공유, 코드 편집, 채팅, 실행 확인이 여러 도구로 흩어집니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Core Features</div>
+        <h2>핵심 기능</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>프로젝트 생성</h3>
+            <p>게스트, 개인, 팀 프로젝트를 생성하고 런타임을 선택합니다.</p>
+          </div>
+          <div class="card">
+            <h3>파일 트리</h3>
+            <p>실제 API와 연결된 프로젝트 파일 구조를 탐색하고 파일을 추가합니다.</p>
+          </div>
+          <div class="card">
+            <h3>Monaco Editor</h3>
+            <p>확장자별 언어 모드와 저장 상태를 제공하는 코드 편집 화면입니다.</p>
+          </div>
+          <div class="card">
+            <h3>팀 협업</h3>
+            <p>회원 검색 초대, 공유 프로젝트, CRDT 공동 편집, 팀 채팅을 제공합니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Workspace UI</div>
+        <h2>코드 에디터와 파일 트리</h2>
+        <div class="mock">
+          <div class="mock-header">
+            <strong>dev-web-ide / workspace</strong>
+            <span>Save · Run · Team Chat</span>
+          </div>
+          <div class="mock-body">
+            <div class="tree">
+              <div class="file">src</div>
+              <div class="file active">App.tsx</div>
+              <div class="file">README.md</div>
+              <div class="file">package.json</div>
+            </div>
+            <div class="editor">
+              <span class="keyword">const</span>
+              <span class="function">Workspace</span> = () =&gt; {<br />
+              &nbsp;&nbsp;<span class="comment">// 파일 트리와 Monaco Editor 연동</span><br />
+              &nbsp;&nbsp;<span class="keyword">return</span>
+              <span class="string">"Build in browser"</span>;<br />
+              };
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Architecture</div>
+        <h2>AWS 기반 배포 구조</h2>
+        <div class="architecture">
+          <div class="node"><strong>Client</strong>Browser</div>
+          <div class="node"><strong>FE</strong>CloudFront</div>
+          <div class="node"><strong>Static</strong>S3</div>
+          <div class="node"><strong>API</strong>CloudFront</div>
+          <div class="node"><strong>Traffic</strong>ALB</div>
+          <div class="node"><strong>Compute</strong>ECS Fargate</div>
+          <div class="node"><strong>Image</strong>ECR</div>
+          <div class="node"><strong>Data</strong>RDS MySQL</div>
+          <div class="node"><strong>Files</strong>EFS</div>
+          <div class="node"><strong>Realtime</strong>Redis</div>
+          <div class="node wide"><strong>CI/CD</strong>GitHub Actions</div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Realtime</div>
+        <h2>CRDT 공동 편집과 팀 채팅</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Yjs CRDT</h3>
+            <p>Monaco 변경 사항을 충돌에 강한 CRDT 업데이트로 변환합니다.</p>
+          </div>
+          <div class="card">
+            <h3>WebSocket/STOMP</h3>
+            <p>브라우저와 백엔드가 실시간 편집 업데이트와 채팅 메시지를 주고받습니다.</p>
+          </div>
+          <div class="card">
+            <h3>Redis Pub/Sub</h3>
+            <p>여러 ECS task 환경에서도 메시지를 모든 클라이언트에 전달할 수 있습니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Demo Flow</div>
+        <h2>시연 순서</h2>
+        <ul>
+          <li>대시보드에서 최근/내/공유 프로젝트 확인</li>
+          <li>팀 프로젝트 생성 시 실제 회원 검색 후 초대</li>
+          <li>초대받은 계정에서 공유 프로젝트 확인</li>
+          <li>워크스페이스에서 파일 트리, 파일 생성, 코드 편집</li>
+          <li>Save 버튼과 Run 버튼 동작 확인</li>
+          <li>팀 채팅과 CRDT 공동 편집 구조 설명</li>
+        </ul>
+      </section>
+
+      <section>
+        <div class="eyebrow">Result</div>
+        <h2>구현 성과</h2>
+        <p>
+          Dev Web IDE는 프론트엔드 퍼블리싱을 넘어 실제 API, OAuth, 파일
+          저장, 실행, 팀 초대, 공유 프로젝트, 실시간 협업, AWS 배포까지
+          end-to-end로 연결한 웹 기반 개발 환경입니다.
+        </p>
+      </section>
+    </main>
+    <div class="footer">Dev Web IDE Presentation</div>
+  </body>
+</html>

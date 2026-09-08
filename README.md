@@ -267,4 +267,3 @@ Browser
 - [백엔드 아키텍처 문서](./BE/dev-web-ide/docs/architecture.md)
 - [데이터베이스 스키마](./BE/dev-web-ide/docs/database-schema.md)
 - [구현 완료 체크리스트](./BE/dev-web-ide/docs/implementation-completion-checklist.md)
-- [제출 산출물 안내](./docs/submission/README.md)

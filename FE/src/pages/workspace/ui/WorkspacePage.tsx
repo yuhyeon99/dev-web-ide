@@ -145,9 +145,34 @@ type SavedDraft = {
 
 export const WorkspacePage = () => {
   const [searchParams] = useSearchParams();
+  const projectId = Number(searchParams.get('projectId'));
+
+  if (!Number.isFinite(projectId) || projectId <= 0) {
+    return (
+      <div className="flex h-[calc(100vh-2.75rem)] items-center justify-center bg-[#1e1e1e] px-4 text-[#d4d4d4]">
+        <div className="rounded-xl border border-[#313131] bg-[#252526] p-6 text-center">
+          <p className="text-sm text-[#858585]">열 프로젝트를 선택하세요.</p>
+          <Link
+            to="/"
+            className="mt-4 inline-flex rounded-md bg-[#0e639c] px-4 py-2 text-sm font-semibold text-white"
+          >
+            대시보드로 이동
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return <WorkspaceProjectPage key={projectId} projectId={projectId} />;
+};
+
+type WorkspaceProjectPageProps = {
+  projectId: number;
+};
+
+const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const projectId = Number(searchParams.get('projectId'));
   const [activeActivity, setActiveActivity] = useState<ActivityId>('explorer');
   const [activeTabId, setActiveTabId] = useState('');
   const [fileDrafts, setFileDrafts] = useState<Record<string, FileDraft>>({});
@@ -235,9 +260,24 @@ export const WorkspacePage = () => {
         fileContentQuery.data?.content ??
         '')
       : '';
-  const workspaceProjects =
-    projectsQuery.data?.map(toWorkspaceProject) ??
-    (projectDetailQuery.data
+  const workspaceProjects = projectsQuery.data
+    ? [
+        ...projectsQuery.data.map(toWorkspaceProject),
+        ...(projectDetailQuery.data &&
+        !projectsQuery.data.some(
+          (project) => project.id === projectDetailQuery.data?.id,
+        )
+          ? [
+              {
+                id: String(projectDetailQuery.data.id),
+                label: projectDetailQuery.data.name,
+                subtitle: projectDetailQuery.data.runtime.displayName,
+                lastOpened: '현재 프로젝트',
+              },
+            ]
+          : []),
+      ]
+    : projectDetailQuery.data
       ? [
           {
             id: String(projectDetailQuery.data.id),
@@ -246,7 +286,7 @@ export const WorkspacePage = () => {
             lastOpened: '현재 프로젝트',
           },
         ]
-      : []);
+      : [];
   const activeProject =
     workspaceProjects.find((project) => project.id === String(projectId)) ??
     workspaceProjects[0];
@@ -478,22 +518,6 @@ export const WorkspacePage = () => {
 
     createFileMutation.mutate({ fileType, name: trimmedName });
   };
-
-  if (!Number.isFinite(projectId) || projectId <= 0) {
-    return (
-      <div className="flex h-[calc(100vh-2.75rem)] items-center justify-center bg-[#1e1e1e] px-4 text-[#d4d4d4]">
-        <div className="rounded-xl border border-[#313131] bg-[#252526] p-6 text-center">
-          <p className="text-sm text-[#858585]">열 프로젝트를 선택하세요.</p>
-          <Link
-            to="/"
-            className="mt-4 inline-flex rounded-md bg-[#0e639c] px-4 py-2 text-sm font-semibold text-white"
-          >
-            대시보드로 이동
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   if (projectDetailQuery.isLoading || fileTreeQuery.isLoading) {
     return (

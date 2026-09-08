@@ -31,6 +31,8 @@ const MonacoEditorComponent = ({
   value,
 }: MonacoEditorComponentProps) => {
   const cleanupRef = useRef<(() => void) | null>(null);
+  const applyingRemoteContentRef = useRef(false);
+  const connectionRef = useRef<CrdtClientConnection | null>(null);
 
   const handleMount = useCallback<OnMount>(
     (editor) => {
@@ -56,7 +58,11 @@ const MonacoEditorComponent = ({
       const binding = new MonacoBinding(ytext, model, new Set([editor]));
       let connection: CrdtClientConnection | null = null;
       const sendLocalUpdate = (update: Uint8Array, origin: unknown) => {
-        if (origin === 'remote' || origin === 'initial-load') {
+        if (
+          origin === 'remote' ||
+          origin === 'remote-content' ||
+          origin === 'initial-load'
+        ) {
           return;
         }
 
@@ -67,20 +73,39 @@ const MonacoEditorComponent = ({
       connection = createCrdtClient({
         clientId: collaboration.clientId,
         fileId: collaboration.fileId,
+        onRemoteContent: (content) => {
+          const currentContent = ytext.toString();
+
+          if (currentContent === content) {
+            return;
+          }
+
+          applyingRemoteContentRef.current = true;
+          ydoc.transact(() => {
+            ytext.delete(0, ytext.length);
+            ytext.insert(0, content);
+          }, 'remote-content');
+          onChange(content);
+          queueMicrotask(() => {
+            applyingRemoteContentRef.current = false;
+          });
+        },
         projectId: collaboration.projectId,
         onRemoteUpdate: (update) => {
           Y.applyUpdate(ydoc, update, 'remote');
         },
       });
+      connectionRef.current = connection;
 
       cleanupRef.current = () => {
         ydoc.off('update', sendLocalUpdate);
         connection?.disconnect();
+        connectionRef.current = null;
         binding.destroy();
         ydoc.destroy();
       };
     },
-    [collaboration],
+    [collaboration, onChange],
   );
 
   useEffect(() => {
@@ -96,7 +121,15 @@ const MonacoEditorComponent = ({
       height="100%"
       language={language}
       onMount={handleMount}
-      onChange={(nextValue) => onChange(nextValue ?? '')}
+      onChange={(nextValue) => {
+        const content = nextValue ?? '';
+
+        onChange(content);
+
+        if (!applyingRemoteContentRef.current) {
+          connectionRef.current?.sendContent(content);
+        }
+      }}
       theme="vs-dark"
       value={collaboration ? undefined : value}
       options={{

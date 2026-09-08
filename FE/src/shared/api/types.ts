@@ -206,6 +206,15 @@ export type CrdtUpdateMessage = {
   occurredAt: string;
 };
 
+export type LiveFileContentMessage = {
+  projectId: number;
+  fileId: number;
+  roomId: string;
+  clientId: string;
+  content: string;
+  occurredAt: string;
+};
+
 export type TeamChatMessage = {
   id: string;
   projectId: number;

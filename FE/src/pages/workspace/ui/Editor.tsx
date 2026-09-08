@@ -80,7 +80,7 @@ export const Editor = ({
             </p>
           ) : (
             <MonacoEditorComponent
-              key={activeTab.id}
+              key={`${collaboration?.projectId ?? 'project'}:${activeTab.id}`}
               collaboration={collaboration}
               language={activeTab.language}
               onChange={onContentChange}

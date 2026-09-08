@@ -2,7 +2,11 @@
 
 import { Client, type IMessage } from '@stomp/stompjs';
 
-import type { CrdtUpdateMessage, TeamChatMessage } from '@/shared/api/types';
+import type {
+  CrdtUpdateMessage,
+  LiveFileContentMessage,
+  TeamChatMessage,
+} from '@/shared/api/types';
 import { REALTIME_WS_URL } from '@/shared/config/api';
 
 import { base64ToUint8Array, uint8ArrayToBase64 } from './encoding';
@@ -10,6 +14,7 @@ import { base64ToUint8Array, uint8ArrayToBase64 } from './encoding';
 type CrdtClientOptions = {
   clientId: string;
   fileId: number;
+  onRemoteContent: (content: string) => void;
   onRemoteUpdate: (update: Uint8Array) => void;
   projectId: number;
 };
@@ -22,6 +27,7 @@ type TeamChatClientOptions = {
 
 export type CrdtClientConnection = {
   disconnect: () => void;
+  sendContent: (content: string) => void;
   sendUpdate: (update: Uint8Array) => void;
 };
 
@@ -35,6 +41,7 @@ const parseMessage = <T>(message: IMessage) => JSON.parse(message.body) as T;
 export const createCrdtClient = ({
   clientId,
   fileId,
+  onRemoteContent,
   onRemoteUpdate,
   projectId,
 }: CrdtClientOptions): CrdtClientConnection => {
@@ -55,6 +62,22 @@ export const createCrdtClient = ({
           onRemoteUpdate(base64ToUint8Array(event.updateBase64));
         },
       );
+      client.subscribe(
+        `/topic/projects/${projectId}/files/${fileId}/live-content`,
+        (message) => {
+          const event = parseMessage<LiveFileContentMessage>(message);
+
+          if (event.clientId === clientId) {
+            return;
+          }
+
+          onRemoteContent(event.content);
+        },
+      );
+      client.publish({
+        destination: `/app/projects/${projectId}/files/${fileId}/live-content/snapshot`,
+        body: JSON.stringify({ clientId }),
+      });
     },
   });
 
@@ -63,6 +86,19 @@ export const createCrdtClient = ({
   return {
     disconnect: () => {
       void client.deactivate();
+    },
+    sendContent: (content) => {
+      if (!client.connected) {
+        return;
+      }
+
+      client.publish({
+        destination: `/app/projects/${projectId}/files/${fileId}/live-content`,
+        body: JSON.stringify({
+          clientId,
+          content,
+        }),
+      });
     },
     sendUpdate: (update) => {
       if (!client.connected) {

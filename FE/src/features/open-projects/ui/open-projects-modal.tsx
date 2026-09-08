@@ -1,13 +1,25 @@
 import { useEffect, useState, type MouseEvent } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router';
 
 import {
-  openProjects,
   projectFilterTabs,
   type OpenProject,
   type ProjectExecutionStatus,
   type ProjectFilterId,
   type ProjectVisibility,
 } from '../model/open-projects';
+import {
+  getMyProjects,
+  getSharedProjects,
+  openProject,
+} from '@/shared/api/projects';
+import { getStoredAuthSession } from '@/shared/api/auth';
+import {
+  resolveProjectApiSession,
+  saveProjectApiSession,
+} from '@/shared/api/session';
+import type { ProjectSummaryResponse } from '@/shared/api/types';
 
 type OpenProjectsModalProps = {
   isOpen: boolean;
@@ -43,26 +55,101 @@ const visibilityLabelMap: Record<ProjectVisibility, string> = {
   team: '팀 프로젝트',
 };
 
+const formatProjectUpdatedAt = (dateText: string) => {
+  const updatedAt = new Date(dateText).getTime();
+
+  if (Number.isNaN(updatedAt)) {
+    return '최근 업데이트';
+  }
+
+  const diffMinutes = Math.max(
+    0,
+    Math.floor((Date.now() - updatedAt) / 1000 / 60),
+  );
+
+  if (diffMinutes < 1) {
+    return '방금 전';
+  }
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}분 전`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+
+  if (diffHours < 24) {
+    return `${diffHours}시간 전`;
+  }
+
+  return `${Math.floor(diffHours / 24)}일 전`;
+};
+
+const toOpenProject = (
+  project: ProjectSummaryResponse,
+  source: 'my' | 'shared',
+): OpenProject => {
+  const visibility = project.projectType === 'TEAM' ? 'team' : 'personal';
+
+  return {
+    id: String(project.id),
+    name: project.name,
+    updatedAt: formatProjectUpdatedAt(project.updatedAt),
+    executionStatus: 'stopped',
+    visibility,
+    filters: ['recent', source === 'shared' ? 'invited' : 'created'],
+  };
+};
+
 export const OpenProjectsModal = ({
   isOpen,
   onClose,
 }: OpenProjectsModalProps) => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<ProjectFilterId>('recent');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
-    openProjects.find((project) => project.filters.includes('recent'))?.id ??
-      openProjects[0]?.id ??
-      null,
+    null,
   );
+  const authSession = getStoredAuthSession();
+  const projectsQuery = useQuery({
+    queryKey: ['open-projects', authSession?.userId ?? 'guest'],
+    queryFn: async () => {
+      const projectSession = await resolveProjectApiSession();
+      const myProjects = await getMyProjects(projectSession.accessToken);
+      const sharedProjects = authSession
+        ? await getSharedProjects(authSession.accessToken)
+        : [];
+
+      return [
+        ...myProjects.map((project) => toOpenProject(project, 'my')),
+        ...sharedProjects.map((project) => toOpenProject(project, 'shared')),
+      ];
+    },
+    enabled: isOpen,
+  });
+  const projects = projectsQuery.data ?? [];
+  const openProjectMutation = useMutation({
+    mutationFn: async (projectId: number) => {
+      const projectSession = await resolveProjectApiSession(
+        undefined,
+        projectId,
+      );
+
+      await openProject(projectSession.accessToken, projectId);
+      saveProjectApiSession(projectId, projectSession);
+
+      return projectId;
+    },
+    onSuccess: (projectId) => {
+      handleClose();
+      navigate(`/workspace?projectId=${projectId}`);
+    },
+  });
 
   const resetModalState = () => {
     setSearchQuery('');
     setActiveFilter('recent');
-    setSelectedProjectId(
-      openProjects.find((project) => project.filters.includes('recent'))?.id ??
-        openProjects[0]?.id ??
-        null,
-    );
+    setSelectedProjectId(null);
   };
 
   const handleClose = () => {
@@ -97,7 +184,7 @@ export const OpenProjectsModal = ({
   );
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
-  const filteredProjects = openProjects.filter((project) => {
+  const filteredProjects = projects.filter((project) => {
     if (!project.filters.includes(activeFilter)) {
       return false;
     }
@@ -135,7 +222,17 @@ export const OpenProjectsModal = ({
   const shouldScrollProjectCards = filteredProjects.length > 4;
 
   const handleOpenProject = () => {
-    handleClose();
+    if (!selectedProject) {
+      return;
+    }
+
+    const projectId = Number(selectedProject.id);
+
+    if (!Number.isFinite(projectId) || openProjectMutation.isPending) {
+      return;
+    }
+
+    openProjectMutation.mutate(projectId);
   };
 
   return (
@@ -248,7 +345,7 @@ export const OpenProjectsModal = ({
               <div className="mt-3 flex flex-wrap gap-2">
                 {projectFilterTabs.map((filterTab) => {
                   const isActive = filterTab.id === activeFilter;
-                  const count = openProjects.filter((project) =>
+                  const count = projects.filter((project) =>
                     project.filters.includes(filterTab.id),
                   ).length;
 
@@ -291,7 +388,13 @@ export const OpenProjectsModal = ({
                 </span>
               </div>
 
-              {filteredProjects.length > 0 ? (
+              {projectsQuery.isLoading ? (
+                <div className="mt-3 rounded-xl border border-dashed border-[#3c3c3c] bg-[#1b1b1c] px-4 py-10 text-center">
+                  <p className="text-sm font-medium text-[#d4d4d4]">
+                    프로젝트를 불러오는 중입니다.
+                  </p>
+                </div>
+              ) : filteredProjects.length > 0 ? (
                 <div className="mt-3 min-h-0 flex-1 overflow-hidden">
                   <div
                     className={`grid h-full w-full content-start gap-3 overflow-y-auto pr-1 [--project-card-min-height:7.5rem] lg:grid-cols-2 ${
@@ -361,7 +464,7 @@ export const OpenProjectsModal = ({
                   : 'cursor-not-allowed bg-[#3b3b3b] text-[#858585]'
               }`}
             >
-              열기
+              {openProjectMutation.isPending ? '여는 중' : '열기'}
             </button>
           </div>
         </div>

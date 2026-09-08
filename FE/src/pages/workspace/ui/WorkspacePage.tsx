@@ -26,8 +26,13 @@ import type {
   ProjectFileTreeResponse,
   ProjectRealtimeEvent,
   ProjectSummaryResponse,
+  WorkspacePresenceUser,
 } from '@/shared/api/types';
 import { subscribeProjectRealtimeEvents } from '@/shared/realtime/project-events';
+import {
+  createWorkspacePresenceClient,
+  type WorkspacePresenceClientConnection,
+} from '@/shared/realtime/workspace-presence';
 
 import { Editor } from './Editor';
 import { Sidebar } from './Sidebar';
@@ -37,6 +42,7 @@ import { WorkspaceHeader } from './WorkspaceHeader';
 import {
   type ActivityId,
   type ActivityItem,
+  type PresenceUser,
   type WorkspaceTab,
   type WorkspaceTreeNode,
 } from '../model';
@@ -133,6 +139,39 @@ const toWorkspaceProject = (project: ProjectSummaryResponse) => {
   };
 };
 
+const presenceAccents = [
+  { accent: '#4fc1ff', accentSoft: 'rgba(79,193,255,0.16)' },
+  { accent: '#4ec9b0', accentSoft: 'rgba(78,201,176,0.16)' },
+  { accent: '#d7ba7d', accentSoft: 'rgba(215,186,125,0.16)' },
+  { accent: '#c586c0', accentSoft: 'rgba(197,134,192,0.16)' },
+  { accent: '#ce9178', accentSoft: 'rgba(206,145,120,0.16)' },
+];
+
+const getPresenceAccent = (clientId: string) => {
+  const hash = Array.from(clientId).reduce(
+    (currentHash, character) => currentHash + character.charCodeAt(0),
+    0,
+  );
+
+  return presenceAccents[hash % presenceAccents.length];
+};
+
+const toPresenceUser = (user: WorkspacePresenceUser): PresenceUser => {
+  const { accent, accentSoft } = getPresenceAccent(user.clientId);
+
+  return {
+    accent,
+    accentSoft,
+    file: user.currentFile,
+    id: user.clientId,
+    lastSeen: '방금 전',
+    location: user.currentFile,
+    name: user.displayName,
+    role: user.role,
+    status: user.status,
+  };
+};
+
 type FileDraft = {
   content: string;
   savedContent: string;
@@ -186,6 +225,9 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
   const [terminalStatus, setTerminalStatus] = useState('status: idle');
   const [realtimeClientId] = useState(() => crypto.randomUUID());
   const [authSession] = useState(() => getStoredAuthSession());
+  const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
+  const presenceConnectionRef =
+    useRef<WorkspacePresenceClientConnection | null>(null);
   const projectsQuery = useQuery({
     queryKey: ['workspace-projects'],
     queryFn: async () => {
@@ -290,6 +332,7 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
   const activeProject =
     workspaceProjects.find((project) => project.id === String(projectId)) ??
     workspaceProjects[0];
+  const activeFilePath = activeTab?.path ?? '파일 선택 안 됨';
   const workspaceTree = fileNodes.map(toWorkspaceTreeNode);
   const dirtyCount = editorTabs.filter((tab) => tab.dirty).length;
   const dirtyDrafts = useMemo<SavedDraft[]>(
@@ -474,6 +517,30 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
     );
   }, [handleProjectRealtimeEvent, projectId]);
 
+  useEffect(() => {
+    const connection = createWorkspacePresenceClient({
+      clientId: realtimeClientId,
+      currentFile: '파일 선택 안 됨',
+      displayName: authSession?.nickname ?? 'Guest',
+      onPresenceChange: (message) => {
+        setPresenceUsers(message.users.map(toPresenceUser));
+      },
+      projectId,
+      role: authSession ? authSession.role : 'Guest',
+    });
+
+    presenceConnectionRef.current = connection;
+
+    return () => {
+      connection.disconnect();
+      presenceConnectionRef.current = null;
+    };
+  }, [authSession, projectId, realtimeClientId]);
+
+  useEffect(() => {
+    presenceConnectionRef.current?.update(activeFilePath);
+  }, [activeFilePath]);
+
   const handleActiveFileContentChange = (nextContent: string) => {
     if (activeFileId === null) {
       return;
@@ -566,7 +633,7 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
             })
           }
           saveMessage={saveMessage}
-          users={[]}
+          users={presenceUsers}
         />
 
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-3 pb-3 lg:px-4 lg:pb-4">
@@ -575,7 +642,7 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
               activities={workspaceActivityItems}
               activeActivity={activeActivity}
               activeFilePath={activeTab?.path ?? ''}
-              collaborators={[]}
+              collaborators={presenceUsers}
               fileTree={workspaceTree}
               isCreatingFile={createFileMutation.isPending}
               onActivityChange={(activityId) =>

@@ -223,3 +223,19 @@ export type TeamChatMessage = {
   message: string;
   occurredAt: string;
 };
+
+export type WorkspacePresenceUser = {
+  clientId: string;
+  displayName: string;
+  role: string;
+  currentFile: string;
+  status: string;
+  joinedAt: string;
+  lastSeenAt: string;
+};
+
+export type WorkspacePresenceMessage = {
+  projectId: number;
+  users: WorkspacePresenceUser[];
+  occurredAt: string;
+};

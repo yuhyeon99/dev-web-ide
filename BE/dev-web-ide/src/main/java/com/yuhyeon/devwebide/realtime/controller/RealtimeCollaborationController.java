@@ -7,9 +7,11 @@ import com.yuhyeon.devwebide.realtime.dto.LiveFileContentRequest;
 import com.yuhyeon.devwebide.realtime.dto.LiveFileContentSnapshotRequest;
 import com.yuhyeon.devwebide.realtime.dto.TeamChatMessage;
 import com.yuhyeon.devwebide.realtime.dto.TeamChatMessageRequest;
+import com.yuhyeon.devwebide.realtime.dto.WorkspacePresenceRequest;
 import com.yuhyeon.devwebide.realtime.service.CrdtUpdatePublisher;
 import com.yuhyeon.devwebide.realtime.service.LiveFileContentPublisher;
 import com.yuhyeon.devwebide.realtime.service.TeamChatPublisher;
+import com.yuhyeon.devwebide.realtime.service.WorkspacePresenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -26,6 +28,7 @@ public class RealtimeCollaborationController {
     private final CrdtUpdatePublisher crdtUpdatePublisher;
     private final LiveFileContentPublisher liveFileContentPublisher;
     private final TeamChatPublisher teamChatPublisher;
+    private final WorkspacePresenceService workspacePresenceService;
 
     @MessageMapping("/projects/{projectId}/files/{fileId}/crdt")
     public void publishCrdtUpdate(
@@ -75,5 +78,36 @@ public class RealtimeCollaborationController {
                 request.senderName(),
                 request.message()
         ));
+    }
+
+    @MessageMapping("/projects/{projectId}/presence/join")
+    public void joinWorkspacePresence(
+            @DestinationVariable Long projectId,
+            @Payload WorkspacePresenceRequest request
+    ) {
+        workspacePresenceService.join(projectId, request);
+    }
+
+    @MessageMapping("/projects/{projectId}/presence/heartbeat")
+    public void heartbeatWorkspacePresence(
+            @DestinationVariable Long projectId,
+            @Payload WorkspacePresenceRequest request
+    ) {
+        workspacePresenceService.join(projectId, request);
+    }
+
+    @MessageMapping("/projects/{projectId}/presence/leave")
+    public void leaveWorkspacePresence(
+            @DestinationVariable Long projectId,
+            @Payload WorkspacePresenceRequest request
+    ) {
+        workspacePresenceService.leave(projectId, request.clientId());
+    }
+
+    @MessageMapping("/projects/{projectId}/presence/snapshot")
+    public void publishWorkspacePresenceSnapshot(
+            @DestinationVariable Long projectId
+    ) {
+        workspacePresenceService.publish(projectId);
     }
 }

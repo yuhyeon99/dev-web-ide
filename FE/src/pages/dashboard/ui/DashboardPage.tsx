@@ -221,8 +221,8 @@ export const DashboardPage = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-2.75rem)] overflow-hidden bg-[#1e1e1e] text-[#d4d4d4]">
-      <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
+    <div className="h-[calc(100vh-2.75rem)] overflow-y-auto bg-[#1e1e1e] text-[#d4d4d4]">
+      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
         <DashboardHeader isGuest={isGuest} />
 
         {isGuest ? (
@@ -250,8 +250,8 @@ export const DashboardPage = () => {
             </div>
           </div>
         ) : (
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <div className="flex flex-col gap-6">
+          <div className="grid min-w-0 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className="flex min-w-0 flex-col gap-6">
               <RecentProjectsSection
                 title="최근 프로젝트"
                 subtitle="가장 최근에 열었던 작업 공간을 빠르게 이어서 진행할 수 있습니다."

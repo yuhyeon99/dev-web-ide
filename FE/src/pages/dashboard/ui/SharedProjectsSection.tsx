@@ -20,12 +20,12 @@ export const SharedProjectsSection = ({
   projects,
 }: SharedProjectsSectionProps) => {
   return (
-    <section className="rounded-[28px] border border-[#313131] bg-[#252526] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.2)]">
-      <div>
+    <section className="min-w-0 rounded-[28px] border border-[#313131] bg-[#252526] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.2)] sm:p-6">
+      <div className="min-w-0">
         <p className="text-xs font-semibold tracking-[0.22em] text-[#4fc1ff] uppercase">
           공유 프로젝트
         </p>
-        <h2 className="mt-2 text-xl font-semibold text-[#f3f3f3]">
+        <h2 className="mt-2 text-lg leading-snug font-semibold break-keep text-[#f3f3f3] sm:text-xl">
           팀과 함께 사용하는 협업 공간
         </h2>
         <p className="mt-2 text-sm leading-6 text-[#858585]">

@@ -75,7 +75,7 @@ export const TeamChat = ({
   };
 
   return (
-    <section className="flex h-[17.5rem] min-h-[17.5rem] flex-col overflow-hidden rounded-[24px] border border-[var(--ws-border)] bg-[linear-gradient(180deg,rgba(37,37,38,0.96)_0%,rgba(20,20,20,0.98)_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.26)]">
+    <section className="flex h-[17.5rem] min-h-[17.5rem] min-w-0 flex-col overflow-hidden rounded-[24px] border border-[var(--ws-border)] bg-[linear-gradient(180deg,rgba(37,37,38,0.96)_0%,rgba(20,20,20,0.98)_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.26)]">
       <div className="flex items-center justify-between border-b border-[var(--ws-border)] bg-[rgba(18,18,18,0.88)] px-3 py-2">
         <div className="rounded-lg bg-[#1f1f1f] px-3 py-2 text-sm font-semibold text-white">
           Team Chat

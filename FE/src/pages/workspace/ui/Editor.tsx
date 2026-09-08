@@ -34,7 +34,7 @@ export const Editor = ({
 
   if (!activeTab) {
     return (
-      <section className="flex min-h-[420px] flex-col overflow-hidden rounded-[24px] border border-[var(--ws-border)] bg-[linear-gradient(180deg,rgba(37,37,38,0.96)_0%,rgba(24,24,24,0.98)_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.26)]">
+      <section className="flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-[24px] border border-[var(--ws-border)] bg-[linear-gradient(180deg,rgba(37,37,38,0.96)_0%,rgba(24,24,24,0.98)_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.26)]">
         <div className="flex min-h-0 flex-1 items-center justify-center p-6 text-sm text-[var(--ws-muted)]">
           열려 있는 파일이 없습니다.
         </div>
@@ -43,7 +43,7 @@ export const Editor = ({
   }
 
   return (
-    <section className="flex min-h-[420px] flex-col overflow-hidden rounded-[24px] border border-[var(--ws-border)] bg-[linear-gradient(180deg,rgba(37,37,38,0.96)_0%,rgba(24,24,24,0.98)_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.26)]">
+    <section className="flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-[24px] border border-[var(--ws-border)] bg-[linear-gradient(180deg,rgba(37,37,38,0.96)_0%,rgba(24,24,24,0.98)_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.26)]">
       <div className="flex items-center overflow-x-auto border-b border-[var(--ws-border)] bg-[rgba(18,18,18,0.85)]">
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab.id;

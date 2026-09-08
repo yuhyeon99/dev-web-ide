@@ -167,7 +167,7 @@ export const Sidebar = ({
   };
 
   return (
-    <section className="grid min-h-[400px] overflow-hidden rounded-[24px] border border-[var(--ws-border)] bg-[linear-gradient(180deg,rgba(37,37,38,0.95)_0%,rgba(28,28,28,0.96)_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.26)] sm:grid-cols-[3.5rem_minmax(0,1fr)]">
+    <section className="grid min-h-[400px] min-w-0 overflow-hidden rounded-[24px] border border-[var(--ws-border)] bg-[linear-gradient(180deg,rgba(37,37,38,0.95)_0%,rgba(28,28,28,0.96)_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.26)] sm:h-full sm:grid-cols-[3.5rem_minmax(0,1fr)]">
       <nav className="flex items-center justify-between gap-2 overflow-x-auto border-b border-[var(--ws-border)] bg-[rgba(18,18,18,0.88)] px-2 py-2 sm:flex-col sm:justify-start sm:border-r sm:border-b-0 sm:px-1.5 sm:py-3">
         {activities.map((activity) => {
           const isActive = activity.id === activeActivity;
@@ -193,7 +193,7 @@ export const Sidebar = ({
         })}
       </nav>
 
-      <aside className="flex min-h-0 flex-col">
+      <aside className="flex min-h-0 min-w-0 flex-col">
         <div className="border-b border-[var(--ws-border)] px-4 py-3">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-[var(--ws-muted)] uppercase">
             {panelMeta.title}
@@ -203,9 +203,9 @@ export const Sidebar = ({
           </p>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+        <div className="min-h-0 flex-1 overflow-auto px-3 py-3 sm:px-4">
           {activeActivity === 'explorer' ? (
-            <div className="space-y-4">
+            <div className="min-w-[16rem] space-y-4">
               <section>
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-[11px] font-semibold tracking-[0.16em] text-[var(--ws-muted)] uppercase">

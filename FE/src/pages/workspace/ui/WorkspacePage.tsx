@@ -569,8 +569,8 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
           users={[]}
         />
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3 px-3 pb-3 lg:px-4 lg:pb-4">
-          <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[21rem_minmax(0,1fr)]">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-3 pb-3 lg:px-4 lg:pb-4">
+          <div className="grid min-h-0 flex-1 gap-3 overflow-hidden sm:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] xl:grid-cols-[21rem_minmax(0,1fr)]">
             <Sidebar
               activities={workspaceActivityItems}
               activeActivity={activeActivity}
@@ -624,7 +624,7 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
             </div>
           ) : null}
 
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]">
             <Terminal
               isRunning={runProjectMutation.isPending}
               lines={terminalLines}

@@ -18,23 +18,6 @@ export type SelectedMember = InvitableMember & {
   role: ProjectRole;
 };
 
-export const projectCreationPreviewModeOptions = [
-  {
-    id: 'guest' as const,
-    label: '게스트 화면',
-    description: '개인 임시 프로젝트만 생성 가능한 화면',
-  },
-  {
-    id: 'member' as const,
-    label: '회원 화면',
-    description: '팀 초대와 권한 설정까지 가능한 화면',
-  },
-] satisfies Array<{
-  id: ProjectCreationPreviewMode;
-  label: string;
-  description: string;
-}>;
-
 export const projectTypeOptions = [
   {
     id: 'personal' as const,

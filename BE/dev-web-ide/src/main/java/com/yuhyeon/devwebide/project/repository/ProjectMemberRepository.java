@@ -57,6 +57,11 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
             ProjectMemberStatus status
     );
 
+    List<ProjectMember> findByProjectIdAndStatusInOrderByInvitedAtDescJoinedAtDescIdDesc(
+            Long projectId,
+            List<ProjectMemberStatus> statuses
+    );
+
     /**
      * 사용자가 참여 중인 프로젝트 멤버 정보 목록 조회
      *

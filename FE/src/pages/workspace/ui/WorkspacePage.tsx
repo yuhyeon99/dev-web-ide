@@ -333,6 +333,7 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
     workspaceProjects.find((project) => project.id === String(projectId)) ??
     workspaceProjects[0];
   const activeFilePath = activeTab?.path ?? '파일 선택 안 됨';
+  const showTeamChat = projectDetailQuery.data?.projectType === 'TEAM';
   const workspaceTree = fileNodes.map(toWorkspaceTreeNode);
   const dirtyCount = editorTabs.filter((tab) => tab.dirty).length;
   const dirtyDrafts = useMemo<SavedDraft[]>(
@@ -691,7 +692,11 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
             </div>
           ) : null}
 
-          <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div
+            className={`grid min-h-0 gap-3 ${
+              showTeamChat ? 'xl:grid-cols-[minmax(0,1fr)_22rem]' : ''
+            }`}
+          >
             <Terminal
               isRunning={runProjectMutation.isPending}
               lines={terminalLines}
@@ -704,7 +709,7 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
               statusLabel={terminalStatus}
             />
 
-            {projectDetailQuery.data?.projectType === 'TEAM' ? (
+            {showTeamChat ? (
               <TeamChat
                 key={projectId}
                 clientId={realtimeClientId}

@@ -425,6 +425,7 @@ class ProjectControllerTest {
 
         ProjectMemberResponse member = new ProjectMemberResponse(
                 1L,
+                1L,
                 "테스터",
                 ProjectMemberRole.OWNER,
                 ProjectMemberStatus.ACTIVE,
@@ -569,6 +570,7 @@ class ProjectControllerTest {
         );
 
         ProjectMemberResponse member = new ProjectMemberResponse(
+                1L,
                 1L,
                 "owner",
                 ProjectMemberRole.OWNER,

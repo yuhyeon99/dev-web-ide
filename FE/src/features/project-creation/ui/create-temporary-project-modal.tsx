@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import {
-  projectCreationPreviewModeOptions,
   projectTypeOptions,
   type ProjectCreationPreviewMode,
   type ProjectRole,
@@ -93,8 +92,6 @@ export const CreateTemporaryProjectModal = ({
   onCreateProject,
   runtimeOptions,
 }: CreateTemporaryProjectModalProps) => {
-  const [previewMode, setPreviewMode] =
-    useState<ProjectCreationPreviewMode>(initialPreviewMode);
   const [projectTitle, setProjectTitle] = useState('');
   const [projectType, setProjectType] = useState<ProjectType>('personal');
   const [selectedRuntime, setSelectedRuntime] = useState('');
@@ -102,13 +99,12 @@ export const CreateTemporaryProjectModal = ({
   const [selectedMembers, setSelectedMembers] = useState<SelectedMember[]>([]);
 
   const resetModalState = useCallback(() => {
-    setPreviewMode(initialPreviewMode);
     setProjectTitle('');
     setProjectType('personal');
     setSelectedRuntime('');
     setMemberSearchQuery('');
     setSelectedMembers([]);
-  }, [initialPreviewMode]);
+  }, []);
 
   const handleClose = () => {
     resetModalState();
@@ -141,8 +137,8 @@ export const CreateTemporaryProjectModal = ({
     [isOpen, onClose, resetModalState],
   );
 
-  const isGuestPreview = previewMode === 'guest';
-  const previewModeLabel = isGuestPreview ? '게스트' : '회원';
+  const isGuestPreview = initialPreviewMode === 'guest';
+  const modalTitle = isGuestPreview ? '새 임시 프로젝트' : '새 프로젝트';
   const effectiveProjectType: ProjectType = isGuestPreview
     ? 'personal'
     : projectType;
@@ -202,6 +198,25 @@ export const CreateTemporaryProjectModal = ({
     isCreating ||
     isRuntimeLoading;
   const projectTitleDisplay = projectTitle.trim() || '제목 없음';
+  const createStatusMessage = (() => {
+    if (createError) {
+      return createError;
+    }
+
+    if (projectTitle.trim().length === 0) {
+      return '프로젝트 제목을 입력하세요.';
+    }
+
+    if (isRuntimeLoading) {
+      return '런타임을 불러오는 중입니다.';
+    }
+
+    if (!selectedRuntimeId || !selectedRuntimeOption) {
+      return '런타임을 선택하세요.';
+    }
+
+    return `${selectedRuntimeOption.label} 환경으로 생성 준비됨`;
+  })();
 
   if (!isOpen) {
     return null;
@@ -277,7 +292,7 @@ export const CreateTemporaryProjectModal = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-1 text-[10px] font-semibold tracking-[0.2em] text-[#4fc1ff] uppercase">
-                  Temporary Workspace
+                  {isGuestPreview ? 'Temporary Workspace' : 'Project Workspace'}
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -285,29 +300,8 @@ export const CreateTemporaryProjectModal = ({
                   id="create-temporary-project-title"
                   className="text-lg font-semibold text-[#f3f3f3] sm:text-xl"
                 >
-                  새 임시 프로젝트
+                  {modalTitle}
                 </h2>
-
-                <div className="inline-flex rounded-xl border border-[#313131] bg-[#1b1b1c] p-1">
-                  {projectCreationPreviewModeOptions.map((option) => {
-                    const isActive = option.id === previewMode;
-
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => setPreviewMode(option.id)}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition sm:px-3.5 sm:text-sm ${
-                          isActive
-                            ? 'bg-[#0e639c] text-white'
-                            : 'text-[#9da1a6] hover:bg-[#252526] hover:text-[#d4d4d4]'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             </div>
 
@@ -577,12 +571,6 @@ export const CreateTemporaryProjectModal = ({
 
                 <div className="mt-3 space-y-2">
                   <div className={summaryRowClassName}>
-                    <span className="text-[#858585]">화면</span>
-                    <span className="font-medium text-[#f3f3f3]">
-                      {previewModeLabel}
-                    </span>
-                  </div>
-                  <div className={summaryRowClassName}>
                     <span className="text-[#858585]">제목</span>
                     <span className="max-w-36 truncate font-medium text-[#f3f3f3]">
                       {projectTitleDisplay}
@@ -692,12 +680,7 @@ export const CreateTemporaryProjectModal = ({
         </div>
 
         <div className="flex flex-col gap-2 border-t border-[#313131] bg-[#181818] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p className="text-xs text-[#858585]">
-            {createError ??
-              (isCreateDisabled
-                ? '프로젝트 제목을 입력하세요.'
-                : `${selectedRuntimeOption?.label} 환경으로 생성 준비됨`)}
-          </p>
+          <p className="text-xs text-[#858585]">{createStatusMessage}</p>
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <button

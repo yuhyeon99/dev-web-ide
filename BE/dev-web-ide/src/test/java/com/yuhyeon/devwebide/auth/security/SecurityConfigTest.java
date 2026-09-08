@@ -265,6 +265,7 @@ class SecurityConfigTest {
                         ),
                         List.of(new ProjectMemberResponse(
                                 1L,
+                                1L,
                                 "user",
                                 ProjectMemberRole.OWNER,
                                 ProjectMemberStatus.ACTIVE,

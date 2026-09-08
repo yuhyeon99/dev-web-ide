@@ -463,9 +463,9 @@ public class ProjectService {
                         ));
 
         List<ProjectMember> projectMembers =
-                projectMemberRepository.findByProjectIdAndStatusOrderByJoinedAtDesc(
+                projectMemberRepository.findByProjectIdAndStatusInOrderByInvitedAtDescJoinedAtDescIdDesc(
                         projectId,
-                        ProjectMemberStatus.ACTIVE
+                        SHARED_PROJECT_STATUSES
                 );
 
         return ProjectDetailResponse.from(
@@ -502,9 +502,9 @@ public class ProjectService {
                         ));
 
         List<ProjectMember> projectMembers =
-                projectMemberRepository.findByProjectIdAndStatusOrderByJoinedAtDesc(
+                projectMemberRepository.findByProjectIdAndStatusInOrderByInvitedAtDescJoinedAtDescIdDesc(
                         projectId,
-                        ProjectMemberStatus.ACTIVE
+                        SHARED_PROJECT_STATUSES
                 );
 
         return ProjectDetailResponse.from(

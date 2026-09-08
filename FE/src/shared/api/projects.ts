@@ -8,6 +8,8 @@ import type {
   ProjectFileSaveRequest,
   ProjectFileSaveResponse,
   ProjectFileTreeResponse,
+  ProjectMemberManageResponse,
+  ProjectMemberRole,
   ProjectRunRequest,
   ProjectRunResponse,
   ProjectSummaryResponse,
@@ -47,6 +49,70 @@ export const getProjectDetail = (accessToken: string, projectId: number) => {
   return apiRequest<ProjectDetailResponse>(`/api/projects/${projectId}`, {
     accessToken,
   });
+};
+
+export const inviteProjectMember = (
+  accessToken: string,
+  projectId: number,
+  request: {
+    role: Exclude<ProjectMemberRole, 'OWNER'>;
+    userId: number;
+  },
+) => {
+  return apiRequest<ProjectMemberManageResponse>(
+    `/api/projects/${projectId}/members`,
+    {
+      accessToken,
+      method: 'POST',
+      body: JSON.stringify(request),
+    },
+  );
+};
+
+export const updateProjectMemberRole = (
+  accessToken: string,
+  projectId: number,
+  memberId: number,
+  request: {
+    role: Exclude<ProjectMemberRole, 'OWNER'>;
+  },
+) => {
+  return apiRequest<ProjectMemberManageResponse>(
+    `/api/projects/${projectId}/members/${memberId}`,
+    {
+      accessToken,
+      method: 'PATCH',
+      body: JSON.stringify(request),
+    },
+  );
+};
+
+export const removeProjectMember = (
+  accessToken: string,
+  projectId: number,
+  memberId: number,
+) => {
+  return apiRequest<ProjectMemberManageResponse>(
+    `/api/projects/${projectId}/members/${memberId}`,
+    {
+      accessToken,
+      method: 'DELETE',
+    },
+  );
+};
+
+export const acceptProjectInvitation = (
+  accessToken: string,
+  projectId: number,
+  memberId: number,
+) => {
+  return apiRequest<ProjectMemberManageResponse>(
+    `/api/projects/${projectId}/members/${memberId}/accept`,
+    {
+      accessToken,
+      method: 'POST',
+    },
+  );
 };
 
 export const getProjectFileTree = (projectId: number) => {

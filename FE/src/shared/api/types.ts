@@ -23,6 +23,8 @@ export type GuestSessionCreateResponse = {
 export type ProjectType = 'PERSONAL' | 'TEAM' | 'GUEST';
 export type ProjectVisibility = 'PRIVATE' | 'TEAM';
 export type ProjectStatus = 'ACTIVE' | 'DELETED';
+export type ProjectMemberRole = 'OWNER' | 'MAINTAINER' | 'EDITOR' | 'VIEWER';
+export type ProjectMemberStatus = 'INVITED' | 'ACTIVE' | 'REMOVED';
 export type ProjectFileType = 'FILE' | 'DIRECTORY';
 export type WorkspaceSessionStatus =
   | 'STARTING'
@@ -87,9 +89,28 @@ export type ProjectDetailResponse = {
     guestCanEdit: boolean;
     shareCursorPosition: boolean;
   };
-  members: unknown[];
+  members: ProjectMemberResponse[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type ProjectMemberResponse = {
+  projectMemberId: number;
+  userId: number;
+  nickname: string;
+  role: ProjectMemberRole;
+  status: ProjectMemberStatus;
+  joinedAt: string | null;
+};
+
+export type ProjectMemberManageResponse = {
+  projectMemberId: number;
+  userId: number;
+  nickname: string;
+  role: ProjectMemberRole;
+  status: ProjectMemberStatus;
+  invitedAt: string | null;
+  joinedAt: string | null;
 };
 
 export type ProjectFileTreeResponse = {

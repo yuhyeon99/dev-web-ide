@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { PresenceUser, WorkspaceProject } from '../model';
-import { ChevronDownIcon, SaveIcon, ShareIcon } from './WorkspaceIcons';
+import { ChevronDownIcon, SaveIcon } from './WorkspaceIcons';
 
 type WorkspaceHeaderProps = {
   projects: WorkspaceProject[];
@@ -132,14 +132,6 @@ export const WorkspaceHeader = ({
                 {saveMessage}
               </span>
             ) : null}
-
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-[var(--ws-border)] bg-[#2a2d2e] px-3.5 py-2.5 text-sm font-medium text-[var(--ws-text)] transition hover:border-[#3c4858] hover:bg-[#303336]"
-            >
-              <ShareIcon className="h-4 w-4" />
-              <span>Share</span>
-            </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
  * 프로젝트 상세 조회 시 참여 멤버와 권한 정보를 반환합니다.
  */
 public record ProjectMemberResponse(
+        Long projectMemberId,
         Long userId,
         String nickname,
         ProjectMemberRole role,
@@ -27,6 +28,7 @@ public record ProjectMemberResponse(
      */
     public static ProjectMemberResponse from(ProjectMember projectMember) {
         return new ProjectMemberResponse(
+                projectMember.getId(),
                 projectMember.getUser().getId(),
                 projectMember.getUser().getNickname(),
                 projectMember.getRole(),

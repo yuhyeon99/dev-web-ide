@@ -79,40 +79,34 @@ public class LocalContainerExecutionService implements ContainerExecutionService
             Runtime runtime,
             WorkspaceSession workspaceSession
     ) {
-        if (runtime.getLanguage() != RuntimeLanguage.PYTHON) {
-            saveLog(
-                    workspaceSession,
-                    TerminalStreamType.SYSTEM,
-                    "현재 로컬 실행은 Python 프로젝트만 지원합니다."
-            );
-            return;
-        }
-
         Path projectRootPath = resolveProjectRootPath(project);
-        Path mainPath = projectRootPath.resolve("main.py").normalize();
+        Optional<RunCommand> runCommand = resolveRunCommand(
+                runtime,
+                projectRootPath
+        );
 
-        if (!mainPath.startsWith(projectRootPath) || !Files.exists(mainPath)) {
+        if (runCommand.isEmpty()) {
             saveLog(
                     workspaceSession,
                     TerminalStreamType.STDERR,
-                    "main.py 파일을 찾을 수 없습니다."
+                    getUnsupportedRuntimeMessage(runtime.getLanguage())
             );
             return;
         }
 
-        Optional<ProcessBuilder> pythonProcess =
-                createPythonProcess(runtime, projectRootPath);
+        RunCommand command = runCommand.get();
+        Path entryPath = projectRootPath.resolve(command.entryFileName()).normalize();
 
-        if (pythonProcess.isEmpty()) {
+        if (!entryPath.startsWith(projectRootPath) || !Files.exists(entryPath)) {
             saveLog(
                     workspaceSession,
                     TerminalStreamType.STDERR,
-                    "Python 실행 환경을 찾을 수 없습니다. 서버 이미지에 python3가 설치되어 있어야 합니다."
+                    command.entryFileName() + " 파일을 찾을 수 없습니다."
             );
             return;
         }
 
-        ProcessBuilder processBuilder = pythonProcess.get();
+        ProcessBuilder processBuilder = command.processBuilder();
         processBuilder.redirectErrorStream(true);
 
         try {
@@ -144,54 +138,109 @@ public class LocalContainerExecutionService implements ContainerExecutionService
             saveLog(
                     workspaceSession,
                     TerminalStreamType.STDERR,
-                    "Python 실행 명령을 시작할 수 없습니다: " + e.getMessage()
+                    runtime.getDisplayName()
+                            + " 실행 명령을 시작할 수 없습니다: "
+                            + e.getMessage()
             );
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             saveLog(
                     workspaceSession,
                     TerminalStreamType.STDERR,
-                    "Python 실행이 중단되었습니다."
+                    runtime.getDisplayName() + " 실행이 중단되었습니다."
             );
         } catch (ExecutionException | java.util.concurrent.TimeoutException e) {
             saveLog(
                     workspaceSession,
                     TerminalStreamType.STDERR,
-                    "Python 실행 출력을 읽을 수 없습니다: " + e.getMessage()
+                    runtime.getDisplayName()
+                            + " 실행 출력을 읽을 수 없습니다: "
+                            + e.getMessage()
             );
         }
     }
 
-    private Optional<ProcessBuilder> createPythonProcess(
+    private Optional<RunCommand> resolveRunCommand(
             Runtime runtime,
             Path projectRootPath
     ) {
+        return switch (runtime.getLanguage()) {
+            case NODE -> createNodeCommand(projectRootPath);
+            case PYTHON -> createPythonCommand(projectRootPath);
+            case JAVA -> createJavaCommand(projectRootPath);
+            case CPP -> createCppCommand(projectRootPath);
+        };
+    }
+
+    private Optional<RunCommand> createNodeCommand(Path projectRootPath) {
+        if (!isCommandAvailable("node")) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new RunCommand(
+                "main.js",
+                new ProcessBuilder("node", "main.js")
+                        .directory(projectRootPath.toFile())
+        ));
+    }
+
+    private Optional<RunCommand> createPythonCommand(Path projectRootPath) {
         if (isCommandAvailable("python3")) {
-            return Optional.of(new ProcessBuilder("python3", "main.py")
-                    .directory(projectRootPath.toFile()));
+            return Optional.of(new RunCommand(
+                    "main.py",
+                    new ProcessBuilder("python3", "main.py")
+                            .directory(projectRootPath.toFile())
+            ));
         }
 
         if (isCommandAvailable("python")) {
-            return Optional.of(new ProcessBuilder("python", "main.py")
-                    .directory(projectRootPath.toFile()));
-        }
-
-        if (isCommandAvailable("docker")) {
-            return Optional.of(new ProcessBuilder(
-                    "docker",
-                    "run",
-                    "--rm",
-                    "-v",
-                    projectRootPath + ":/workspace",
-                    "-w",
-                    "/workspace",
-                    runtime.getDockerImage(),
-                    "python",
-                    "main.py"
+            return Optional.of(new RunCommand(
+                    "main.py",
+                    new ProcessBuilder("python", "main.py")
+                            .directory(projectRootPath.toFile())
             ));
         }
 
         return Optional.empty();
+    }
+
+    private Optional<RunCommand> createJavaCommand(Path projectRootPath) {
+        if (!isCommandAvailable("javac") || !isCommandAvailable("java")) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new RunCommand(
+                "Main.java",
+                new ProcessBuilder(
+                        "sh",
+                        "-c",
+                        "mkdir -p .run && javac --release 21 -d .run Main.java && java -cp .run Main"
+                ).directory(projectRootPath.toFile())
+        ));
+    }
+
+    private Optional<RunCommand> createCppCommand(Path projectRootPath) {
+        if (!isCommandAvailable("g++")) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new RunCommand(
+                "main.cpp",
+                new ProcessBuilder(
+                        "sh",
+                        "-c",
+                        "mkdir -p .run && g++ -std=c++17 main.cpp -o .run/main && ./.run/main"
+                ).directory(projectRootPath.toFile())
+        ));
+    }
+
+    private String getUnsupportedRuntimeMessage(RuntimeLanguage language) {
+        return switch (language) {
+            case NODE -> "Node.js 실행 환경을 찾을 수 없습니다. 서버 이미지에 node가 설치되어 있어야 합니다.";
+            case PYTHON -> "Python 실행 환경을 찾을 수 없습니다. 서버 이미지에 python3가 설치되어 있어야 합니다.";
+            case JAVA -> "Java 실행 환경을 찾을 수 없습니다. 서버 이미지에 java와 javac가 설치되어 있어야 합니다.";
+            case CPP -> "C++ 실행 환경을 찾을 수 없습니다. 서버 이미지에 g++가 설치되어 있어야 합니다.";
+        };
     }
 
     private boolean isCommandAvailable(String command) {
@@ -274,5 +323,11 @@ public class LocalContainerExecutionService implements ContainerExecutionService
         }
 
         return value;
+    }
+
+    private record RunCommand(
+            String entryFileName,
+            ProcessBuilder processBuilder
+    ) {
     }
 }

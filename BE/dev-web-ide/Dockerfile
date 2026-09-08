@@ -1,10 +1,16 @@
-FROM eclipse-temurin:25-jre
+FROM node:20-bookworm-slim AS node-runtime
+FROM python:3.12-bookworm AS python-runtime
+
+FROM eclipse-temurin:25-jdk
 
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 \
+    && apt-get install -y --no-install-recommends g++ make \
     && rm -rf /var/lib/apt/lists/*
+
+COPY --from=python-runtime /usr/local /usr/local
+COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
 
 RUN groupadd --system app && useradd --system --gid app app
 

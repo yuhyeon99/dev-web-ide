@@ -137,12 +137,12 @@ docker run --rm --env-file .env.prod -p 8080:8080 dev-web-ide-be:local
 
 | 게스트모드 워크스페이스 | 워크스페이스 실행 |
 | :---: | :---: |
-| <img width="520" src="./docs/readme/assets/workspace.png" alt="게스트모드 워크스페이스 진입 안내"> | 캡처 예정 |
+| <img width="520" alt="게스트모드 워크스페이스 진입 안내" src="https://github.com/user-attachments/assets/14eb934c-12d4-4811-be10-1225ad3323ea" /> | <img width="520" alt="워크스페이스 실행" src="https://github.com/user-attachments/assets/3e16a010-3145-439d-9f5d-85f100ca50c3" /> |
 | 게스트 사용자가 임시 프로젝트를 열고 코드 편집 화면으로 진입하는 흐름입니다. | Node.js, Python, Java, C++ 프로젝트를 실행하고 터미널에서 stdout/stderr 로그를 확인하는 화면입니다. |
 
 | 실시간 팀 채팅 | 팀 초대 및 관리 |
 | :---: | :---: |
-| 캡처 예정 | 캡처 예정 |
+| <img width="520" alt="실시간 팀 채팅" src="https://github.com/user-attachments/assets/fc8f7f6c-b4eb-4261-b5e6-32d949d0d065" /> | <img width="520" alt="팀 초대 및 관리" src="https://github.com/user-attachments/assets/d0f82b32-d67e-4c3f-8c39-763387105499" /> |
 | 팀 프로젝트 워크스페이스에서 참여자끼리 메시지를 주고받는 화면입니다. | 팀원을 초대하고 역할과 권한을 관리하는 화면입니다. |
 
 ## 주요 기능

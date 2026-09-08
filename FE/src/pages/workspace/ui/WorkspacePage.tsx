@@ -519,6 +519,10 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
   }, [handleProjectRealtimeEvent, projectId]);
 
   useEffect(() => {
+    if (!projectDetailQuery.data) {
+      return undefined;
+    }
+
     const connection = createWorkspacePresenceClient({
       clientId: realtimeClientId,
       currentFile: '파일 선택 안 됨',
@@ -536,7 +540,7 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
       connection.disconnect();
       presenceConnectionRef.current = null;
     };
-  }, [authSession, projectId, realtimeClientId]);
+  }, [authSession, projectDetailQuery.data, projectId, realtimeClientId]);
 
   useEffect(() => {
     presenceConnectionRef.current?.update(activeFilePath);
@@ -692,11 +696,7 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
             </div>
           ) : null}
 
-          <div
-            className={`grid min-h-0 gap-3 ${
-              showTeamChat ? 'xl:grid-cols-[minmax(0,1fr)_22rem]' : ''
-            }`}
-          >
+          <div className="grid min-h-0 gap-3">
             <Terminal
               isRunning={runProjectMutation.isPending}
               lines={terminalLines}
@@ -708,16 +708,16 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
               }
               statusLabel={terminalStatus}
             />
-
-            {showTeamChat ? (
-              <TeamChat
-                key={projectId}
-                clientId={realtimeClientId}
-                projectId={projectId}
-                senderName={authSession?.nickname ?? 'Guest'}
-              />
-            ) : null}
           </div>
+
+          {showTeamChat ? (
+            <TeamChat
+              key={projectId}
+              clientId={realtimeClientId}
+              projectId={projectId}
+              senderName={authSession?.nickname ?? 'Guest'}
+            />
+          ) : null}
         </div>
       </div>
     </div>

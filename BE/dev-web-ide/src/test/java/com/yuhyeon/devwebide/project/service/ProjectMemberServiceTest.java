@@ -234,26 +234,41 @@ class ProjectMemberServiceTest {
     }
 
     @Test
-    @DisplayName("REMOVED 멤버는 이번 MVP에서 재초대할 수 없다")
+    @DisplayName("REMOVED 멤버는 기존 멤버 row를 재사용해 재초대한다")
     void inviteRemovedMember() {
         TestProject testProject = createTestProject(ProjectStatus.ACTIVE);
         User invitedUser = saveUser("invited");
-        saveProjectMember(
+        ProjectMember removedMember = saveProjectMember(
                 testProject.project(),
                 invitedUser,
-                ProjectMemberRole.EDITOR,
+                ProjectMemberRole.VIEWER,
                 ProjectMemberStatus.REMOVED
         );
         ProjectMemberInviteRequest request = new ProjectMemberInviteRequest(
                 invitedUser.getId(),
-                ProjectMemberRole.EDITOR
+                ProjectMemberRole.MAINTAINER
         );
 
-        assertThatThrownBy(() -> projectMemberService.inviteMember(
+        ProjectMemberManageResponse response = projectMemberService.inviteMember(
                 testProject.project().getId(),
                 request,
                 userPrincipal(testProject.owner().getId())
-        )).isInstanceOf(IllegalArgumentException.class);
+        );
+
+        ProjectMember projectMember = projectMemberRepository.findById(removedMember.getId())
+                .orElseThrow();
+
+        assertThat(response.projectMemberId()).isEqualTo(removedMember.getId());
+        assertThat(response.userId()).isEqualTo(invitedUser.getId());
+        assertThat(response.role()).isEqualTo(ProjectMemberRole.MAINTAINER);
+        assertThat(response.status()).isEqualTo(ProjectMemberStatus.INVITED);
+        assertThat(response.invitedAt()).isNotNull();
+        assertThat(response.joinedAt()).isNull();
+        assertThat(projectMember.getRole()).isEqualTo(ProjectMemberRole.MAINTAINER);
+        assertThat(projectMember.getStatus()).isEqualTo(ProjectMemberStatus.INVITED);
+        assertThat(projectMember.getInvitedByUser().getId()).isEqualTo(testProject.owner().getId());
+        assertThat(projectMember.getInvitedAt()).isNotNull();
+        assertThat(projectMember.getJoinedAt()).isNull();
     }
 
     @Test

@@ -215,6 +215,26 @@ public class ProjectMember {
         this.joinedAt = joinedAt;
     }
 
+    public void reinvite(
+            ProjectMemberRole role,
+            User invitedByUser,
+            LocalDateTime invitedAt
+    ) {
+        if (!isRemoved()) {
+            throw new IllegalStateException("REMOVED 상태의 멤버만 재초대할 수 있습니다.");
+        }
+
+        if (role == null) {
+            throw new IllegalArgumentException("재초대 권한은 필수입니다.");
+        }
+
+        this.role = role;
+        this.status = ProjectMemberStatus.INVITED;
+        this.invitedByUser = invitedByUser;
+        this.invitedAt = invitedAt;
+        this.joinedAt = null;
+    }
+
     /**
      * 멤버 제거 처리
      *

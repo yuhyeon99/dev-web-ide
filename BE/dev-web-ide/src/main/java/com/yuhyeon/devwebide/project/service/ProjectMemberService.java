@@ -39,11 +39,21 @@ public class ProjectMemberService {
         validateManageableRole(request.role());
 
         User invitedUser = getUser(request.userId());
+        LocalDateTime invitedAt = LocalDateTime.now();
 
-        projectMemberRepository.findByProjectIdAndUserId(projectId, invitedUser.getId())
-                .ifPresent(projectMember -> {
-                    throw new IllegalArgumentException("이미 프로젝트 멤버로 등록된 사용자입니다.");
-                });
+        ProjectMember existingProjectMember =
+                projectMemberRepository.findByProjectIdAndUserId(projectId, invitedUser.getId())
+                        .orElse(null);
+
+        if (existingProjectMember != null) {
+            if (!existingProjectMember.isRemoved()) {
+                throw new IllegalArgumentException("이미 프로젝트 멤버로 등록된 사용자입니다.");
+            }
+
+            existingProjectMember.reinvite(request.role(), requester, invitedAt);
+
+            return ProjectMemberManageResponse.from(existingProjectMember);
+        }
 
         ProjectMember projectMember = ProjectMember.builder()
                 .project(project)
@@ -51,7 +61,7 @@ public class ProjectMemberService {
                 .role(request.role())
                 .status(ProjectMemberStatus.INVITED)
                 .invitedByUser(requester)
-                .invitedAt(LocalDateTime.now())
+                .invitedAt(invitedAt)
                 .joinedAt(null)
                 .build();
 

@@ -2,9 +2,6 @@
 
 <div align="center">
   <img width="160" alt="Dev Web IDE logo" src="./FE/src/assets/images/logo.png">
-
-  [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fyuhyeon99%2Fdev-web-ide&count_bg=%230E639C&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
-
 </div>
 
 ## 프로젝트 정보

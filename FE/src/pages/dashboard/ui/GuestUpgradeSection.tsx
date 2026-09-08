@@ -5,7 +5,11 @@ const guestLimits = [
   { feature: '터미널', guest: '가능' },
 ];
 
-export const GuestUpgradeSection = () => {
+type GuestUpgradeSectionProps = {
+  onLogin: () => void;
+};
+
+export const GuestUpgradeSection = ({ onLogin }: GuestUpgradeSectionProps) => {
   return (
     <aside className="rounded-2xl border border-[#313131] bg-[#252526] p-5">
       <div className="flex items-start justify-between gap-4">
@@ -41,9 +45,10 @@ export const GuestUpgradeSection = () => {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <button
           type="button"
+          onClick={onLogin}
           className="rounded-md bg-[#0e639c] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1177bb]"
         >
-          로그인하고 저장하기
+          로그인
         </button>
         <button
           type="button"

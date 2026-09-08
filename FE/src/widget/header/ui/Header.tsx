@@ -585,6 +585,22 @@ export const Header = () => {
     });
   }, []);
 
+  useEffect(() => {
+    const handleOpenAuthModal = () => {
+      setProfileMenuOpen(false);
+      setIsAuthModalOpen(true);
+    };
+
+    window.addEventListener('dev-web-ide:open-auth-modal', handleOpenAuthModal);
+
+    return () => {
+      window.removeEventListener(
+        'dev-web-ide:open-auth-modal',
+        handleOpenAuthModal,
+      );
+    };
+  }, []);
+
   const handleProfileButtonClick = () => {
     if (!authSession) {
       setIsAuthModalOpen(true);

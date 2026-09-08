@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -99,7 +100,19 @@ public class LocalContainerExecutionService implements ContainerExecutionService
             return;
         }
 
-        ProcessBuilder processBuilder = createPythonProcess(runtime, projectRootPath);
+        Optional<ProcessBuilder> pythonProcess =
+                createPythonProcess(runtime, projectRootPath);
+
+        if (pythonProcess.isEmpty()) {
+            saveLog(
+                    workspaceSession,
+                    TerminalStreamType.STDERR,
+                    "Python 실행 환경을 찾을 수 없습니다. 서버 이미지에 python3가 설치되어 있어야 합니다."
+            );
+            return;
+        }
+
+        ProcessBuilder processBuilder = pythonProcess.get();
         processBuilder.redirectErrorStream(true);
 
         try {
@@ -149,22 +162,22 @@ public class LocalContainerExecutionService implements ContainerExecutionService
         }
     }
 
-    private ProcessBuilder createPythonProcess(
+    private Optional<ProcessBuilder> createPythonProcess(
             Runtime runtime,
             Path projectRootPath
     ) {
         if (isCommandAvailable("python3")) {
-            return new ProcessBuilder("python3", "main.py")
-                    .directory(projectRootPath.toFile());
+            return Optional.of(new ProcessBuilder("python3", "main.py")
+                    .directory(projectRootPath.toFile()));
         }
 
         if (isCommandAvailable("python")) {
-            return new ProcessBuilder("python", "main.py")
-                    .directory(projectRootPath.toFile());
+            return Optional.of(new ProcessBuilder("python", "main.py")
+                    .directory(projectRootPath.toFile()));
         }
 
         if (isCommandAvailable("docker")) {
-            return new ProcessBuilder(
+            return Optional.of(new ProcessBuilder(
                     "docker",
                     "run",
                     "--rm",
@@ -175,11 +188,10 @@ public class LocalContainerExecutionService implements ContainerExecutionService
                     runtime.getDockerImage(),
                     "python",
                     "main.py"
-            );
+            ));
         }
 
-        return new ProcessBuilder("python3", "main.py")
-                .directory(projectRootPath.toFile());
+        return Optional.empty();
     }
 
     private boolean isCommandAvailable(String command) {

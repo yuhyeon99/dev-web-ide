@@ -6,10 +6,12 @@ const quickStartItems = [
 
 type GuestQuickStartSectionProps = {
   onCreateTemporaryProject: () => void;
+  onLogin: () => void;
 };
 
 export const GuestQuickStartSection = ({
   onCreateTemporaryProject,
+  onLogin,
 }: GuestQuickStartSectionProps) => {
   return (
     <section className="rounded-2xl border border-[#313131] bg-[#252526] p-5">
@@ -36,9 +38,10 @@ export const GuestQuickStartSection = ({
         </button>
         <button
           type="button"
+          onClick={onLogin}
           className="inline-flex items-center justify-center rounded-md border border-[#3c3c3c] bg-[#2d2d30] px-4 py-2.5 text-sm font-semibold text-[#d4d4d4] transition hover:bg-[#343438]"
         >
-          로그인하고 저장하기
+          로그인
         </button>
       </div>
 

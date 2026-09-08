@@ -220,6 +220,10 @@ export const DashboardPage = () => {
     navigate(`/workspace?projectId=${projectId}`);
   };
 
+  const handleLogin = () => {
+    window.dispatchEvent(new CustomEvent('dev-web-ide:open-auth-modal'));
+  };
+
   return (
     <div className="h-[calc(100vh-2.75rem)] overflow-y-auto bg-[#1e1e1e] text-[#d4d4d4]">
       <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
@@ -228,6 +232,7 @@ export const DashboardPage = () => {
         {isGuest ? (
           <div className="flex min-h-0 flex-1 flex-col gap-4">
             <GuestQuickStartSection
+              onLogin={handleLogin}
               onCreateTemporaryProject={() =>
                 setCreateTemporaryProjectModalOpen(true)
               }

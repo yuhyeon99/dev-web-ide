@@ -12,6 +12,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import {
   createProjectFile,
+  getTerminalLogs,
   getMyProjects,
   getProjectDetail,
   getProjectFileContent,
@@ -462,16 +463,32 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
         '프로젝트 실행에 실패했습니다.',
       ]);
     },
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       setTerminalStatus(`status: ${response.container.status.toLowerCase()}`);
-      setTerminalLines([
-        '$ run project',
-        `workspace session #${response.workspaceSessionId}`,
-        `container #${response.containerInstanceId} ${response.container.status}`,
-        `runtime ${response.runtimeDisplayName} (${response.runtimeLanguage})`,
-        `image ${response.dockerImage}`,
-        `efs ${response.efsMountPath}`,
-      ]);
+
+      try {
+        const terminalLogs = await getTerminalLogs(response.workspaceSessionId);
+        const outputLines = terminalLogs.logs.flatMap((log) =>
+          log.content.split(/\r?\n/),
+        );
+
+        setTerminalLines([
+          '$ run project',
+          ...(outputLines.length > 0
+            ? outputLines
+            : ['프로그램 출력이 없습니다.']),
+        ]);
+      } catch {
+        setTerminalLines([
+          '$ run project',
+          `workspace session #${response.workspaceSessionId}`,
+          `container #${response.containerInstanceId} ${response.container.status}`,
+          `runtime ${response.runtimeDisplayName} (${response.runtimeLanguage})`,
+          `image ${response.dockerImage}`,
+          `efs ${response.efsMountPath}`,
+          '터미널 로그를 불러오지 못했습니다.',
+        ]);
+      }
     },
   });
 

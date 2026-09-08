@@ -13,6 +13,7 @@ import type {
   ProjectRunRequest,
   ProjectRunResponse,
   ProjectSummaryResponse,
+  TerminalLogListResponse,
 } from './types';
 
 export const getMyProjects = (accessToken: string) => {
@@ -162,4 +163,10 @@ export const runProject = (projectId: number, request: ProjectRunRequest) => {
     method: 'POST',
     body: JSON.stringify(request),
   });
+};
+
+export const getTerminalLogs = (workspaceSessionId: number) => {
+  return apiRequest<TerminalLogListResponse>(
+    `/api/workspace-sessions/${workspaceSessionId}/terminal/logs`,
+  );
 };

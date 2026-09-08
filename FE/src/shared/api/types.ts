@@ -36,6 +36,7 @@ export type ContainerInstanceStatus =
   | 'RUNNING'
   | 'STOPPED'
   | 'FAILED';
+export type TerminalStreamType = 'STDOUT' | 'STDERR' | 'SYSTEM';
 
 export type ProjectCreateRequest = {
   name: string;
@@ -199,6 +200,20 @@ export type ProjectRunResponse = {
     status: ContainerInstanceStatus;
     efsMountPath: string;
   };
+};
+
+export type TerminalLogResponse = {
+  id: number;
+  sequenceNo: number;
+  streamType: TerminalStreamType;
+  content: string;
+  createdAt: string;
+};
+
+export type TerminalLogListResponse = {
+  workspaceSessionId: number;
+  logs: TerminalLogResponse[];
+  lastSequenceNo: number | null;
 };
 
 export type ProjectRealtimeEventType =

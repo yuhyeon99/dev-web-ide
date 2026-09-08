@@ -1,6 +1,5 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router';
 
 import {
   projectFilterTabs,
@@ -104,7 +103,6 @@ export const OpenProjectsModal = ({
   isOpen,
   onClose,
 }: OpenProjectsModalProps) => {
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<ProjectFilterId>('recent');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
@@ -142,7 +140,7 @@ export const OpenProjectsModal = ({
     },
     onSuccess: (projectId) => {
       handleClose();
-      navigate(`/workspace?projectId=${projectId}`);
+      window.location.assign(`/workspace?projectId=${projectId}`);
     },
   });
 

@@ -182,6 +182,21 @@ type SavedDraft = {
   fileId: number;
 };
 
+const getWorkspaceClientId = (projectId: number) => {
+  const storageKey = `dev-web-ide.workspace-client.${projectId}`;
+  const storedClientId = window.sessionStorage.getItem(storageKey);
+
+  if (storedClientId) {
+    return storedClientId;
+  }
+
+  const nextClientId = crypto.randomUUID();
+
+  window.sessionStorage.setItem(storageKey, nextClientId);
+
+  return nextClientId;
+};
+
 export const WorkspacePage = () => {
   const [searchParams] = useSearchParams();
   const projectId = Number(searchParams.get('projectId'));
@@ -223,7 +238,7 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
   );
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
   const [terminalStatus, setTerminalStatus] = useState('status: idle');
-  const [realtimeClientId] = useState(() => crypto.randomUUID());
+  const [realtimeClientId] = useState(() => getWorkspaceClientId(projectId));
   const [authSession] = useState(() => getStoredAuthSession());
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
   const presenceConnectionRef =
@@ -530,6 +545,9 @@ const WorkspaceProjectPage = ({ projectId }: WorkspaceProjectPageProps) => {
       onPresenceChange: (message) => {
         setPresenceUsers(message.users.map(toPresenceUser));
       },
+      presenceKey: authSession
+        ? `user:${authSession.userId}`
+        : `guest:${projectId}:${realtimeClientId}`,
       projectId,
       role: authSession ? authSession.role : 'Guest',
     });

@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
  */
 public record WorkspacePresenceUser(
         String clientId,
+        String presenceKey,
         String displayName,
         String role,
         String currentFile,

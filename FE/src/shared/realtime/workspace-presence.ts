@@ -10,6 +10,7 @@ type WorkspacePresenceClientOptions = {
   currentFile: string;
   displayName: string;
   onPresenceChange: (message: WorkspacePresenceMessage) => void;
+  presenceKey: string;
   projectId: number;
   role: string;
 };
@@ -23,15 +24,17 @@ const createPresenceBody = ({
   clientId,
   currentFile,
   displayName,
+  presenceKey,
   role,
 }: Pick<
   WorkspacePresenceClientOptions,
-  'clientId' | 'currentFile' | 'displayName' | 'role'
+  'clientId' | 'currentFile' | 'displayName' | 'presenceKey' | 'role'
 >) =>
   JSON.stringify({
     clientId,
     currentFile,
     displayName,
+    presenceKey,
     role,
     status: 'online',
   });
@@ -41,6 +44,7 @@ export const createWorkspacePresenceClient = ({
   currentFile,
   displayName,
   onPresenceChange,
+  presenceKey,
   projectId,
   role,
 }: WorkspacePresenceClientOptions): WorkspacePresenceClientConnection => {
@@ -51,6 +55,7 @@ export const createWorkspacePresenceClient = ({
     users: [
       {
         clientId,
+        presenceKey,
         currentFile: latestCurrentFile,
         displayName: displayName.trim() || 'Guest',
         joinedAt: new Date().toISOString(),
@@ -73,6 +78,7 @@ export const createWorkspacePresenceClient = ({
         clientId,
         currentFile: latestCurrentFile,
         displayName,
+        presenceKey,
         role,
       }),
     });
@@ -114,6 +120,7 @@ export const createWorkspacePresenceClient = ({
         clientId,
         currentFile: latestCurrentFile,
         displayName,
+        presenceKey,
         role,
       }),
     });

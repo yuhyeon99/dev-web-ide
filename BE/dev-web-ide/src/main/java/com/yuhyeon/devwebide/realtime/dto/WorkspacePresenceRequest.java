@@ -5,6 +5,7 @@ package com.yuhyeon.devwebide.realtime.dto;
  */
 public record WorkspacePresenceRequest(
         String clientId,
+        String presenceKey,
         String displayName,
         String role,
         String currentFile,

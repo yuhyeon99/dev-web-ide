@@ -34,11 +34,18 @@ public class WorkspacePresenceService {
                 presenceByProject.computeIfAbsent(projectId, ignored -> new ConcurrentHashMap<>());
         LocalDateTime now = LocalDateTime.now();
         WorkspacePresenceUser existingUser = projectPresence.get(request.clientId());
+        String presenceKey = sanitize(request.presenceKey(), request.clientId());
+
+        projectPresence.entrySet().removeIf(entry ->
+                !entry.getKey().equals(request.clientId())
+                        && presenceKey.equals(entry.getValue().presenceKey())
+        );
 
         projectPresence.put(
                 request.clientId(),
                 new WorkspacePresenceUser(
                         request.clientId(),
+                        presenceKey,
                         sanitize(request.displayName(), "Guest"),
                         sanitize(request.role(), "Editor"),
                         sanitize(request.currentFile(), "파일 선택 안 됨"),

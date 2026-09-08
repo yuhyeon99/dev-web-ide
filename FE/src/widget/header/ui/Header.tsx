@@ -611,9 +611,14 @@ export const Header = () => {
 
   return (
     <header className="relative flex h-11 w-full bg-[#333333] pl-3 text-sm text-[#cccccc] select-none">
-      <div className="logo flex items-center">
-        <img className="w-6.5" src={logo} alt="Logo" />
-      </div>
+      <button
+        type="button"
+        onClick={() => navigate('/')}
+        className="logo flex items-center focus-visible:ring-2 focus-visible:ring-[#007acc]/70 focus-visible:outline-none"
+        aria-label="메인 화면으로 이동"
+      >
+        <img className="w-6.5" src={logo} alt="" aria-hidden="true" />
+      </button>
       <div className="dropdown-menu relative flex h-full items-center pl-4">
         <ul className="flex h-full">
           <li className="group relative flex h-full items-center px-2">

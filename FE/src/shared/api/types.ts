@@ -247,6 +247,7 @@ export type TeamChatMessage = {
 
 export type WorkspacePresenceUser = {
   clientId: string;
+  presenceKey: string;
   displayName: string;
   role: string;
   currentFile: string;

@@ -313,6 +313,7 @@ export const AuthModal = ({
 
                 <button
                   type="button"
+                  onClick={handleClose}
                   className="mt-6 inline-flex w-full items-center justify-center rounded-md border border-[#3c3c3c] bg-[#252526] px-4 py-3 text-sm font-medium text-[#d4d4d4] transition hover:bg-[#2a2d2e] focus-visible:ring-2 focus-visible:ring-[#007acc]/50 focus-visible:outline-none"
                 >
                   게스트 모드로 둘러보기
